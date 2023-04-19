@@ -10,3 +10,5 @@ label_smoothing     = 0.1   # label smoothing (regularization technique)
 batch_size          = 4096  # number of tokens per batch (source/target)
 max_length          = 256   # maximum sentence length (during training)
 beam_size           = 5     # beam search decoding (length normalization)
+freq_limit          = 10    # frequency threshold to append word senses
+max_senses          = 3     # maximum number of word senses to append

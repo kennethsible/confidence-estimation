@@ -82,14 +82,17 @@ class MultiHeadAttention(nn.Module):
         super(MultiHeadAttention, self).__init__()
         assert embed_dim % num_heads == 0
         self.linears = clone(Linear(embed_dim, embed_dim), 4)
+        self.weights = nn.Parameter(torch.zeros((num_heads, 2)))
         self.dropout = nn.Dropout(dropout)
         self.head_dim = embed_dim // num_heads
         self.num_heads = num_heads
 
-    def attention(self, query, key, value, mask=None):
+    def attention(self, query, key, value, mask=None, dict_mask=None):
         scores = query @ key.transpose(-2, -1) / math.sqrt(self.head_dim)
         if mask is not None:
             scores.masked_fill_(mask.unsqueeze(1) == 0, -torch.inf)
+        if dict_mask is not None:
+            scores -= torch.exp(dict_mask.transpose(0, 1))
         return self.dropout(scores.softmax(dim=-1)) @ value
 
     def _reshape_from(self, x):
@@ -98,8 +101,10 @@ class MultiHeadAttention(nn.Module):
     def _reshape_to(self, x):
         return x.reshape(*x.size()[:2], -1)
 
-    def forward(self, query, key, value, mask=None):
+    def forward(self, query, key, value, mask=None, dict_mask=None):
         query, key, value = [self._reshape_from(linear(x)).transpose(1, 2)
             for linear, x in zip(self.linears, (query, key, value))]
-        outputs = self.attention(query, key, value, mask)
+        if dict_mask is not None:
+            dict_mask = torch.tensordot(self.weights, dict_mask, dims=([1], [0]))
+        outputs = self.attention(query, key, value, mask, dict_mask)
         return self.linears[-1](self._reshape_to(outputs.transpose(1, 2)))

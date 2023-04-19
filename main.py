@@ -12,9 +12,10 @@ def train_epoch(manager, criterion, optimizer=None, scalar=None, visualize=False
     for batch in tqdm.tqdm(data) if visualize else data:
         src_nums, src_mask = batch.src_nums, batch.src_mask
         tgt_nums, tgt_mask = batch.tgt_nums, batch.tgt_mask
+        dict_mask = batch.dict_mask
 
         with torch.cuda.amp.autocast():
-            logits = model(src_nums, src_mask, tgt_nums[:, :-1], tgt_mask, decoding_size)
+            logits = model(src_nums, src_mask, tgt_nums[:, :-1], tgt_mask, dict_mask, decoding_size)
             loss = criterion(torch.flatten(logits, 0, 1), torch.flatten(tgt_nums[:, 1:]))
 
         if optimizer and mode == 'train':
@@ -70,6 +71,8 @@ def main():
     parser.add_argument('--lang', nargs=2, metavar=('SRC', 'TGT'), required=True, help='language pair')
     parser.add_argument('--data', metavar='FILE', required=True, help='training data')
     parser.add_argument('--test', metavar='FILE', required=True, help='validation data')
+    parser.add_argument('--dict', metavar='FILE', required=True, help='dictionary data')
+    parser.add_argument('--freq', metavar='FILE', required=True, help='frequency data')
     parser.add_argument('--vocab', metavar='FILE', required=True, help='shared vocab')
     parser.add_argument('--codes', metavar='FILE', required=True, help='shared codes')
     parser.add_argument('--model', metavar='FILE', required=True, help='save model')
@@ -91,9 +94,10 @@ def main():
             config[option] = (int if value.isdigit() else float)(value)
 
     with open(args.vocab) as vocab_file, open(args.codes) as codes_file, \
+            open(args.dict) as dict_file, open(args.freq) as freq_file, \
             open(args.data) as data_file, open(args.test) as test_file:
-        manager = Manager(src_lang, tgt_lang, vocab_file, codes_file,
-            args.model, config, device, data_file, test_file)
+        manager = Manager(src_lang, tgt_lang, vocab_file, codes_file, args.model,
+            config, device, dict_file, freq_file, data_file, test_file)
 
     if torch.cuda.get_device_capability()[0] >= 8:
         torch.set_float32_matmul_precision('high')

@@ -13,7 +13,7 @@ $ python translate.py --model model.deen --data infile.de > outfile.en
 
 ## Train Model
 ```
-usage: main.py [-h] [--tqdm] [--seed SEED] --lang SRC TGT --data FILE --test FILE --vocab FILE --codes FILE --model FILE
+usage: main.py [-h] [--tqdm] [--seed SEED] --lang SRC TGT --data FILE --test FILE --dict FILE --freq FILE --vocab FILE --codes FILE --model FILE
 
 optional arguments:
   -h, --help      show this help message and exit
@@ -22,6 +22,8 @@ optional arguments:
   --lang SRC TGT  language pair
   --data FILE     training data
   --test FILE     validation data
+  --dict FILE     dictionary data
+  --freq FILE     frequency data
   --vocab FILE    shared vocab
   --codes FILE    shared codes
   --model FILE    save model
@@ -29,12 +31,14 @@ optional arguments:
 
 ## Score Model
 ```
-usage: score.py [-h] --model FILE --data FILE
+usage: score.py [-h] --model FILE --data FILE --dict FILE --freq FILE
 
 optional arguments:
   -h, --help    show this help message and exit
   --model FILE  load model
   --data FILE   testing data
+  --dict FILE   dictionary data
+  --freq FILE   frequency data
 ```
 
 ## Translate Input
@@ -62,4 +66,6 @@ label_smoothing     = 0.1   # label smoothing (regularization technique)
 batch_size          = 4096  # number of tokens per batch (source/target)
 max_length          = 256   # maximum sentence length (during training)
 beam_size           = 5     # beam search decoding (length normalization)
+freq_limit          = 10    # frequency threshold to append word senses
+max_senses          = 3     # maximum number of word senses to append
 ```

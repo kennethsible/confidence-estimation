@@ -13,7 +13,7 @@ def score_model(manager, logger):
     model.eval()
     with torch.no_grad():
         for batch in manager.test:
-            src_encs = model.encode(batch.src_nums, batch.src_mask)
+            src_encs = model.encode(batch.src_nums, batch.src_mask, batch.dict_mask)
             for i in range(src_encs.size(0)):
                 out_nums = beam_decode(manager, src_encs[i], batch.src_mask[i], manager.beam_size)
                 reference.append(manager.detokenize(vocab.denumberize(*batch.tgt_nums[i])))
@@ -43,6 +43,8 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--model', metavar='FILE', required=True, help='load model')
     parser.add_argument('--data', metavar='FILE', required=True, help='testing data')
+    parser.add_argument('--dict', metavar='FILE', required=True, help='dictionary data')
+    parser.add_argument('--freq', metavar='FILE', required=True, help='frequency data')
     args, unknown = parser.parse_known_args()
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -56,9 +58,9 @@ def main():
             option, value = arg[2:], unknown[i + 1]
             config[option] = (int if value.isdigit() else float)(value)
 
-    with open(args.data) as test_file:
-        manager = Manager(src_lang, tgt_lang, vocab_file, codes_file,
-            args.model, config, device, data_file=None, test_file=test_file)
+    with open(args.data) as test_file, open(args.dict) as dict_file, open(args.freq) as freq_file:
+        manager = Manager(src_lang, tgt_lang, vocab_file, codes_file, args.model,
+            config, device, dict_file, freq_file, data_file=None, test_file=test_file)
     manager.model.load_state_dict(model_dict['state_dict'])
 
     if torch.cuda.get_device_capability()[0] >= 8:

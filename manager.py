@@ -3,7 +3,7 @@ from subword_nmt.apply_bpe import BPE
 from model import Model
 from decode import triu_mask
 from io import StringIO
-import torch, math, re
+import torch, json, math, re
 import torch.nn as nn
 
 class Vocab:
@@ -107,9 +107,10 @@ class Vocab:
 
 class Batch:
 
-    def __init__(self, src_nums, tgt_nums, device=None, ignore_index=None):
+    def __init__(self, src_nums, tgt_nums, dict_data, device=None, ignore_index=None):
         self._src_nums = src_nums
         self._tgt_nums = tgt_nums
+        self._dict_data = dict_data
         self.device = device
         self.ignore_index = ignore_index
 
@@ -135,6 +136,20 @@ class Batch:
             & triu_mask(self.tgt_nums[:, :-1].size(-1), device=self.device)
 
     @property
+    def dict_mask(self):
+        dict_mask = torch.zeros(self.src_mask.size(), device=self.device) \
+            .repeat((2, 1, self.src_mask.size(-1), 1))
+        for i, (lemmas, senses) in enumerate(self._dict_data):
+            for (a, b), (c, d) in zip(lemmas, senses):
+                # only lemmas can attend to their senses
+                dict_mask[0, i, :, c:d] = 1.
+                dict_mask[0, i, a:b, c:d] = 0.
+                # senses can only attend to themselves
+                dict_mask[1, i, c:d, :] = 1.
+                dict_mask[1, i, c:d, c:d] = 0.
+        return dict_mask
+
+    @property
     def num_tokens(self):
         if not self.ignore_index:
             return self.tgt_nums[:, 1:].sum()
@@ -145,8 +160,8 @@ class Batch:
 
 class Manager:
 
-    def __init__(self, src_lang, tgt_lang, vocab_file, codes_file,
-            model_file, config, device, data_file=None, test_file=None):
+    def __init__(self, src_lang, tgt_lang, vocab_file, codes_file, model_file,
+            config, device, dict_file, freq_file, data_file=None, test_file=None):
         self.src_lang = src_lang
         self.tgt_lang = tgt_lang
         self._model_file = model_file
@@ -162,6 +177,7 @@ class Manager:
             vocab_file.seek(0)
             self._vocab_file = ''.join(vocab_file.readlines())
         self.vocab = Vocab(StringIO(self._vocab_file))
+
         if not isinstance(codes_file, str):
             codes_file.seek(0)
             self._codes_file = ''.join(codes_file.readlines())
@@ -175,6 +191,17 @@ class Manager:
             self.num_layers,
             self.dropout
         ).to(device)
+
+        dict_file.seek(0)
+        self.dict = json.load(dict_file)
+        assert len(self.dict) > 0
+
+        freq_file.seek(0)
+        self.freq = {}
+        for line in freq_file:
+            word, freq = line.split()
+            self.freq[word] = int(freq)
+        assert len(self.freq) > 0
 
         if data_file:
             data_file.seek(0)
@@ -216,17 +243,45 @@ class Manager:
         unbatched, batched = [], []
         for line in data_file:
             src_line, tgt_line = line.split('\t')
-            src_words = src_line.split()
-            tgt_words = tgt_line.split()
+            if not src_line or not tgt_line:
+                continue
+            src_words = ['<BOS>'] + src_line.split() + ['<EOS>']
+            tgt_words = ['<BOS>'] + tgt_line.split() + ['<EOS>']
+            if len(src_words) > self.max_length:
+                continue
+            if len(tgt_words) > self.max_length:
+                continue
 
-            if not src_words or not tgt_words: continue
-            if self.max_length:
-                if len(src_words) > self.max_length - 2: continue
-                if len(tgt_words) > self.max_length - 2: continue
+            lemmas, senses = [], []
+            i, src_len = -1, len(src_words)
+            while (i := i + 1) < src_len:
+                lemma_start = i
+                if src_words[i].endswith('@@'):
+                    lemma = src_words[i].rstrip('@@')
+                    while (i := i + 1) < src_len and src_words[i].endswith('@@'):
+                        lemma += src_words[i].rstrip('@@')
+                    lemma += src_words[i]
+                else:
+                    lemma = src_words[i]
+                lemma_end = i + 1
 
-            unbatched.append((
-                ['<BOS>'] + src_words + ['<EOS>'],
-                ['<BOS>'] + tgt_words + ['<EOS>']))
+                if lemma in self.freq and lemma in self.dict:
+                    if self.freq[lemma] <= self.freq_limit:
+                        sense_start = len(src_words)
+                        sense = self.dict[lemma][:self.max_senses]
+                        sense_end = sense_start + len(sense)
+
+                        lemmas.append((lemma_start, lemma_end))
+                        senses.append((sense_start, sense_end))
+
+                        if len(src_words) + len(sense) > self.max_length:
+                            lemmas.pop(-1)
+                            senses.pop(-1)
+                            break
+                        src_words.extend(sense)
+
+            unbatched.append((src_words, tgt_words, lemmas, senses))
+
         unbatched.sort(key=lambda x: (len(x[0]), len(x[1])), reverse=True)
 
         i = batch_size = 0
@@ -237,7 +292,7 @@ class Manager:
             while True:
                 batch_size = self.batch_size // (max(src_len, tgt_len) * 8) * 8
     
-                src_batch, tgt_batch = zip(*unbatched[i:(i + batch_size)])
+                src_batch, tgt_batch, lemmas, senses = zip(*unbatched[i:(i + batch_size)])
                 max_src_len = max(len(src_words) for src_words in src_batch)
                 max_tgt_len = max(len(tgt_words) for tgt_words in tgt_batch)
 
@@ -255,6 +310,6 @@ class Manager:
                     value=self.vocab.PAD) for tgt_words in tgt_batch])
             tgt_nums.masked_fill_(tgt_nums >= self.vocab.size(decoding=True), self.vocab.UNK)
 
-            batched.append(Batch(src_nums, tgt_nums, self.device, self.vocab.PAD))
+            batched.append(Batch(src_nums, tgt_nums, zip(lemmas, senses), self.device, self.vocab.PAD))
 
         return batched

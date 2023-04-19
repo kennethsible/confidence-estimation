@@ -21,9 +21,9 @@ class EncoderLayer(nn.Module):
         self.ff = FeedForward(embed_dim, ff_dim, dropout)
         self.sublayers = clone(SublayerConnection(embed_dim, dropout), 2)
 
-    def forward(self, src_encs, src_mask):
+    def forward(self, src_encs, src_mask, dict_mask):
         src_encs = self.sublayers[0](src_encs,
-            lambda x: self.self_att(x, x, x, src_mask))
+            lambda x: self.self_att(x, x, x, src_mask, dict_mask))
         return self.sublayers[1](src_encs, self.ff)
 
 class Encoder(nn.Module):
@@ -34,10 +34,10 @@ class Encoder(nn.Module):
         scale = torch.tensor(embed_dim, dtype=torch.float32)
         self.norm = ScaleNorm(torch.sqrt(scale))
 
-    def forward(self, src_embs, src_mask):
+    def forward(self, src_embs, src_mask, dict_mask):
         src_encs = src_embs
         for layer in self.layers:
-            src_encs = layer(src_encs, src_mask)
+            src_encs = layer(src_encs, src_mask, dict_mask)
         return self.norm(src_encs)
 
 class DecoderLayer(nn.Module):
@@ -83,15 +83,15 @@ class Model(nn.Module):
         self.src_embed[0].weight = self.generator.weight
         self.tgt_embed[0].weight = self.generator.weight
 
-    def encode(self, src_nums, src_mask):
+    def encode(self, src_nums, src_mask, dict_mask):
         src_embs = self.src_embed(src_nums)
-        return self.encoder(src_embs, src_mask)
+        return self.encoder(src_embs, src_mask, dict_mask)
 
     def decode(self, tgt_nums, tgt_mask, src_encs, src_mask):
         tgt_embs = self.tgt_embed(tgt_nums)
         return self.decoder(tgt_embs, tgt_mask, src_encs, src_mask)
 
-    def forward(self, src_nums, src_mask, tgt_nums, tgt_mask, output_dim=None, log_softmax=False):
-        src_encs = self.encode(src_nums, src_mask)
+    def forward(self, src_nums, src_mask, tgt_nums, tgt_mask, dict_mask, output_dim=None, log_softmax=False):
+        src_encs = self.encode(src_nums, src_mask, dict_mask)
         tgt_encs = self.decode(tgt_nums, tgt_mask, src_encs, src_mask)
         return self.generator(tgt_encs, output_dim, log_softmax)

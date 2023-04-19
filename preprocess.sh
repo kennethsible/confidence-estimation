@@ -49,6 +49,8 @@ echo -e "\n[2/10] Tokenizing Training Data..."
 for path in "data/training"; do
     sacremoses -l $src_lang -j 4 tokenize < "$path/data.$src_lang" > "$path/data.tok.$src_lang"
     sacremoses -l $tgt_lang -j 4 tokenize < "$path/data.$tgt_lang" > "$path/data.tok.$tgt_lang"
+    cat "$path/data.tok.$src_lang" | subword-nmt get-vocab > "data/freq.$src_lang"
+    cat "$path/data.tok.$tgt_lang" | subword-nmt get-vocab > "data/freq.$tgt_lang"
 done
 
 function sgm2txt {
