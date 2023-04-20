@@ -107,7 +107,7 @@ class Vocab:
 
 class Batch:
 
-    def __init__(self, src_nums, tgt_nums, dict_data, device=None, ignore_index=None):
+    def __init__(self, src_nums, tgt_nums=None, dict_data=None, device=None, ignore_index=None):
         self._src_nums = src_nums
         self._tgt_nums = tgt_nums
         self._dict_data = dict_data
@@ -137,8 +137,9 @@ class Batch:
 
     @property
     def dict_mask(self):
-        dict_mask = torch.zeros(self.src_mask.size(), device=self.device) \
-            .repeat((2, 1, self.src_mask.size(-1), 1))
+        mask_size = self.src_nums.unsqueeze(-2).size()
+        dict_mask = torch.zeros(mask_size, device=self.device) \
+            .repeat((2, 1, mask_size[-1], 1))
         for i, (lemmas, senses) in enumerate(self._dict_data):
             for (a, b), (c, d) in zip(lemmas, senses):
                 # only lemmas can attend to their senses
@@ -239,6 +240,37 @@ class Manager:
             'config': self.config
         }, self._model_file)
 
+    def append_senses(self, words):
+        lemmas, senses = [], []
+        i, length = -1, len(words)
+        while (i := i + 1) < length:
+            lemma_start = i
+            if words[i].endswith('@@'):
+                lemma = words[i].rstrip('@@')
+                while (i := i + 1) < length and words[i].endswith('@@'):
+                    lemma += words[i].rstrip('@@')
+                lemma += words[i]
+            else:
+                lemma = words[i]
+            lemma_end = i + 1
+
+            if lemma in self.freq and lemma in self.dict:
+                if self.freq[lemma] <= self.freq_limit:
+                    sense_start = len(words)
+                    sense = self.dict[lemma][:self.max_senses]
+                    sense_end = sense_start + len(sense)
+
+                    lemmas.append((lemma_start, lemma_end))
+                    senses.append((sense_start, sense_end))
+
+                    if len(words) + len(sense) > self.max_length:
+                        lemmas.pop(-1)
+                        senses.pop(-1)
+                        break
+                    words.extend(sense)
+
+        return lemmas, senses
+
     def batch_data(self, data_file):
         unbatched, batched = [], []
         for line in data_file:
@@ -252,34 +284,7 @@ class Manager:
             if len(tgt_words) > self.max_length:
                 continue
 
-            lemmas, senses = [], []
-            i, src_len = -1, len(src_words)
-            while (i := i + 1) < src_len:
-                lemma_start = i
-                if src_words[i].endswith('@@'):
-                    lemma = src_words[i].rstrip('@@')
-                    while (i := i + 1) < src_len and src_words[i].endswith('@@'):
-                        lemma += src_words[i].rstrip('@@')
-                    lemma += src_words[i]
-                else:
-                    lemma = src_words[i]
-                lemma_end = i + 1
-
-                if lemma in self.freq and lemma in self.dict:
-                    if self.freq[lemma] <= self.freq_limit:
-                        sense_start = len(src_words)
-                        sense = self.dict[lemma][:self.max_senses]
-                        sense_end = sense_start + len(sense)
-
-                        lemmas.append((lemma_start, lemma_end))
-                        senses.append((sense_start, sense_end))
-
-                        if len(src_words) + len(sense) > self.max_length:
-                            lemmas.pop(-1)
-                            senses.pop(-1)
-                            break
-                        src_words.extend(sense)
-
+            lemmas, senses = self.append_senses(src_words)
             unbatched.append((src_words, tgt_words, lemmas, senses))
 
         unbatched.sort(key=lambda x: (len(x[0]), len(x[1])), reverse=True)

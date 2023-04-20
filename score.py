@@ -63,7 +63,7 @@ def main():
             config, device, dict_file, freq_file, data_file=None, test_file=test_file)
     manager.model.load_state_dict(model_dict['state_dict'])
 
-    if torch.cuda.get_device_capability()[0] >= 8:
+    if torch.cuda.is_available() and torch.cuda.get_device_capability()[0] >= 8:
         torch.set_float32_matmul_precision('high')
     # if torch.__version__ >= '2.0':
     #     manager.model = torch.compile(manager.model)

@@ -1,4 +1,6 @@
-import torch
+import warnings, torch
+
+warnings.filterwarnings('ignore', category=UserWarning) 
 
 def triu_mask(size, device=None):
     mask = torch.ones((1, size, size), device=device)
