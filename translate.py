@@ -17,8 +17,9 @@ def translate_string(string: str, manager: Manager, tokenizer: Tokenizer) -> str
     model.eval()
     with torch.no_grad():
         src_nums, src_mask = torch.tensor(vocab.numberize(src_words)), None
-        batch = Batch(src_nums, dict_data=zip([lemmas], [senses]), device=device)
-        src_encs = model.encode(src_nums.unsqueeze(0).to(device), src_mask, batch.dict_mask)
+        mask_size = src_nums.unsqueeze(-2).size()
+        dict_mask = Batch.dict_mask_from_data(zip([lemmas], [senses]), mask_size, device)
+        src_encs = model.encode(src_nums.unsqueeze(0).to(device), src_mask, dict_mask)
         out_nums = beam_search(manager, src_encs, src_mask, manager.beam_size)
 
     return tokenizer.detokenize(vocab.denumberize(out_nums.tolist()))

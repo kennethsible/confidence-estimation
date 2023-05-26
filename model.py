@@ -26,9 +26,11 @@ class SublayerConnection(nn.Module):
 
 
 class EncoderLayer(nn.Module):
-    def __init__(self, embed_dim: int, ff_dim: int, num_heads: int, dropout: float):
+    def __init__(
+        self, embed_dim: int, ff_dim: int, num_heads: int, dropout: float, position, learnable
+    ):
         super(EncoderLayer, self).__init__()
-        self.self_attn = MultiHeadAttention(embed_dim, num_heads, dropout)
+        self.self_attn = MultiHeadAttention(embed_dim, num_heads, dropout, position, learnable)
         self.ff = FeedForward(embed_dim, ff_dim, dropout)
         self.sublayers = clone(SublayerConnection(embed_dim, dropout), 2)
 
@@ -43,10 +45,19 @@ class EncoderLayer(nn.Module):
 
 class Encoder(nn.Module):
     def __init__(
-        self, embed_dim: int, ff_dim: int, num_heads: int, dropout: float, num_layers: int
+        self,
+        embed_dim: int,
+        ff_dim: int,
+        num_heads: int,
+        dropout: float,
+        num_layers: int,
+        position,
+        learnable,
     ):
         super(Encoder, self).__init__()
-        self.layers = clone(EncoderLayer(embed_dim, ff_dim, num_heads, dropout), num_layers)
+        self.layers = clone(
+            EncoderLayer(embed_dim, ff_dim, num_heads, dropout, position, learnable), num_layers
+        )
         for p in self.parameters():
             if p.dim() > 1:
                 nn.init.xavier_uniform_(p)
@@ -62,10 +73,12 @@ class Encoder(nn.Module):
 
 
 class DecoderLayer(nn.Module):
-    def __init__(self, embed_dim: int, ff_dim: int, num_heads: int, dropout: float):
+    def __init__(
+        self, embed_dim: int, ff_dim: int, num_heads: int, dropout: float, position, learnable
+    ):
         super(DecoderLayer, self).__init__()
-        self.self_attn = MultiHeadAttention(embed_dim, num_heads, dropout)
-        self.crss_attn = MultiHeadAttention(embed_dim, num_heads, dropout)
+        self.self_attn = MultiHeadAttention(embed_dim, num_heads, dropout, position, learnable)
+        self.crss_attn = MultiHeadAttention(embed_dim, num_heads, dropout, position, learnable)
         self.ff = FeedForward(embed_dim, ff_dim, dropout)
         self.sublayers = clone(SublayerConnection(embed_dim, dropout), 3)
 
@@ -84,10 +97,19 @@ class DecoderLayer(nn.Module):
 
 class Decoder(nn.Module):
     def __init__(
-        self, embed_dim: int, ff_dim: int, num_heads: int, dropout: float, num_layers: int
+        self,
+        embed_dim: int,
+        ff_dim: int,
+        num_heads: int,
+        dropout: float,
+        num_layers: int,
+        position,
+        learnable,
     ):
         super(Decoder, self).__init__()
-        self.layers = clone(DecoderLayer(embed_dim, ff_dim, num_heads, dropout), num_layers)
+        self.layers = clone(
+            DecoderLayer(embed_dim, ff_dim, num_heads, dropout, position, learnable), num_layers
+        )
         for p in self.parameters():
             if p.dim() > 1:
                 nn.init.xavier_uniform_(p)
@@ -115,10 +137,16 @@ class Model(nn.Module):
         num_heads: int,
         dropout: float,
         num_layers: int,
+        position,
+        learnable,
     ):
         super(Model, self).__init__()
-        self.encoder = Encoder(embed_dim, ff_dim, num_heads, dropout, num_layers)
-        self.decoder = Decoder(embed_dim, ff_dim, num_heads, dropout, num_layers)
+        self.encoder = Encoder(
+            embed_dim, ff_dim, num_heads, dropout, num_layers, position, learnable
+        )
+        self.decoder = Decoder(
+            embed_dim, ff_dim, num_heads, dropout, num_layers, position, learnable
+        )
         self.out_embed = Embedding(embed_dim, vocab_dim)
         self.src_embed = nn.Sequential(self.out_embed, PositionalEncoding(embed_dim, dropout))
         self.tgt_embed = nn.Sequential(self.out_embed, PositionalEncoding(embed_dim, dropout))

@@ -6,6 +6,7 @@ from datetime import timedelta
 
 import toml
 import torch
+from nltk.stem import WordNetLemmatizer
 from tqdm import tqdm
 
 from manager import Manager, Tokenizer
@@ -15,6 +16,8 @@ Criterion = torch.nn.CrossEntropyLoss
 Optimizer = torch.optim.Optimizer
 Scaler = torch.cuda.amp.GradScaler
 Logger = logging.Logger
+
+lemmatizer = WordNetLemmatizer()
 
 
 def train_epoch(
@@ -127,7 +130,10 @@ def main():
     for i, arg in enumerate(unknown):
         if arg[:2] == '--' and len(unknown) > i:
             option, value = arg[2:].replace('-', '_'), unknown[i + 1]
-            config[option] = (int if value.isdigit() else float)(value)
+            try:
+                config[option] = (int if value.isdigit() else float)(value)
+            except ValueError:
+                config[option] = value
 
     manager = Manager(
         src_lang,

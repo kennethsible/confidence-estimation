@@ -65,14 +65,19 @@ class ScaleNorm(nn.Module):
 
 
 class MultiHeadAttention(nn.Module):
-    def __init__(self, embed_dim: int, num_heads: int, dropout: float):
+    def __init__(self, embed_dim: int, num_heads: int, dropout: float, position, learnable):
         super(MultiHeadAttention, self).__init__()
         assert embed_dim % num_heads == 0
         self.linears = clone(nn.Linear(embed_dim, embed_dim), 4)
-        self.weights = nn.Parameter(torch.zeros((num_heads, 2)))
+        if learnable:
+            self.weights = nn.Parameter(torch.zeros((num_heads, 2)))
+        else:
+            weights = torch.full((num_heads, 2), torch.inf)
+            self.register_buffer('weights', weights)
         self.dropout = nn.Dropout(dropout)
         self.head_dim = embed_dim // num_heads
         self.num_heads = num_heads
+        self.position = position
 
     def attention(
         self,
@@ -86,7 +91,10 @@ class MultiHeadAttention(nn.Module):
         if mask is not None:
             scores.masked_fill_(mask.unsqueeze(1) == 0, -torch.inf)
         if dict_mask is not None:
-            scores -= torch.exp(dict_mask.transpose(0, 1))
+            if self.position == 'out':
+                scores -= torch.exp(dict_mask.transpose(0, 1))
+            else:
+                scores -= dict_mask.transpose(0, 1)
         return self.dropout(scores.softmax(dim=-1)) @ value
 
     def _reshape_from(self, x: Tensor) -> Tensor:
@@ -108,6 +116,9 @@ class MultiHeadAttention(nn.Module):
             for linear, x in zip(self.linears, (query, key, value))
         ]
         if dict_mask is not None:
-            dict_mask = torch.tensordot(self.weights, dict_mask, dims=([1], [0]))
+            if self.position == 'in':
+                dict_mask = torch.tensordot(torch.exp(self.weights), dict_mask, dims=([1], [0]))
+            else:
+                dict_mask = torch.tensordot(self.weights, dict_mask, dims=([1], [0]))
         outputs = self.attention(query, key, value, mask, dict_mask)
         return self.linears[-1](self._reshape_to(outputs.transpose(1, 2)))

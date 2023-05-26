@@ -1,0 +1,22 @@
+{
+    "frequency": [
+        1,
+        2,
+        3,
+        4,
+        5
+    ],
+    "lemmatize": [
+        1,
+        0
+    ],
+    "position": [
+        "in",
+        "out",
+        "none"
+    ],
+    "learnable": [
+        1,
+        0
+    ]
+}

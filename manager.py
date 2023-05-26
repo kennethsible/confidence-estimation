@@ -76,11 +76,10 @@ class Batch:
     def tgt_mask(self) -> Tensor:
         return triu_mask(self.tgt_nums[:, :-1].size(-1), device=self.device)
 
-    @property
-    def dict_mask(self):
-        mask_size = self.src_nums.unsqueeze(-2).size()
-        dict_mask = torch.zeros(mask_size, device=self.device).repeat((2, 1, mask_size[-1], 1))
-        for i, (lemmas, senses) in enumerate(self._dict_data):
+    @staticmethod
+    def dict_mask_from_data(dict_data, mask_size, device):
+        dict_mask = torch.zeros(mask_size, device=device).repeat((2, 1, mask_size[-1], 1))
+        for i, (lemmas, senses) in enumerate(dict_data):
             for (a, b), (c, d) in zip(lemmas, senses):
                 # only lemmas can attend to their senses
                 dict_mask[0, i, :, c:d] = 1.0
@@ -89,6 +88,11 @@ class Batch:
                 dict_mask[1, i, c:d, :] = 1.0
                 dict_mask[1, i, c:d, c:d] = 0.0
         return dict_mask
+
+    @property
+    def dict_mask(self):
+        mask_size = self.src_nums.unsqueeze(-2).size()
+        return self.dict_mask_from_data(self._dict_data, mask_size, self.device)
 
     def length(self) -> int:
         return int((self.tgt_nums[:, 1:] != self.ignore_index).sum())
@@ -131,6 +135,8 @@ class Manager:
     batch_size: int
     max_length: int
     beam_size: int
+    position: str
+    learnable: int
 
     def __init__(
         self,
@@ -174,6 +180,8 @@ class Manager:
             self.num_heads,
             self.dropout,
             self.num_layers,
+            self.position,
+            self.learnable,
         ).to(device)
 
         with open(dict_file) as file:
