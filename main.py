@@ -6,7 +6,6 @@ from datetime import timedelta
 
 import toml
 import torch
-from nltk.stem import WordNetLemmatizer
 from tqdm import tqdm
 
 from manager import Manager, Tokenizer
@@ -16,8 +15,6 @@ Criterion = torch.nn.CrossEntropyLoss
 Optimizer = torch.optim.Optimizer
 Scaler = torch.cuda.amp.GradScaler
 Logger = logging.Logger
-
-lemmatizer = WordNetLemmatizer()
 
 
 def train_epoch(

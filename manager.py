@@ -5,12 +5,15 @@ from io import StringIO
 
 import torch
 import torch.nn as nn
+from nltk.stem import WordNetLemmatizer
 from sacremoses import MosesDetokenizer, MosesTokenizer
 from subword_nmt.apply_bpe import BPE
 from torch import Tensor
 
 from decoder import triu_mask
 from model import Model
+
+lemmatizer = WordNetLemmatizer()
 
 
 class Vocab:
@@ -137,6 +140,7 @@ class Manager:
     beam_size: int
     position: str
     learnable: int
+    lemmatize: int
 
     def __init__(
         self,
@@ -229,6 +233,9 @@ class Manager:
                 lemma = words[i]
             lemma_end = i + 1
 
+            if self.lemmatize:
+                lemma = lemmatizer.lemmatize(lemma)
+
             if lemma in self.freq and lemma in self.dict:
                 if self.freq[lemma] <= self.freq_limit:
                     sense_start = len(words)
@@ -311,4 +318,5 @@ class Manager:
                 Batch(src_nums, tgt_nums, zip(lemmas, senses), self.vocab.PAD, self.device)
             )
 
+        return batched
         return batched
