@@ -15,9 +15,7 @@ def main():
     parser.add_argument('--freq', metavar='FILE', required=True, help='frequency data')
     parser.add_argument('--vocab', metavar='FILE', required=True, help='vocab file (shared)')
     parser.add_argument('--codes', metavar='FILE', required=True, help='codes file (shared)')
-    parser.add_argument('--model', metavar='FILE', required=True, help='model file (.pt)')
-    parser.add_argument('--config', metavar='FILE', required=True, help='config file (.toml)')
-    parser.add_argument('--log', metavar='FILE', required=True, help='log file (.log)')
+    parser.add_argument('--model', metavar='FILE', required=True, help='model name')
     args = parser.parse_args()
 
     param_array = []
@@ -30,6 +28,8 @@ def main():
         job_name = f"{args.model}_{str(i).rjust(3, '0')}"
         with open(f'{args.model}/{job_name}.sh', 'w') as job_file:
             job_file.write(f'#!/bin/bash\n\n')
+            job_file.write(f'touch {args.model}/{job_name}.log\n')
+            job_file.write(f'fsync -d 30 {args.model}/{job_name}.log &\n\n')
             job_file.write(f'conda activate pytorch\n\n')
             job_file.write(f"python main.py --lang {' '.join(args.lang)} \\\n")
             job_file.write(f'  --data {args.data} \\\n')
@@ -38,9 +38,9 @@ def main():
             job_file.write(f'  --freq {args.freq} \\\n')
             job_file.write(f'  --vocab {args.vocab} \\\n')
             job_file.write(f'  --codes {args.codes} \\\n')
-            job_file.write(f'  --model {args.model}/{job_name} \\\n')
-            job_file.write(f'  --config {args.config} \\\n')
-            job_file.write(f'  --log {args.log} \\\n')
+            job_file.write(f'  --model {args.model}/{job_name}.pt \\\n')
+            job_file.write(f'  --config config.toml \\\n')
+            job_file.write(f'  --log {args.model}/{job_name}.log \\\n')
             for option, value in params:
                 job_file.write(f'  --{option} {value} \\\n')
         os.system(f"{QF_CMD} --name {job_name} --deferred -- -l gpu_card=1 {args.model}/{job_name}.sh")
