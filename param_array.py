@@ -1,20 +1,23 @@
+import json
+import os
 from itertools import product
 from time import sleep
-import json, os
 
 #QF_CMD = "qf submit --queue 'gpu@@csecri' --queue 'gpu@@nlp-gpu'"
 QF_CMD = "qf submit --queue 'gpu@@nlp-gpu'"
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--lang', nargs=2, metavar=('SRC', 'TGT'), required=True, help='language pair')
+    parser.add_argument('--lang', nargs=2, required=True, help='source/target language')
     parser.add_argument('--data', metavar='FILE', required=True, help='training data')
     parser.add_argument('--test', metavar='FILE', required=True, help='validation data')
     parser.add_argument('--dict', metavar='FILE', required=True, help='dictionary data')
     parser.add_argument('--freq', metavar='FILE', required=True, help='frequency data')
-    parser.add_argument('--vocab', metavar='FILE', required=True, help='shared vocab')
-    parser.add_argument('--codes', metavar='FILE', required=True, help='shared codes')
-    parser.add_argument('--model', metavar='FILE', required=True, help='save model')
+    parser.add_argument('--vocab', metavar='FILE', required=True, help='vocab file (shared)')
+    parser.add_argument('--codes', metavar='FILE', required=True, help='codes file (shared)')
+    parser.add_argument('--model', metavar='FILE', required=True, help='model file (.pt)')
+    parser.add_argument('--config', metavar='FILE', required=True, help='config file (.toml)')
+    parser.add_argument('--log', metavar='FILE', required=True, help='log file (.log)')
     args = parser.parse_args()
 
     param_array = []
@@ -36,6 +39,8 @@ def main():
             job_file.write(f'  --vocab {args.vocab} \\\n')
             job_file.write(f'  --codes {args.codes} \\\n')
             job_file.write(f'  --model {args.model}/{job_name} \\\n')
+            job_file.write(f'  --config {args.config} \\\n')
+            job_file.write(f'  --log {args.log} \\\n')
             for option, value in params:
                 job_file.write(f'  --{option} {value} \\\n')
         os.system(f"{QF_CMD} --name {job_name} --deferred -- -l gpu_card=1 {args.model}/{job_name}.sh")
