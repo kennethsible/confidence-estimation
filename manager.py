@@ -176,11 +176,14 @@ class Manager:
             self.num_layers,
         ).to(device)
 
-        self.dict = json.load(dict_file)
+        with open(dict_file) as file:
+            self.dict = json.load(file)
+
         self.freq = {}
-        for line in freq_file:
-            word, freq = line.split()
-            self.freq[word] = int(freq)
+        with open(freq_file) as file:
+            for line in file:
+                word, freq = line.split()
+                self.freq[word] = int(freq)
 
         self.data = None
         if data_file:
@@ -212,7 +215,8 @@ class Manager:
                 lemma = words[i].rstrip('@@')
                 while (i := i + 1) < length and words[i].endswith('@@'):
                     lemma += words[i].rstrip('@@')
-                lemma += words[i]
+                if i < length:
+                    lemma += words[i]
             else:
                 lemma = words[i]
             lemma_end = i + 1
@@ -239,20 +243,20 @@ class Manager:
         with open(data_file) as file:
             for line in file.readlines():
                 src_line, tgt_line = line.split('\t')
-                src_words = src_line.split()
-                tgt_words = tgt_line.split()
-
-                if not src_words or not tgt_words:
+                if not src_line or not tgt_line:
                     continue
+
+                src_words = ['<BOS>'] + src_line.split() + ['<EOS>']
+                tgt_words = ['<BOS>'] + tgt_line.split() + ['<EOS>']
+                lemmas, senses = self.append_senses(src_words)
+
                 if self.max_length:
-                    if len(src_words) > self.max_length - 2:
+                    if len(src_words) > self.max_length:
                         src_words = src_words[: self.max_length]
-                    if len(tgt_words) > self.max_length - 2:
+                    if len(tgt_words) > self.max_length:
                         tgt_words = tgt_words[: self.max_length]
 
-                unbatched.append(
-                    (['<BOS>'] + src_words + ['<EOS>'], ['<BOS>'] + tgt_words + ['<EOS>'])
-                )
+                unbatched.append((src_words, tgt_words, lemmas, senses))
 
         unbatched.sort(key=lambda x: (len(x[0]), len(x[1])), reverse=True)
 
