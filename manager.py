@@ -1,5 +1,6 @@
 import json
 import math
+import random
 import re
 from io import StringIO
 
@@ -138,6 +139,9 @@ class Manager:
     batch_size: int
     max_length: int
     beam_size: int
+    freq_limit: int
+    max_senses: int
+    word_dropout: float
     position: str
     learnable: int
     lemmatize: int
@@ -249,6 +253,9 @@ class Manager:
                         lemmas.pop(-1)
                         senses.pop(-1)
                         break
+                    if random.random() <= self.word_dropout:
+                        for i in range(lemma_start, lemma_end):
+                            words[i] = self.vocab.UNK
                     words.extend(sense)
 
         return lemmas, senses
