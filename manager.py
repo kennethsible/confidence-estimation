@@ -142,6 +142,7 @@ class Manager:
     freq_limit: int
     max_senses: int
     word_dropout: float
+    dropout_type: str
     position: str
     learnable: int
     lemmatize: int
@@ -255,7 +256,10 @@ class Manager:
                         break
                     if random.random() <= self.word_dropout:
                         for i in range(lemma_start, lemma_end):
-                            words[i] = self.vocab.UNK
+                            if self.dropout_type == 'UNK':
+                                words[i] = self.vocab.UNK
+                            else:
+                                words[i] = self.vocab.PAD
                     words.extend(sense)
 
         return lemmas, senses

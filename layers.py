@@ -72,7 +72,7 @@ class MultiHeadAttention(nn.Module):
         if learnable:
             self.weights = nn.Parameter(torch.zeros((num_heads, 2)))
         else:
-            weights = torch.full((num_heads, 2), torch.inf)
+            weights = torch.full((num_heads, 2), 1e9)
             self.register_buffer('weights', weights)
         self.dropout = nn.Dropout(dropout)
         self.head_dim = embed_dim // num_heads
@@ -89,7 +89,7 @@ class MultiHeadAttention(nn.Module):
     ) -> Tensor:
         scores = query @ key.transpose(-2, -1) / math.sqrt(self.head_dim)
         if mask is not None:
-            scores.masked_fill_(mask.unsqueeze(1) == 0, -torch.inf)
+            scores.masked_fill_(mask.unsqueeze(1) == 0, -1e9)
         if dict_mask is not None:
             if self.position == 'out':
                 scores -= torch.exp(dict_mask.transpose(0, 1))
