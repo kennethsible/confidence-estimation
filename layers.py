@@ -89,8 +89,7 @@ class MultiHeadAttention(nn.Module):
     ) -> Tensor:
         scores = query @ key.transpose(-2, -1) / math.sqrt(self.head_dim)
         if mask is not None:
-            value = -1e4 if scores.dtype == torch.float16 else -1e9
-            scores.masked_fill_(mask.unsqueeze(1) == 0, value)
+            scores.masked_fill_(mask.unsqueeze(1) == 0, -torch.inf)
         if dict_mask is not None:
             if self.position == 'out':
                 scores -= torch.exp(dict_mask.transpose(0, 1))
