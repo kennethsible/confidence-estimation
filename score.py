@@ -4,11 +4,10 @@ from datetime import timedelta
 
 import comet
 import torch
-from sacrebleu.metrics import BLEU, CHRF
-from tqdm import tqdm
-
 from decoder import beam_search
 from manager import Manager, Tokenizer
+from sacrebleu.metrics import BLEU, CHRF
+from tqdm import tqdm
 
 Logger = logging.Logger
 

@@ -6,13 +6,12 @@ from io import StringIO
 
 import torch
 import torch.nn as nn
+from decoder import triu_mask
+from model import Model
 from nltk.stem import WordNetLemmatizer
 from sacremoses import MosesDetokenizer, MosesTokenizer
 from subword_nmt.apply_bpe import BPE
 from torch import Tensor
-
-from decoder import triu_mask
-from model import Model
 
 lemmatizer = WordNetLemmatizer()
 
@@ -140,7 +139,6 @@ class Manager:
     max_length: int
     beam_size: int
     freq_limit: int
-    max_senses: int
     word_dropout: float
     dropout_type: str
     position: str
@@ -244,7 +242,7 @@ class Manager:
             if lemma in self.freq and lemma in self.dict:
                 if self.freq[lemma] <= self.freq_limit:
                     sense_start = len(words)
-                    sense = self.dict[lemma][: self.max_senses]
+                    sense = self.dict[lemma]
                     sense_end = sense_start + len(sense)
 
                     lemmas.append((lemma_start, lemma_end))
@@ -329,5 +327,4 @@ class Manager:
                 Batch(src_nums, tgt_nums, zip(lemmas, senses), self.vocab.PAD, self.device)
             )
 
-        return batched
         return batched

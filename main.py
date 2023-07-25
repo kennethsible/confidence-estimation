@@ -6,10 +6,9 @@ from datetime import timedelta
 
 import toml
 import torch
-from tqdm import tqdm
-
 from manager import Manager, Tokenizer
 from score import score_model
+from tqdm import tqdm
 
 Criterion = torch.nn.CrossEntropyLoss
 Optimizer = torch.optim.Optimizer
@@ -32,7 +31,7 @@ def train_epoch(
         tgt_nums, tgt_mask = batch.tgt_nums, batch.tgt_mask
         dict_mask, batch_length = batch.dict_mask, batch.length()
 
-        with torch.cuda.amp.autocast():
+        with torch.cuda.amp.autocast(enabled=False):
             logits = manager.model(src_nums, tgt_nums[:, :-1], src_mask, tgt_mask, dict_mask)
             loss = criterion(torch.flatten(logits, 0, 1), torch.flatten(tgt_nums[:, 1:]))
 
@@ -66,7 +65,7 @@ def train_model(
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
         optimizer, factor=manager.decay_factor, patience=manager.patience
     )
-    scaler = torch.cuda.amp.GradScaler()
+    scaler = torch.cuda.amp.GradScaler(enabled=False)
 
     best_loss = torch.inf
     for epoch in range(manager.max_epochs):

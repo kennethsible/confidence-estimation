@@ -1,5 +1,4 @@
 import torch
-
 from decoder import beam_search
 from manager import Batch, Manager, Tokenizer
 

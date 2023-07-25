@@ -3,8 +3,9 @@ import os
 from itertools import product
 from time import sleep
 
-#QF_CMD = "qf submit --queue 'gpu@@csecri' --queue 'gpu@@nlp-gpu'"
+# QF_CMD = "qf submit --queue 'gpu@@csecri' --queue 'gpu@@nlp-gpu'"
 QF_CMD = "qf submit --queue 'gpu@@nlp-gpu'"
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -43,10 +44,14 @@ def main():
             job_file.write(f'  --log {args.model}/{job_name}.log \\\n')
             for option, value in params:
                 job_file.write(f'  --{option} {value} \\\n')
-        os.system(f"{QF_CMD} --name {job_name} --deferred -- -l gpu_card=1 {args.model}/{job_name}.sh")
+        os.system(
+            f"{QF_CMD} --name {job_name} --deferred -- -l gpu_card=1 {args.model}/{job_name}.sh"
+        )
         sleep(1)
     os.system('qf check')
 
+
 if __name__ == "__main__":
     import argparse
+
     main()
