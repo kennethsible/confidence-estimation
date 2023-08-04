@@ -11,7 +11,7 @@ def translate_file(data_file: str, manager: Manager, tokenizer: Tokenizer) -> li
 def translate_string(string: str, manager: Manager, tokenizer: Tokenizer) -> str:
     model, vocab, device = manager.model, manager.vocab, manager.device
     src_words = ['<BOS>'] + tokenizer.tokenize(string).split() + ['<EOS>']
-    lemmas, senses = manager.append_senses(src_words)
+    lemmas, senses = manager.append_senses(src_words, tokenizer)
 
     model.eval()
     with torch.no_grad():

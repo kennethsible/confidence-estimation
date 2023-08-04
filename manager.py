@@ -87,6 +87,7 @@ class Batch:
                 # only lemmas can attend to their senses
                 dict_mask[0, i, :, c:d] = 1.0
                 dict_mask[0, i, a:b, c:d] = 0.0
+                dict_mask[0, i, c:d, c:d] = 0.0
                 # senses can only attend to themselves
                 dict_mask[1, i, c:d, :] = 1.0
                 dict_mask[1, i, c:d, c:d] = 0.0
@@ -138,12 +139,11 @@ class Manager:
     batch_size: int
     max_length: int
     beam_size: int
-    freq_limit: int
-    word_dropout: float
-    dropout_type: str
+    threshold: int
     position: str
+    scramble: int
     learnable: int
-    lemmatize: int
+    word_dropout: float
 
     def __init__(
         self,
@@ -191,6 +191,12 @@ class Manager:
             self.learnable,
         ).to(device)
 
+        def init_weights(m):
+            if isinstance(m, nn.Linear):
+                nn.init.xavier_uniform_(m.weight)
+
+        self.model.apply(init_weights)
+
         with open(dict_file) as file:
             self.dict = json.load(file)
 
@@ -200,13 +206,8 @@ class Manager:
                 word, freq = line.split()
                 self.freq[word] = int(freq)
 
-        self.data = None
-        if data_file:
-            self.data = self.batch_data(data_file)
-
-        self.test = None
-        if test_file is not None:
-            self.test = self.batch_data(test_file)
+        self.data: list[Batch] | None = None
+        self.test: list[Batch] | None = None
 
     def save_model(self):
         torch.save(
@@ -221,7 +222,7 @@ class Manager:
             self._model_name,
         )
 
-    def append_senses(self, words):
+    def append_senses(self, words, tokenizer: Tokenizer | None = None):
         lemmas, senses = [], []
         i, length = -1, len(words)
         while (i := i + 1) < length:
@@ -236,11 +237,21 @@ class Manager:
                 lemma = words[i]
             lemma_end = i + 1
 
-            if self.lemmatize:
-                lemma = lemmatizer.lemmatize(lemma)
+            lemma = lemmatizer.lemmatize(lemma)
 
-            if lemma in self.freq and lemma in self.dict:
-                if self.freq[lemma] <= self.freq_limit:
+            if lemma in self.dict:
+                dict_flag = False
+                if lemma in self.freq and self.freq[lemma] <= self.threshold:
+                    dict_flag = True
+                elif tokenizer is not None and random.random() <= 0.02:
+                    noisy_lemma = list(lemma)
+                    random.shuffle(noisy_lemma)
+                    tokenized_lemma = tokenizer.tokenize(''.join(noisy_lemma)).split()
+                    words[lemma_start:lemma_end] = tokenized_lemma
+                    lemma_end = lemma_start + len(tokenized_lemma)
+                    dict_flag = True
+
+                if dict_flag:
                     sense_start = len(words)
                     sense = self.dict[lemma]
                     sense_end = sense_start + len(sense)
@@ -254,15 +265,12 @@ class Manager:
                         break
                     if random.random() <= self.word_dropout:
                         for i in range(lemma_start, lemma_end):
-                            if self.dropout_type == 'UNK':
-                                words[i] = self.vocab.UNK
-                            else:
-                                words[i] = self.vocab.PAD
+                            words[i] = self.vocab.UNK
                     words.extend(sense)
 
         return lemmas, senses
 
-    def batch_data(self, data_file: str) -> list[Batch]:
+    def batch_data(self, data_file: str, tokenizer: Tokenizer | None = None) -> list[Batch]:
         unbatched, batched = [], []
         with open(data_file) as file:
             for line in file.readlines():
@@ -272,7 +280,7 @@ class Manager:
 
                 src_words = ['<BOS>'] + src_line.split() + ['<EOS>']
                 tgt_words = ['<BOS>'] + tgt_line.split() + ['<EOS>']
-                lemmas, senses = self.append_senses(src_words)
+                lemmas, senses = self.append_senses(src_words, tokenizer)
 
                 if self.max_length:
                     if len(src_words) > self.max_length:

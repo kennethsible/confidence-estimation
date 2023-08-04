@@ -3,8 +3,7 @@ import os
 from itertools import product
 from time import sleep
 
-# QF_CMD = "qf submit --queue 'gpu@@csecri' --queue 'gpu@@nlp-gpu'"
-QF_CMD = "qf submit --queue 'gpu@@nlp-gpu'"
+QF_CMD = "qf submit --queue 'gpu@@nlp-a10' --queue 'gpu@@nlp-gpu' --queue 'gpu@@csecri'"
 
 
 def main():

@@ -87,6 +87,7 @@ def main():
     )
     manager.model.load_state_dict(model_dict['state_dict'])
     tokenizer = Tokenizer(manager.bpe, src_lang, tgt_lang)
+    manager.test = manager.batch_data(args.test)
 
     if device == 'cuda' and torch.cuda.get_device_capability()[0] >= 8:
         torch.set_float32_matmul_precision('high')

@@ -57,9 +57,6 @@ class Encoder(nn.Module):
         self.layers = clone(
             EncoderLayer(embed_dim, ff_dim, num_heads, dropout, position, learnable), num_layers
         )
-        for p in self.parameters():
-            if p.dim() > 1:
-                nn.init.xavier_uniform_(p)
         self.norm = ScaleNorm(embed_dim**0.5)
 
     def forward(
@@ -109,9 +106,6 @@ class Decoder(nn.Module):
         self.layers = clone(
             DecoderLayer(embed_dim, ff_dim, num_heads, dropout, position, learnable), num_layers
         )
-        for p in self.parameters():
-            if p.dim() > 1:
-                nn.init.xavier_uniform_(p)
         self.norm = ScaleNorm(embed_dim**0.5)
 
     def forward(

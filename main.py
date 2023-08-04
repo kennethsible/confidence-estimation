@@ -145,6 +145,11 @@ def main():
         args.test,
     )
     tokenizer = Tokenizer(manager.bpe, src_lang, tgt_lang)
+    if 'scramble' in args and args.scramble:
+        manager.data = manager.batch_data(args.data, tokenizer)
+    else:
+        manager.data = manager.batch_data(args.data)
+    manager.test = manager.batch_data(args.test)
 
     if device == 'cuda' and torch.cuda.get_device_capability()[0] >= 8:
         torch.set_float32_matmul_precision('high')

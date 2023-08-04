@@ -72,7 +72,7 @@ class MultiHeadAttention(nn.Module):
         if learnable:
             self.weights = nn.Parameter(torch.zeros((num_heads, 2)))
         else:
-            weights = torch.full((num_heads, 2), 1e4)
+            weights = torch.full((num_heads, 2), 1e9)
             self.register_buffer('weights', weights)
         self.dropout = nn.Dropout(dropout)
         self.head_dim = embed_dim // num_heads
