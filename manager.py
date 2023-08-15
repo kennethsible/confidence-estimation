@@ -6,12 +6,13 @@ from io import StringIO
 
 import torch
 import torch.nn as nn
-from decoder import triu_mask
-from model import Model
 from nltk.stem import WordNetLemmatizer
 from sacremoses import MosesDetokenizer, MosesTokenizer
 from subword_nmt.apply_bpe import BPE
 from torch import Tensor
+
+from decoder import triu_mask
+from model import Model
 
 lemmatizer = WordNetLemmatizer()
 
@@ -144,6 +145,7 @@ class Manager:
     scramble: int
     learnable: int
     word_dropout: float
+    rare_dropout: float
 
     def __init__(
         self,
@@ -241,9 +243,9 @@ class Manager:
 
             if lemma in self.dict:
                 dict_flag = False
-                if lemma in self.freq and self.freq[lemma] <= self.threshold:
+                if lemma not in self.freq or self.freq[lemma] <= self.threshold:
                     dict_flag = True
-                elif tokenizer is not None and random.random() <= 0.02:
+                elif tokenizer is not None and random.random() <= self.rare_dropout:
                     noisy_lemma = list(lemma)
                     random.shuffle(noisy_lemma)
                     tokenized_lemma = tokenizer.tokenize(''.join(noisy_lemma)).split()
@@ -265,7 +267,7 @@ class Manager:
                         break
                     if random.random() <= self.word_dropout:
                         for i in range(lemma_start, lemma_end):
-                            words[i] = self.vocab.UNK
+                            words[i] = '<UNK>'
                     words.extend(sense)
 
         return lemmas, senses
