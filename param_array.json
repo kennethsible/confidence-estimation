@@ -1,16 +1,16 @@
 {
     "position": [
-        "in",
         "out",
+        "in",
         "none"
     ],
     "scramble": [
-        0,
-        1
+        1,
+        0
     ],
     "learnable": [
-        0,
-        1
+        1,
+        0
     ],
     "word_dropout": [
         0.1,

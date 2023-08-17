@@ -146,7 +146,6 @@ class Manager:
     scramble: int
     learnable: int
     word_dropout: float
-    rare_dropout: float
 
     def __init__(
         self,
@@ -257,7 +256,7 @@ class Manager:
                         for j in range(lemma_start, lemma_end):
                             words[j] = '<UNK>'
                     words.extend(sense)
-                elif tokenizer is not None and random.random() <= self.rare_dropout:
+                elif tokenizer is not None and random.random() <= 0.02:
                     noisy_lemma = list(lemma)
                     random.shuffle(noisy_lemma)
                     noisy_lemma = tokenizer.tokenize(''.join(noisy_lemma)).split()
