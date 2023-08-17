@@ -141,6 +141,7 @@ class Manager:
     max_length: int
     beam_size: int
     threshold: int
+    max_senses: int
     position: str
     scramble: int
     learnable: int
@@ -242,33 +243,45 @@ class Manager:
             lemma = lemmatizer.lemmatize(lemma)
 
             if lemma in self.dict:
-                dict_flag = False
                 if lemma not in self.freq or self.freq[lemma] <= self.threshold:
-                    dict_flag = True
-                elif tokenizer is not None and random.random() <= self.rare_dropout:
-                    noisy_lemma = list(lemma)
-                    random.shuffle(noisy_lemma)
-                    tokenized_lemma = tokenizer.tokenize(''.join(noisy_lemma)).split()
-                    words[lemma_start:lemma_end] = tokenized_lemma
-                    lemma_end = lemma_start + len(tokenized_lemma)
-                    dict_flag = True
-
-                if dict_flag:
                     sense_start = len(words)
-                    sense = self.dict[lemma]
+                    sense = self.dict[lemma][: self.max_senses]
                     sense_end = sense_start + len(sense)
+                    if len(words) + len(sense) > self.max_length:
+                        break
 
                     lemmas.append((lemma_start, lemma_end))
                     senses.append((sense_start, sense_end))
 
-                    if len(words) + len(sense) > self.max_length:
-                        lemmas.pop(-1)
-                        senses.pop(-1)
-                        break
                     if random.random() <= self.word_dropout:
-                        for i in range(lemma_start, lemma_end):
-                            words[i] = '<UNK>'
+                        for j in range(lemma_start, lemma_end):
+                            words[j] = '<UNK>'
                     words.extend(sense)
+                elif tokenizer is not None and random.random() <= self.rare_dropout:
+                    noisy_lemma = list(lemma)
+                    random.shuffle(noisy_lemma)
+                    noisy_lemma = tokenizer.tokenize(''.join(noisy_lemma)).split()
+                    shift = len(noisy_lemma) - (lemma_end - lemma_start)
+
+                    sense_start = len(words)
+                    sense = self.dict[lemma][: self.max_senses]
+                    sense_end = sense_start + len(sense)
+                    if len(words) + shift + len(sense) > self.max_length:
+                        break
+
+                    i, length = i + shift, length + shift
+                    words[lemma_start:lemma_end] = noisy_lemma
+                    lemma_end = lemma_start + len(noisy_lemma)
+
+                    lemmas.append((lemma_start, lemma_end))
+                    senses.append((sense_start, sense_end))
+
+                    if random.random() <= self.word_dropout:
+                        for j in range(lemma_start, lemma_end):
+                            words[j] = '<UNK>'
+                    words.extend(sense)
+        else:
+            assert words[i - 1] == '<EOS>'
 
         return lemmas, senses
 

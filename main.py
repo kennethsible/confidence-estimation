@@ -6,9 +6,10 @@ from datetime import timedelta
 
 import toml
 import torch
+from tqdm import tqdm
+
 from manager import Manager, Tokenizer
 from score import score_model
-from tqdm import tqdm
 
 Criterion = torch.nn.CrossEntropyLoss
 Optimizer = torch.optim.Optimizer
@@ -145,7 +146,7 @@ def main():
         args.test,
     )
     tokenizer = Tokenizer(manager.bpe, src_lang, tgt_lang)
-    if 'scramble' in args and args.scramble:
+    if 'scramble' in config and config['scramble']:
         manager.data = manager.batch_data(args.data, tokenizer)
     else:
         manager.data = manager.batch_data(args.data)
