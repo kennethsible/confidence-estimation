@@ -2,9 +2,9 @@ import logging
 import math
 import random
 import time
+import tomllib
 from datetime import timedelta
 
-import toml
 import torch
 from tqdm import tqdm
 
@@ -120,8 +120,8 @@ def main():
         torch.manual_seed(args.seed)
 
     src_lang, tgt_lang = args.lang
-    with open(args.config) as config_file:
-        config = toml.load(config_file)
+    with open(args.config, 'rb') as config_file:
+        config = tomllib.load(config_file)
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
     for i, arg in enumerate(unknown):

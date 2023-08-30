@@ -6,7 +6,6 @@ from io import StringIO
 
 import torch
 import torch.nn as nn
-from nltk.stem import WordNetLemmatizer
 from sacremoses import MosesDetokenizer, MosesTokenizer
 from subword_nmt.apply_bpe import BPE
 from torch import Tensor
@@ -14,7 +13,8 @@ from torch import Tensor
 from decoder import triu_mask
 from model import Model
 
-lemmatizer = WordNetLemmatizer()
+# TODO Replace WordNet with spaCy
+# lemmatizer = WordNetLemmatizer()
 
 
 class Vocab:
@@ -84,11 +84,12 @@ class Batch:
     def dict_mask_from_data(dict_data, mask_size, device):
         dict_mask = torch.zeros(mask_size, device=device).repeat((2, 1, mask_size[-1], 1))
         for i, (lemmas, senses) in enumerate(dict_data):
+            if len(senses) > 0:
+                c_first = senses[0][0]
             for (a, b), (c, d) in zip(lemmas, senses):
                 # only lemmas can attend to their senses
-                dict_mask[0, i, :, c:d] = 1.0
+                dict_mask[0, i, :c_first, c:d] = 1.0
                 dict_mask[0, i, a:b, c:d] = 0.0
-                dict_mask[0, i, c:d, c:d] = 0.0
                 # senses can only attend to themselves
                 dict_mask[1, i, c:d, :] = 1.0
                 dict_mask[1, i, c:d, c:d] = 0.0
@@ -239,8 +240,6 @@ class Manager:
                 lemma = words[i]
             lemma_end = i + 1
 
-            lemma = lemmatizer.lemmatize(lemma)
-
             if lemma in self.dict:
                 if lemma not in self.freq or self.freq[lemma] <= self.threshold:
                     sense_start = len(words)
@@ -264,6 +263,7 @@ class Manager:
 
                     sense_start = len(words)
                     sense = self.dict[lemma][: self.max_senses]
+                    sense = [sb for w in sense for sb in w.split()]
                     sense_end = sense_start + len(sense)
                     if len(words) + shift + len(sense) > self.max_length:
                         break
