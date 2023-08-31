@@ -314,6 +314,10 @@ class Manager:
                     src_words = tokenizer.tokenize(''.join(lemma)).split()
                     tgt_words = sense[: self.max_senses]
                     tgt_words = [sb for w in sense for sb in w.split()]
+
+                    src_words = ['<BOS>'] + src_line.split() + ['<EOS>']
+                    tgt_words = ['<BOS>'] + tgt_line.split() + ['<EOS>']
+
                     unbatched.append((src_words, tgt_words, [], []))
 
         unbatched.sort(key=lambda x: (len(x[0]), len(x[1])), reverse=True)
