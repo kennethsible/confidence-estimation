@@ -147,6 +147,7 @@ class Manager:
     scramble: int
     learnable: int
     word_dropout: float
+    append_dict: int
 
     def __init__(
         self,
@@ -244,6 +245,7 @@ class Manager:
                 if lemma not in self.freq or self.freq[lemma] <= self.threshold:
                     sense_start = len(words)
                     sense = self.dict[lemma][: self.max_senses]
+                    sense = [sb for w in sense for sb in w.split()]
                     sense_end = sense_start + len(sense)
                     if len(words) + len(sense) > self.max_length:
                         break
@@ -284,7 +286,9 @@ class Manager:
 
         return lemmas, senses
 
-    def batch_data(self, data_file: str, tokenizer: Tokenizer | None = None) -> list[Batch]:
+    def batch_data(
+        self, data_file: str, dict_file: str | None = None, tokenizer: Tokenizer | None = None
+    ) -> list[Batch]:
         unbatched, batched = [], []
         with open(data_file) as file:
             for line in file.readlines():
@@ -303,6 +307,14 @@ class Manager:
                         tgt_words = tgt_words[: self.max_length]
 
                 unbatched.append((src_words, tgt_words, lemmas, senses))
+
+        if self.append_dict and dict_file and tokenizer:
+            with open(dict_file) as file:
+                for lemma, sense in json.load(file).items():
+                    src_words = tokenizer.tokenize(''.join(lemma)).split()
+                    tgt_words = sense[: self.max_senses]
+                    tgt_words = [sb for w in sense for sb in w.split()]
+                    unbatched.append((src_words, tgt_words, [], []))
 
         unbatched.sort(key=lambda x: (len(x[0]), len(x[1])), reverse=True)
 

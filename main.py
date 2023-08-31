@@ -147,7 +147,7 @@ def main():
     )
     tokenizer = Tokenizer(manager.bpe, src_lang, tgt_lang)
     if 'scramble' in config and config['scramble']:
-        manager.data = manager.batch_data(args.data, tokenizer)
+        manager.data = manager.batch_data(args.data, args.dict, tokenizer)
     else:
         manager.data = manager.batch_data(args.data)
     manager.test = manager.batch_data(args.test)
