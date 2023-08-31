@@ -12,13 +12,17 @@ def translate_file(data_file: str, manager: Manager, tokenizer: Tokenizer) -> li
 def translate_string(string: str, manager: Manager, tokenizer: Tokenizer) -> str:
     model, vocab, device = manager.model, manager.vocab, manager.device
     src_words = ['<BOS>'] + tokenizer.tokenize(string).split() + ['<EOS>']
-    lemmas, senses = manager.append_senses(src_words)
+    if manager.dict:
+        lemmas, senses = manager.append_senses(src_words)
+    else:
+        dict_mask = None
 
     model.eval()
     with torch.no_grad():
         src_nums, src_mask = torch.tensor(vocab.numberize(src_words)), None
         mask_size = src_nums.unsqueeze(-2).size()
-        dict_mask = Batch.dict_mask_from_data(zip([lemmas], [senses]), mask_size, device)
+        if manager.dict:
+            dict_mask = Batch.dict_mask_from_data(zip([lemmas], [senses]), mask_size, device)
         src_encs = model.encode(src_nums.unsqueeze(0).to(device), src_mask, dict_mask)
         out_nums = beam_search(manager, src_encs, src_mask, manager.beam_size)
 
@@ -28,12 +32,15 @@ def translate_string(string: str, manager: Manager, tokenizer: Tokenizer) -> str
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--model', metavar='FILE', required=True, help='model file (.pt)')
-    parser.add_argument('--dict', metavar='FILE', required=True, help='dictionary data')
-    parser.add_argument('--freq', metavar='FILE', required=True, help='frequency data')
+    parser.add_argument('--dict', metavar='FILE', required=False, help='dictionary data')
+    parser.add_argument('--freq', metavar='FILE', required=False, help='frequency data')
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument('--string', metavar='STRING', help='input string')
     group.add_argument('--file', metavar='FILE', help='input file')
     args, unknown = parser.parse_known_args()
+
+    if args.dict or args.freq:
+        assert args.dict and args.freq
 
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     model_dict = torch.load(args.model, map_location=device)

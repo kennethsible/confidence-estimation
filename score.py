@@ -57,10 +57,13 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--data', metavar='FILE', required=True, help='testing data')
     parser.add_argument('--model', metavar='FILE', required=True, help='model file (.pt)')
-    parser.add_argument('--dict', metavar='FILE', required=True, help='dictionary data')
-    parser.add_argument('--freq', metavar='FILE', required=True, help='frequency data')
+    parser.add_argument('--dict', metavar='FILE', required=False, help='dictionary data')
+    parser.add_argument('--freq', metavar='FILE', required=False, help='frequency data')
     parser.add_argument('--tqdm', action='store_true', help='import tqdm')
     args, unknown = parser.parse_known_args()
+
+    if args.dict or args.freq:
+        assert args.dict and args.freq
 
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     model_dict = torch.load(args.model, map_location=device)

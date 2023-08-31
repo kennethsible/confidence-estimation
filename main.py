@@ -104,8 +104,8 @@ def main():
     parser.add_argument('--lang', nargs=2, required=True, help='source/target language')
     parser.add_argument('--data', metavar='FILE', required=True, help='training data')
     parser.add_argument('--test', metavar='FILE', required=True, help='validation data')
-    parser.add_argument('--dict', metavar='FILE', required=True, help='dictionary data')
-    parser.add_argument('--freq', metavar='FILE', required=True, help='frequency data')
+    parser.add_argument('--dict', metavar='FILE', required=False, help='dictionary data')
+    parser.add_argument('--freq', metavar='FILE', required=False, help='frequency data')
     parser.add_argument('--vocab', metavar='FILE', required=True, help='vocab file (shared)')
     parser.add_argument('--codes', metavar='FILE', required=True, help='codes file (shared)')
     parser.add_argument('--model', metavar='FILE', required=True, help='model file (.pt)')
@@ -114,6 +114,9 @@ def main():
     parser.add_argument('--seed', type=int, help='random seed')
     parser.add_argument('--tqdm', action='store_true', help='import tqdm')
     args, unknown = parser.parse_known_args()
+
+    if args.dict or args.freq:
+        assert args.dict and args.freq
 
     if args.seed:
         random.seed(args.seed)
@@ -147,7 +150,10 @@ def main():
     )
     tokenizer = Tokenizer(manager.bpe, src_lang, tgt_lang)
     if 'scramble' in config and config['scramble']:
-        manager.data = manager.batch_data(args.data, args.dict, tokenizer)
+        if 'append_dict' in config and config['append_dict']:
+            manager.data = manager.batch_data(args.data, args.dict, tokenizer)
+        else:
+            manager.data = manager.batch_data(args.data, tokenizer)
     else:
         manager.data = manager.batch_data(args.data)
     manager.test = manager.batch_data(args.test)

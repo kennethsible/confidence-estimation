@@ -56,7 +56,7 @@ class Vocab:
 
 class Batch:
     def __init__(
-        self, src_nums: Tensor, tgt_nums: Tensor, dict_data, ignore_index: int, device: str
+        self, src_nums: Tensor, tgt_nums: Tensor, ignore_index: int, device: str, dict_data=None
     ):
         self._src_nums = src_nums
         self._tgt_nums = tgt_nums
@@ -97,6 +97,8 @@ class Batch:
 
     @property
     def dict_mask(self):
+        if self._dict_data is None:
+            return None
         mask_size = self.src_nums.unsqueeze(-2).size()
         return self.dict_mask_from_data(self._dict_data, mask_size, self.device)
 
@@ -147,7 +149,6 @@ class Manager:
     scramble: int
     learnable: int
     word_dropout: float
-    append_dict: int
 
     def __init__(
         self,
@@ -201,14 +202,19 @@ class Manager:
 
         self.model.apply(init_weights)
 
-        with open(dict_file) as file:
-            self.dict = json.load(file)
+        self.dict = None
+        self.freq = None
 
-        self.freq = {}
-        with open(freq_file) as file:
-            for line in file:
-                word, freq = line.split()
-                self.freq[word] = int(freq)
+        if dict_file:
+            with open(dict_file) as file:
+                self.dict = json.load(file)
+
+        if freq_file:
+            self.freq = {}
+            with open(freq_file) as file:
+                for line in file:
+                    word, freq = line.split()
+                    self.freq[word] = int(freq)
 
         self.data: list[Batch] | None = None
         self.test: list[Batch] | None = None
@@ -226,8 +232,13 @@ class Manager:
             self._model_name,
         )
 
-    def append_senses(self, words, tokenizer: Tokenizer | None = None):
-        lemmas, senses = [], []
+    def append_senses(self, words: list[str], tokenizer: Tokenizer | None = None):
+        lemmas: list[tuple[int, int]] = []
+        senses: list[tuple[int, int]] = []
+
+        if not self.dict or not self.freq:
+            return lemmas, senses
+
         i, length = -1, len(words)
         while (i := i + 1) < length:
             lemma_start = i
@@ -298,7 +309,8 @@ class Manager:
 
                 src_words = ['<BOS>'] + src_line.split() + ['<EOS>']
                 tgt_words = ['<BOS>'] + tgt_line.split() + ['<EOS>']
-                lemmas, senses = self.append_senses(src_words, tokenizer)
+                if self.dict:
+                    lemmas, senses = self.append_senses(src_words, tokenizer)
 
                 if self.max_length:
                     if len(src_words) > self.max_length:
@@ -306,9 +318,12 @@ class Manager:
                     if len(tgt_words) > self.max_length:
                         tgt_words = tgt_words[: self.max_length]
 
-                unbatched.append((src_words, tgt_words, lemmas, senses))
+                if self.dict:
+                    unbatched.append((src_words, tgt_words, lemmas, senses))
+                else:
+                    unbatched.append((src_words, tgt_words, None, None))
 
-        if self.append_dict and dict_file and tokenizer:
+        if dict_file and tokenizer:
             with open(dict_file) as file:
                 for lemma, sense in json.load(file).items():
                     src_words = tokenizer.tokenize(''.join(lemma)).split()
@@ -361,8 +376,12 @@ class Manager:
                     for tgt_words in tgt_batch
                 ]
             )
-            batched.append(
-                Batch(src_nums, tgt_nums, zip(lemmas, senses), self.vocab.PAD, self.device)
-            )
+
+            if self.dict:
+                batched.append(
+                    Batch(src_nums, tgt_nums, self.vocab.PAD, self.device, zip(lemmas, senses))
+                )
+            else:
+                batched.append(Batch(src_nums, tgt_nums, self.vocab.PAD, self.device))
 
         return batched
