@@ -1,7 +1,7 @@
 import torch
 
 from decoder import beam_search
-from manager import Batch, Manager, Tokenizer
+from manager import Batch, Manager, Tokenizer, lemmatize
 
 
 def translate_file(data_file: str, manager: Manager, tokenizer: Tokenizer) -> list[str]:
@@ -11,11 +11,23 @@ def translate_file(data_file: str, manager: Manager, tokenizer: Tokenizer) -> li
 
 def translate_string(string: str, manager: Manager, tokenizer: Tokenizer) -> str:
     model, vocab, device = manager.model, manager.vocab, manager.device
-    src_words = ['<BOS>'] + tokenizer.tokenize(string).split() + ['<EOS>']
+    src_words = tokenizer.tokenize(string).split()
     if manager.dict:
-        lemmas, senses = manager.append_senses(src_words)
+        i, words, spans = 0, [''], []
+        for j, subword in enumerate(src_words):
+            if subword.endswith('@@'):
+                words[-1] += subword.rstrip('@@')
+            else:
+                words[-1] += subword
+                words.append('')
+                spans.append((i, j + 1))
+                i = j + 1
+
+        src_spans = list(lemmatize([(' '.join(words), spans)]))
+        lemmas, senses = manager.append_senses(src_words, src_spans)
     else:
         dict_mask = None
+    src_words = ['<BOS>'] + src_words + ['<EOS>']
 
     model.eval()
     with torch.no_grad():

@@ -1,24 +1,20 @@
 {
-    "position": [
-        "out",
-        "in",
-        "none"
-    ],
-    "scramble": [
-        1,
-        0
-    ],
     "learnable": [
         1,
         0
+    ],
+    "append_dict": [
+        1,
+        0
+    ],
+    "exp_position": [
+        "out",
+        "in",
+        "none"
     ],
     "word_dropout": [
         0.1,
         0.3,
         0.5
-    ],
-    "append_dict": [
-        1,
-        0
     ]
 }

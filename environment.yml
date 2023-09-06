@@ -15,6 +15,7 @@ dependencies:
   - ruff
   - mypy
   - tqdm
+  - spacy
   - pip:
     - subword-nmt
     - unbabel-comet

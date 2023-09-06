@@ -149,14 +149,11 @@ def main():
         args.test,
     )
     tokenizer = Tokenizer(manager.bpe, src_lang, tgt_lang)
-    if 'scramble' in config and config['scramble']:
-        if 'append_dict' in config and config['append_dict']:
-            manager.data = manager.batch_data(args.data, args.dict, tokenizer)
-        else:
-            manager.data = manager.batch_data(args.data, tokenizer)
+    if 'append_dict' in config and config['append_dict']:
+        manager.data = manager.load_data(args.data, args.dict, tokenizer)
     else:
-        manager.data = manager.batch_data(args.data)
-    manager.test = manager.batch_data(args.test)
+        manager.data = manager.load_data(args.data)
+    manager.test = manager.load_data(args.test, use_cache=False)
 
     if device == 'cuda' and torch.cuda.get_device_capability()[0] >= 8:
         torch.set_float32_matmul_precision('high')

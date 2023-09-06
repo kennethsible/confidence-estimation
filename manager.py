@@ -1,9 +1,9 @@
 import json
 import math
-import random
 import re
 from io import StringIO
 
+import spacy
 import torch
 import torch.nn as nn
 from sacremoses import MosesDetokenizer, MosesTokenizer
@@ -13,8 +13,15 @@ from torch import Tensor
 from decoder import triu_mask
 from model import Model
 
-# TODO Replace WordNet with spaCy
-# lemmatizer = WordNetLemmatizer()
+nlp = spacy.load('de_core_news_sm', enable=['tok2vec', 'tagger', 'lemmatizer'])
+
+
+def lemmatize(texts):
+    for text, (doc, context) in zip(texts, nlp.pipe(texts, as_tuples=True)):
+        if text[0].split() == [token.text for token in doc]:
+            yield [token.lemma_ for token in doc], context
+        else:
+            yield text[0].split(), context
 
 
 class Vocab:
@@ -144,10 +151,10 @@ class Manager:
     max_length: int
     beam_size: int
     threshold: int
-    max_senses: int
-    position: str
-    scramble: int
     learnable: int
+    max_senses: int
+    append_dict: int
+    exp_position: str
     word_dropout: float
 
     def __init__(
@@ -192,7 +199,7 @@ class Manager:
             self.num_heads,
             self.dropout,
             self.num_layers,
-            self.position,
+            self.exp_position,
             self.learnable,
         ).to(device)
 
@@ -204,6 +211,7 @@ class Manager:
 
         self.dict = None
         self.freq = None
+        self.data_cache = None
 
         if dict_file:
             with open(dict_file) as file:
@@ -232,120 +240,72 @@ class Manager:
             self._model_name,
         )
 
-    def append_senses(self, words: list[str], tokenizer: Tokenizer | None = None):
-        lemmas: list[tuple[int, int]] = []
-        senses: list[tuple[int, int]] = []
+    def append_senses(self, src_words, src_spans):
+        lemmas, senses = [], []
+        for word, (lemma_start, lemma_end) in zip(*src_spans):
+            if word not in self.dict:
+                continue
+            if word not in self.freq or self.freq[word] <= self.threshold:
+                sense_start = len(src_words)
+                sense = self.dict[word][: self.max_senses]
+                sense = [sb for w in sense for sb in w.split()]
+                sense_end = sense_start + len(sense)
+                if len(src_words) + len(sense) > self.max_length:
+                    break
 
-        if not self.dict or not self.freq:
-            return lemmas, senses
+                lemmas.append((lemma_start + 1, lemma_end + 1))
+                senses.append((sense_start, sense_end))
 
-        i, length = -1, len(words)
-        while (i := i + 1) < length:
-            lemma_start = i
-            if words[i].endswith('@@'):
-                lemma = words[i].rstrip('@@')
-                while (i := i + 1) < length and words[i].endswith('@@'):
-                    lemma += words[i].rstrip('@@')
-                if i < length:
-                    lemma += words[i]
-            else:
-                lemma = words[i]
-            lemma_end = i + 1
+                # if random.random() <= self.word_dropout:
+                #     for j in range(lemma_start, lemma_end):
+                #         src_words[j] = '<UNK>'
+                src_words.extend(sense)
 
-            if lemma in self.dict:
-                if lemma not in self.freq or self.freq[lemma] <= self.threshold:
-                    sense_start = len(words)
-                    sense = self.dict[lemma][: self.max_senses]
-                    sense = [sb for w in sense for sb in w.split()]
-                    sense_end = sense_start + len(sense)
-                    if len(words) + len(sense) > self.max_length:
-                        break
-
-                    lemmas.append((lemma_start, lemma_end))
-                    senses.append((sense_start, sense_end))
-
-                    if random.random() <= self.word_dropout:
-                        for j in range(lemma_start, lemma_end):
-                            words[j] = '<UNK>'
-                    words.extend(sense)
-                elif tokenizer is not None and random.random() <= 0.02:
-                    noisy_lemma = list(lemma)
-                    random.shuffle(noisy_lemma)
-                    noisy_lemma = tokenizer.tokenize(''.join(noisy_lemma)).split()
-                    shift = len(noisy_lemma) - (lemma_end - lemma_start)
-
-                    sense_start = len(words)
-                    sense = self.dict[lemma][: self.max_senses]
-                    sense = [sb for w in sense for sb in w.split()]
-                    sense_end = sense_start + len(sense)
-                    if len(words) + shift + len(sense) > self.max_length:
-                        break
-
-                    i, length = i + shift, length + shift
-                    words[lemma_start:lemma_end] = noisy_lemma
-                    lemma_end = lemma_start + len(noisy_lemma)
-
-                    lemmas.append((lemma_start, lemma_end))
-                    senses.append((sense_start, sense_end))
-
-                    if random.random() <= self.word_dropout:
-                        for j in range(lemma_start, lemma_end):
-                            words[j] = '<UNK>'
-                    words.extend(sense)
-        else:
-            assert words[i - 1] == '<EOS>'
+        # for (a, b), (c, d) in zip(lemmas, senses):
+        #     print(src_words[a:b], src_words[c:d])
 
         return lemmas, senses
 
-    def batch_data(
-        self, data_file: str, dict_file: str | None = None, tokenizer: Tokenizer | None = None
-    ) -> list[Batch]:
-        unbatched, batched = [], []
+    def lemmatize_data(self, data_file):
+        words_spans = []
         with open(data_file) as file:
             for line in file.readlines():
                 src_line, tgt_line = line.split('\t')
                 if not src_line or not tgt_line:
                     continue
 
-                src_words = ['<BOS>'] + src_line.split() + ['<EOS>']
-                tgt_words = ['<BOS>'] + tgt_line.split() + ['<EOS>']
-                if self.dict:
-                    lemmas, senses = self.append_senses(src_words, tokenizer)
+                src_words = src_line.split()
+                if self.max_length and len(src_words) > self.max_length - 2:
+                    src_words = src_words[: self.max_length - 2]
 
-                if self.max_length:
-                    if len(src_words) > self.max_length:
-                        src_words = src_words[: self.max_length]
-                    if len(tgt_words) > self.max_length:
-                        tgt_words = tgt_words[: self.max_length]
+                i, words, spans = 0, [''], []
+                for j, subword in enumerate(src_words):
+                    if subword.endswith('@@'):
+                        words[-1] += subword.rstrip('@@')
+                    else:
+                        words[-1] += subword
+                        words.append('')
+                        spans.append((i, j + 1))
+                        i = j + 1
 
-                if self.dict:
-                    unbatched.append((src_words, tgt_words, lemmas, senses))
-                else:
-                    unbatched.append((src_words, tgt_words, None, None))
+                words_spans.append((' '.join(words), spans))
 
-        if dict_file and tokenizer:
-            with open(dict_file) as file:
-                for lemma, sense in json.load(file).items():
-                    src_words = tokenizer.tokenize(''.join(lemma)).split()
-                    tgt_words = sense[: self.max_senses]
-                    tgt_words = [sb for w in sense for sb in w.split()]
+        return list(lemmatize(words_spans))
 
-                    src_words = ['<BOS>'] + src_line.split() + ['<EOS>']
-                    tgt_words = ['<BOS>'] + tgt_line.split() + ['<EOS>']
+    def batch_data(self, data) -> list[Batch]:
+        batched_data = []
 
-                    unbatched.append((src_words, tgt_words, [], []))
-
-        unbatched.sort(key=lambda x: (len(x[0]), len(x[1])), reverse=True)
+        data.sort(key=lambda x: (len(x[0]), len(x[1])), reverse=True)
 
         i = batch_size = 0
-        while (i := i + batch_size) < len(unbatched):
-            src_len = len(unbatched[i][0])
-            tgt_len = len(unbatched[i][1])
+        while (i := i + batch_size) < len(data):
+            src_len = len(data[i][0])
+            tgt_len = len(data[i][1])
 
             while True:
                 batch_size = self.batch_size // (max(src_len, tgt_len) * 8) * 8
 
-                src_batch, tgt_batch, lemmas, senses = zip(*unbatched[i : (i + batch_size)])
+                src_batch, tgt_batch, lemmas, senses = zip(*data[i : (i + batch_size)])
                 max_src_len = max(len(src_words) for src_words in src_batch)
                 max_tgt_len = max(len(tgt_words) for tgt_words in tgt_batch)
 
@@ -377,11 +337,58 @@ class Manager:
                 ]
             )
 
-            if self.dict:
-                batched.append(
-                    Batch(src_nums, tgt_nums, self.vocab.PAD, self.device, zip(lemmas, senses))
+            batched_data.append(
+                Batch(
+                    src_nums,
+                    tgt_nums,
+                    self.vocab.PAD,
+                    self.device,
+                    zip(lemmas, senses) if self.dict else None,
                 )
-            else:
-                batched.append(Batch(src_nums, tgt_nums, self.vocab.PAD, self.device))
+            )
 
-        return batched
+        return batched_data
+
+    def load_data(self, data_file, dict_file=None, tokenizer=None, use_cache=True):
+        if self.dict:
+            if self.data_cache and use_cache:
+                src_spans = self.data_cache
+            else:
+                src_spans = self.lemmatize_data(data_file)
+                self.data_cache = src_spans
+
+        i, data = 0, []
+        with open(data_file) as file:
+            for line in file.readlines():
+                src_line, tgt_line = line.split('\t')
+                if not src_line or not tgt_line:
+                    continue
+
+                src_words = ['<BOS>'] + src_line.split() + ['<EOS>']
+                tgt_words = ['<BOS>'] + tgt_line.split() + ['<EOS>']
+                if self.max_length:
+                    if len(src_words) > self.max_length:
+                        src_words = src_words[: self.max_length]
+                    if len(tgt_words) > self.max_length:
+                        tgt_words = tgt_words[: self.max_length]
+
+                if self.dict:
+                    lemmas, senses = self.append_senses(src_words, src_spans[i])
+                    data.append((src_words, tgt_words, lemmas, senses))
+                else:
+                    data.append((src_words, tgt_words, None, None))
+                i += 1
+
+        if dict_file and tokenizer:
+            with open(dict_file) as file:
+                for lemma, sense in json.load(file).items():
+                    src_words = tokenizer.tokenize(''.join(lemma)).split()
+                    tgt_words = sense[: self.max_senses]
+                    tgt_words = [sb for w in sense for sb in w.split()]
+
+                    src_words = ['<BOS>'] + src_line.split() + ['<EOS>']
+                    tgt_words = ['<BOS>'] + tgt_line.split() + ['<EOS>']
+
+                    data.append((src_words, tgt_words, [], []))
+
+        return self.batch_data(data)
