@@ -211,7 +211,6 @@ class Manager:
 
         self.dict = None
         self.freq = None
-        self.data_cache = None
 
         if dict_file:
             with open(dict_file) as file:
@@ -255,14 +254,7 @@ class Manager:
 
                 lemmas.append((lemma_start + 1, lemma_end + 1))
                 senses.append((sense_start, sense_end))
-
-                # if random.random() <= self.word_dropout:
-                #     for j in range(lemma_start, lemma_end):
-                #         src_words[j] = '<UNK>'
                 src_words.extend(sense)
-
-        # for (a, b), (c, d) in zip(lemmas, senses):
-        #     print(src_words[a:b], src_words[c:d])
 
         return lemmas, senses
 
@@ -349,13 +341,9 @@ class Manager:
 
         return batched_data
 
-    def load_data(self, data_file, dict_file=None, tokenizer=None, use_cache=True):
+    def load_data(self, data_file, dict_file=None, tokenizer=None):
         if self.dict:
-            if self.data_cache and use_cache:
-                src_spans = self.data_cache
-            else:
-                src_spans = self.lemmatize_data(data_file)
-                self.data_cache = src_spans
+            src_spans = self.lemmatize_data(data_file)
 
         i, data = 0, []
         with open(data_file) as file:

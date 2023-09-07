@@ -31,6 +31,10 @@ def train_epoch(
         src_nums, src_mask = batch.src_nums, batch.src_mask
         tgt_nums, tgt_mask = batch.tgt_nums, batch.tgt_mask
         dict_mask, batch_length = batch.dict_mask, batch.length()
+        for i, (lemmas, _) in enumerate(batch._dict_data):
+            for lemma_start, lemma_end in lemmas:
+                if random.random() <= manager.word_dropout:
+                    src_nums[lemma_start:lemma_end] = (lemma_end - lemma_start) * ['<UNK>']
 
         with torch.cuda.amp.autocast(enabled=False):
             logits = manager.model(src_nums, tgt_nums[:, :-1], src_mask, tgt_mask, dict_mask)
@@ -153,7 +157,7 @@ def main():
         manager.data = manager.load_data(args.data, args.dict, tokenizer)
     else:
         manager.data = manager.load_data(args.data)
-    manager.test = manager.load_data(args.test, use_cache=False)
+    manager.test = manager.load_data(args.test)
 
     if device == 'cuda' and torch.cuda.get_device_capability()[0] >= 8:
         torch.set_float32_matmul_precision('high')
