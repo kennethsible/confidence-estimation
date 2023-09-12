@@ -59,6 +59,7 @@ def main():
     parser.add_argument('--model', metavar='FILE', required=True, help='model file (.pt)')
     parser.add_argument('--dict', metavar='FILE', required=False, help='dictionary data')
     parser.add_argument('--freq', metavar='FILE', required=False, help='frequency data')
+    parser.add_argument('--lem-data', metavar='FILE', help='lemmatized testing data')
     parser.add_argument('--tqdm', action='store_true', help='import tqdm')
     args, unknown = parser.parse_known_args()
 
@@ -86,12 +87,14 @@ def main():
         codes_list,
         args.dict,
         args.freq,
+        lem_data=None,
+        lem_test=args.lem_test,
         data_file=None,
-        test_file=args.test,
+        test_file=args.data,
     )
     manager.model.load_state_dict(model_dict['state_dict'])
     tokenizer = Tokenizer(manager.bpe, src_lang, tgt_lang)
-    manager.test = manager.batch_data(args.test)
+    manager.test = manager.load_data(args.data, manager.lem_test)
 
     if device == 'cuda' and torch.cuda.get_device_capability()[0] >= 8:
         torch.set_float32_matmul_precision('high')

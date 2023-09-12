@@ -1,4 +1,4 @@
-# Neural Machine Translation in PyTorch
+# Dictionary-Augmented Machine Translation
 **Ken Sible | [NLP Group](https://nlp.nd.edu)** | **University of Notre Dame**
 
 Note, any option in `config.toml` can also be passed as a command line argument,
@@ -13,7 +13,7 @@ $ python translate.py --model model.deen.pt --file input.de > output.en
 
 ## Train Model
 ```
-usage: main.py [-h] --lang LANG LANG --data FILE --test FILE--dict FILE --freq FILE --vocab FILE --codes FILE --model FILE --config FILE --log FILE [--seed SEED] [--tqdm]
+usage: main.py [-h] --lang LANG LANG --data FILE --test FILE [--dict FILE] [--freq FILE] [--lem-data FILE] [--lem-test FILE] --vocab FILE --codes FILE --model FILE --config FILE --log FILE [--seed SEED] [--tqdm]
 
 options:
   -h, --help        show this help message and exit
@@ -22,6 +22,8 @@ options:
   --test FILE       validation data
   --dict FILE       dictionary data
   --freq FILE       frequency data
+  --lem-data FILE   lemmatized training data
+  --lem-test FILE   lemmatized validation data
   --vocab FILE      vocab file (shared)
   --codes FILE      codes file (shared)
   --model FILE      model file (.pt)
@@ -33,24 +35,27 @@ options:
 
 ## Score Model
 ```
-usage: score.py [-h] --data FILE --model FILE --dict FILE --freq FILE [--tqdm]
+usage: score.py [-h] --data FILE --model FILE [--dict FILE] [--freq FILE] [--lem-data FILE] [--tqdm]
 
 options:
-  -h, --help    show this help message and exit
-  --data FILE   testing data
-  --model FILE  model file (.pt)
-  --dict FILE   dictionary data
-  --freq FILE   frequency data
-  --tqdm        import tqdm
+  -h, --help       show this help message and exit
+  --data FILE      testing data
+  --model FILE     model file (.pt)
+  --dict FILE      dictionary data
+  --freq FILE      frequency data
+  --lem-data FILE  lemmatized testing data
+  --tqdm           import tqdm
 ```
 
 ## Translate Input
 ```
-usage: translate.py [-h] --model FILE (--string STRING | --file FILE)
+usage: translate.py [-h] --model FILE [--dict FILE] [--freq FILE] (--string STRING | --file FILE)
 
 options:
   -h, --help       show this help message and exit
   --model FILE     model file (.pt)
+  --dict FILE      dictionary data
+  --freq FILE      frequency data
   --string STRING  input string
   --file FILE      input file
 ```
@@ -72,6 +77,6 @@ clip_grad           = 1.0   # maximum allowed value of gradients
 batch_size          = 4096  # number of tokens per batch (source/target)
 max_length          = 512   # maximum sentence length (during training)
 beam_size           = 4     # beam search decoding (length normalization)
-freq_limit          = 10    # frequency threshold to append word senses
-max_senses          = 3     # maximum number of word senses to append
+threshold           = 10    # frequency threshold to append word senses
+max_senses          = 10    # maximum number of word senses to append
 ```

@@ -110,6 +110,8 @@ def main():
     parser.add_argument('--test', metavar='FILE', required=True, help='validation data')
     parser.add_argument('--dict', metavar='FILE', required=False, help='dictionary data')
     parser.add_argument('--freq', metavar='FILE', required=False, help='frequency data')
+    parser.add_argument('--lem-data', metavar='FILE', help='lemmatized training data')
+    parser.add_argument('--lem-test', metavar='FILE', help='lemmatized validation data')
     parser.add_argument('--vocab', metavar='FILE', required=True, help='vocab file (shared)')
     parser.add_argument('--codes', metavar='FILE', required=True, help='codes file (shared)')
     parser.add_argument('--model', metavar='FILE', required=True, help='model file (.pt)')
@@ -149,15 +151,22 @@ def main():
         args.codes,
         args.dict,
         args.freq,
+        args.lem_data,
+        args.lem_test,
         args.data,
         args.test,
     )
     tokenizer = Tokenizer(manager.bpe, src_lang, tgt_lang)
+
+    append_data = None
     if 'append_dict' in config and config['append_dict']:
-        manager.data = manager.load_data(args.data, args.dict, tokenizer)
-    else:
-        manager.data = manager.load_data(args.data)
-    manager.test = manager.load_data(args.test)
+        if config['append_dict'] == 1:
+            append_data = manager.append_dict_1(args.dict, tokenizer)
+        elif config['append_dict'] == 2:
+            append_data = manager.append_dict_2(args.dict, tokenizer)
+
+    manager.data = manager.load_data(args.data, manager.lem_data, append_data)
+    manager.test = manager.load_data(args.test, manager.lem_test)
 
     if device == 'cuda' and torch.cuda.get_device_capability()[0] >= 8:
         torch.set_float32_matmul_precision('high')

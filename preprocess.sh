@@ -5,6 +5,7 @@ europarl_v7=0
 src_lang=$2
 tgt_lang=$3
 merge_ops=$4
+max_length=$5
 
 while getopts ":ce" opt; do
    case $opt in
@@ -56,8 +57,8 @@ done
 function sgm2txt {
     output="$(python - << END
 import re
-with open('$1') as infile:
-    for line in infile.readlines():
+with open('$1') as file:
+    for line in file.readlines():
         line = re.split(r'(<[^>]+>)', line.strip())[1:-1]
         if len(line) != 3: continue
         tag, sentence, _ = line
@@ -123,14 +124,43 @@ echo -e "\n[9/10] Combining Source and Target Data..."
 for path in "data/training" "data/validation" "data/testing"; do
     paste "$path/data.tok.bpe.$src_lang" "$path/data.tok.bpe.$tgt_lang" > "$path/data.tok.bpe.$src_lang$tgt_lang"
     paste "$path/data.tok.bpe.$tgt_lang" "$path/data.tok.bpe.$src_lang" > "$path/data.tok.bpe.$tgt_lang$src_lang"
-    wc -l "$path/data.tok.bpe.$src_lang$tgt_lang"
-done
-
-echo -e "\n[10/10] Cleaning Parallel Data..."
-for path in "data/training" "data/validation" "data/testing"; do
     awk -i inplace '!seen[$0]++' "$path/data.tok.bpe.$src_lang$tgt_lang"
     awk -i inplace '!seen[$0]++' "$path/data.tok.bpe.$tgt_lang$src_lang"
     wc -l "$path/data.tok.bpe.$src_lang$tgt_lang"
+done
+
+function lemmatize {
+    output="$(python - << END
+from tqdm import tqdm
+from manager import Lemmatizer
+
+lemmatizer = Lemmatizer('de_core_news_sm')
+
+texts = []
+with open('$1') as file:
+    for line in file.readlines():
+        src_line, tgt_line = line.split('\t')
+        if not src_line or not tgt_line:
+            continue
+
+        src_words = src_line.split()
+        if len(src_words) > $3 - 2:
+            src_words = src_words[: $3 - 2]
+
+        texts.append(src_words)
+
+data = lemmatizer.lemmatize(texts)
+with open('$2', 'w') as file:
+    for words, spans in tqdm(data, total=len(texts)):
+        file.write(f"{' '.join(words)}\t{' '.join(map(str, spans))}\n")
+END
+)"
+    echo "$output\n"
+}
+
+echo -e "\n[10/10] Lemmatizing Source Data..."
+for path in "data/training" "data/validation" "data/testing"; do
+    lemmatize "$path/data.tok.bpe.deen" "$path/data.tok.lem.de" "$max_length"
 done
 
 echo -e "\nDone."

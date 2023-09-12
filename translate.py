@@ -1,7 +1,7 @@
 import torch
 
 from decoder import beam_search
-from manager import Batch, Manager, Tokenizer, lemmatize
+from manager import Batch, Lemmatizer, Manager, Tokenizer
 
 
 def translate_file(data_file: str, manager: Manager, tokenizer: Tokenizer) -> list[str]:
@@ -23,7 +23,8 @@ def translate_string(string: str, manager: Manager, tokenizer: Tokenizer) -> str
                 spans.append((i, j + 1))
                 i = j + 1
 
-        src_spans = list(lemmatize([(' '.join(words), spans)]))
+        lemmatizer = Lemmatizer('de_core_news_sm')
+        src_spans = list(lemmatizer.lemmatize([(' '.join(words), spans)]))
         lemmas, senses = manager.append_senses(src_words, src_spans)
     else:
         dict_mask = None

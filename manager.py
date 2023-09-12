@@ -1,5 +1,6 @@
 import json
 import math
+import random
 import re
 from io import StringIO
 
@@ -13,15 +14,23 @@ from torch import Tensor
 from decoder import triu_mask
 from model import Model
 
-nlp = spacy.load('de_core_news_sm', enable=['tok2vec', 'tagger', 'lemmatizer'])
 
-
-def lemmatize(texts):
-    for text, (doc, context) in zip(texts, nlp.pipe(texts, as_tuples=True)):
-        if text[0].split() == [token.text for token in doc]:
-            yield [token.lemma_ for token in doc], context
-        else:
-            yield text[0].split(), context
+def noisify(text: str) -> str:
+    i, chars = random.choice(range(len(text))), list(text)
+    if i == 0 and chars[0].isupper():
+        chars[i] = random.choice([chr(i) for i in range(65, 91)] + list('ÄÖÜ'))
+    else:
+        alphabet = [chr(i) for i in range(97, 123)] + list('äöüß')
+        match random.randint(1, 3 if i + 1 == len(chars) else 4):
+            case 1:  # Insert
+                chars.insert(i, random.choice(alphabet))
+            case 2:  # Delete
+                chars.pop(i)
+            case 3:  # Replace
+                chars[i] = random.choice(alphabet)
+            case 4:  # Swap
+                chars[i], chars[i + 1] = chars[i + 1], chars[i]
+    return ''.join(chars)
 
 
 class Vocab:
@@ -134,6 +143,32 @@ class Tokenizer:
         return re.sub('(@@ )|(@@ ?$)', '', text)
 
 
+class Lemmatizer:
+    def __init__(self, model: str):
+        self.nlp = spacy.load(model, enable=['tok2vec', 'tagger', 'lemmatizer'])
+
+    @staticmethod
+    def subword_mapping(texts):
+        for text in texts:
+            words, spans = '', []
+            for j, subword in enumerate(text):
+                if subword.endswith('@@'):
+                    words += subword.rstrip('@@')
+                else:
+                    words += subword + ' '
+                    spans.append(j + 1)
+            yield words.rstrip(), spans
+
+    def lemmatize(self, texts):
+        texts = list(self.subword_mapping(texts))
+        docs = self.nlp.pipe(texts, as_tuples=True)
+        for (words, spans), (doc, _) in zip(texts, docs):
+            if words.split() == [token.text for token in doc]:
+                yield [token.lemma_ for token in doc], spans
+            else:
+                yield words.split(), spans
+
+
 class Manager:
     embed_dim: int
     ff_dim: int
@@ -153,7 +188,6 @@ class Manager:
     threshold: int
     learnable: int
     max_senses: int
-    append_dict: int
     exp_position: str
     word_dropout: float
 
@@ -166,8 +200,10 @@ class Manager:
         model_file: str,
         vocab_file: str | list[str],
         codes_file: str | list[str],
-        dict_file,
-        freq_file,
+        dict_file=None,
+        freq_file=None,
+        lem_data_file=None,
+        lem_test_file=None,
         data_file: str | None = None,
         test_file: str | None = None,
     ):
@@ -210,18 +246,33 @@ class Manager:
         self.model.apply(init_weights)
 
         self.dict = None
-        self.freq = None
-
         if dict_file:
             with open(dict_file) as file:
                 self.dict = json.load(file)
 
+        self.freq = None
         if freq_file:
             self.freq = {}
             with open(freq_file) as file:
                 for line in file:
                     word, freq = line.split()
                     self.freq[word] = int(freq)
+
+        self.lem_data = None
+        if lem_data_file:
+            self.lem_data = []
+            with open(lem_data_file) as file:
+                for line in file:
+                    words, spans = line.split('\t')
+                    self.lem_data.append((words.split(), list(map(int, spans.split()))))
+
+        self.lem_test = None
+        if lem_test_file:
+            self.lem_test = []
+            with open(lem_test_file) as file:
+                for line in file:
+                    words, spans = line.split('\t')
+                    self.lem_test.append((words.split(), list(map(int, spans.split()))))
 
         self.data: list[Batch] | None = None
         self.test: list[Batch] | None = None
@@ -240,8 +291,9 @@ class Manager:
         )
 
     def append_senses(self, src_words, src_spans):
+        lemma_start = 0
         lemmas, senses = [], []
-        for word, (lemma_start, lemma_end) in zip(*src_spans):
+        for word, lemma_end in zip(*src_spans):
             if word not in self.dict:
                 continue
             if word not in self.freq or self.freq[word] <= self.threshold:
@@ -255,34 +307,48 @@ class Manager:
                 lemmas.append((lemma_start + 1, lemma_end + 1))
                 senses.append((sense_start, sense_end))
                 src_words.extend(sense)
+            lemma_start = lemma_end
 
         return lemmas, senses
 
-    def lemmatize_data(self, data_file):
-        words_spans = []
-        with open(data_file) as file:
-            for line in file.readlines():
-                src_line, tgt_line = line.split('\t')
-                if not src_line or not tgt_line:
-                    continue
+    def append_dict_1(self, dict_file, tokenizer):
+        append_data = []
+        with open(dict_file) as file:
+            for lemma, sense in json.load(file).items():
+                src_words = tokenizer.tokenize(''.join(lemma)).split()
+                tgt_words = sense[: self.max_senses]
+                tgt_words = [sb for w in sense for sb in w.split()]
 
-                src_words = src_line.split()
-                if self.max_length and len(src_words) > self.max_length - 2:
-                    src_words = src_words[: self.max_length - 2]
+                src_words = ['<BOS>'] + src_words + ['<EOS>']
+                tgt_words = ['<BOS>'] + tgt_words + ['<EOS>']
+                if self.max_length:
+                    if len(src_words) > self.max_length:
+                        src_words = src_words[: self.max_length]
+                    if len(tgt_words) > self.max_length:
+                        tgt_words = tgt_words[: self.max_length]
 
-                i, words, spans = 0, [''], []
-                for j, subword in enumerate(src_words):
-                    if subword.endswith('@@'):
-                        words[-1] += subword.rstrip('@@')
-                    else:
-                        words[-1] += subword
-                        words.append('')
-                        spans.append((i, j + 1))
-                        i = j + 1
+                append_data.append((src_words, tgt_words, [], []))
+        return append_data
 
-                words_spans.append((' '.join(words), spans))
+    def append_dict_2(self, dict_file, tokenizer):
+        append_data = []
+        with open(dict_file) as file:
+            for lemma, sense in json.load(file).items():
+                src_words = tokenizer.tokenize(''.join(lemma)).split()
+                tgt_words = sense[: self.max_senses]
+                for w in sense:
+                    tgt_words = [sb for sb in w.split()]
 
-        return list(lemmatize(words_spans))
+                    src_words = ['<BOS>'] + src_words + ['<EOS>']
+                    tgt_words = ['<BOS>'] + tgt_words + ['<EOS>']
+                    if self.max_length:
+                        if len(src_words) > self.max_length:
+                            src_words = src_words[: self.max_length]
+                        if len(tgt_words) > self.max_length:
+                            tgt_words = tgt_words[: self.max_length]
+
+                    append_data.append((src_words, tgt_words, [], []))
+        return append_data
 
     def batch_data(self, data) -> list[Batch]:
         batched_data = []
@@ -341,10 +407,7 @@ class Manager:
 
         return batched_data
 
-    def load_data(self, data_file, dict_file=None, tokenizer=None):
-        if self.dict:
-            src_spans = self.lemmatize_data(data_file)
-
+    def load_data(self, data_file, src_spans=None, append_data=None):
         i, data = 0, []
         with open(data_file) as file:
             for line in file.readlines():
@@ -367,16 +430,7 @@ class Manager:
                     data.append((src_words, tgt_words, None, None))
                 i += 1
 
-        if dict_file and tokenizer:
-            with open(dict_file) as file:
-                for lemma, sense in json.load(file).items():
-                    src_words = tokenizer.tokenize(''.join(lemma)).split()
-                    tgt_words = sense[: self.max_senses]
-                    tgt_words = [sb for w in sense for sb in w.split()]
-
-                    src_words = ['<BOS>'] + src_line.split() + ['<EOS>']
-                    tgt_words = ['<BOS>'] + tgt_line.split() + ['<EOS>']
-
-                    data.append((src_words, tgt_words, [], []))
+        if append_data:
+            data.extend(append_data)
 
         return self.batch_data(data)
