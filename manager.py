@@ -2,6 +2,8 @@ import json
 import math
 import random
 import re
+
+# from difflib import SequenceMatcher
 from io import StringIO
 
 import spacy
@@ -13,6 +15,9 @@ from torch import Tensor
 
 from decoder import triu_mask
 from model import Model
+
+# def similarity(a: str, b: str) -> float:
+#     return SequenceMatcher(None, a, b).ratio()
 
 
 def noisify(text: str) -> str:
@@ -156,7 +161,7 @@ class Lemmatizer:
                     words += subword.rstrip('@@')
                 else:
                     words += subword + ' '
-                    spans.append(j + 1)
+                    spans.append(j + 2)
             yield words.rstrip(), spans
 
     def lemmatize(self, texts):
@@ -291,22 +296,42 @@ class Manager:
         )
 
     def append_senses(self, src_words, src_spans):
-        lemma_start = 0
+        i = lemma_start = 1
         lemmas, senses = [], []
-        for word, lemma_end in zip(*src_spans):
-            if word not in self.dict:
-                continue
-            if word not in self.freq or self.freq[word] <= self.threshold:
-                sense_start = len(src_words)
-                sense = self.dict[word][: self.max_senses]
-                sense = [sb for w in sense for sb in w.split()]
-                sense_end = sense_start + len(sense)
-                if len(src_words) + len(sense) > self.max_length:
-                    break
+        for lemma, lemma_end in zip(*src_spans):
+            word = ''
+            while src_words[i].endswith('@@'):
+                word += src_words[i].rstrip('@@')
+                i += 1
+            word += src_words[i]
+            i += 1
 
-                lemmas.append((lemma_start + 1, lemma_end + 1))
-                senses.append((sense_start, sense_end))
-                src_words.extend(sense)
+            if word in self.dict:
+                if word not in self.freq or self.freq[word] <= self.threshold:
+                    lemma = word
+                else:
+                    lemma_start = lemma_end
+                    continue
+            if lemma in self.dict:
+                if lemma not in self.freq or self.freq[lemma] <= self.threshold:
+                    sense_start = len(src_words)
+                    defs = self.dict[lemma][: self.max_senses]
+                    defs = [sb for w in defs for sb in w.split()]
+                    sense_end = sense_start + len(defs)
+                    if sense_end > self.max_length:
+                        break
+                    src_words.extend(defs)
+
+                    lemmas.append((lemma_start, lemma_end))
+                    senses.append((sense_start, sense_end))
+
+                    ###= Unit Test =###
+                    # word = ''
+                    # for j in range(lemma_start, lemma_end):
+                    #     word += src_words[j].rstrip('@@')
+                    # assert similarity(word, lemma) >= 0.5
+                    ###################
+
             lemma_start = lemma_end
 
         return lemmas, senses
@@ -316,11 +341,12 @@ class Manager:
         with open(dict_file) as file:
             for lemma, sense in json.load(file).items():
                 src_words = tokenizer.tokenize(''.join(lemma)).split()
-                tgt_words = sense[: self.max_senses]
-                tgt_words = [sb for w in sense for sb in w.split()]
+                defs = sense[: self.max_senses]
+                tgt_words = [sb for w in defs for sb in w.split()]
 
                 src_words = ['<BOS>'] + src_words + ['<EOS>']
                 tgt_words = ['<BOS>'] + tgt_words + ['<EOS>']
+
                 if self.max_length:
                     if len(src_words) > self.max_length:
                         src_words = src_words[: self.max_length]
@@ -335,12 +361,11 @@ class Manager:
         with open(dict_file) as file:
             for lemma, sense in json.load(file).items():
                 src_words = tokenizer.tokenize(''.join(lemma)).split()
-                tgt_words = sense[: self.max_senses]
-                for w in sense:
-                    tgt_words = [sb for sb in w.split()]
+                src_words = ['<BOS>'] + src_words + ['<EOS>']
 
-                    src_words = ['<BOS>'] + src_words + ['<EOS>']
-                    tgt_words = ['<BOS>'] + tgt_words + ['<EOS>']
+                for w in sense[: self.max_senses]:
+                    tgt_words = ['<BOS>'] + w.split() + ['<EOS>']
+
                     if self.max_length:
                         if len(src_words) > self.max_length:
                             src_words = src_words[: self.max_length]
@@ -361,7 +386,7 @@ class Manager:
             tgt_len = len(data[i][1])
 
             while True:
-                batch_size = self.batch_size // (max(src_len, tgt_len) * 8) * 8
+                batch_size = min(self.batch_size // (max(src_len, tgt_len) * 8) * 8, 1000)
 
                 src_batch, tgt_batch, lemmas, senses = zip(*data[i : (i + batch_size)])
                 max_src_len = max(len(src_words) for src_words in src_batch)
@@ -401,7 +426,7 @@ class Manager:
                     tgt_nums,
                     self.vocab.PAD,
                     self.device,
-                    zip(lemmas, senses) if self.dict else None,
+                    list(zip(lemmas, senses)) if self.dict else None,
                 )
             )
 
@@ -417,6 +442,7 @@ class Manager:
 
                 src_words = ['<BOS>'] + src_line.split() + ['<EOS>']
                 tgt_words = ['<BOS>'] + tgt_line.split() + ['<EOS>']
+
                 if self.max_length:
                     if len(src_words) > self.max_length:
                         src_words = src_words[: self.max_length]

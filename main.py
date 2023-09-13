@@ -34,7 +34,7 @@ def train_epoch(
         for i, (lemmas, _) in enumerate(batch._dict_data):
             for lemma_start, lemma_end in lemmas:
                 if random.random() <= manager.word_dropout:
-                    src_nums[lemma_start:lemma_end] = (lemma_end - lemma_start) * ['<UNK>']
+                    src_nums[i, lemma_start:lemma_end] = manager.vocab.UNK
 
         with torch.cuda.amp.autocast(enabled=False):
             logits = manager.model(src_nums, tgt_nums[:, :-1], src_mask, tgt_mask, dict_mask)
