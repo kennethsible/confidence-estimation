@@ -1,3 +1,4 @@
+import html
 import json
 import math
 import random
@@ -440,8 +441,8 @@ class Manager:
                 if not src_line or not tgt_line:
                     continue
 
-                src_words = ['<BOS>'] + src_line.split() + ['<EOS>']
-                tgt_words = ['<BOS>'] + tgt_line.split() + ['<EOS>']
+                src_words = ['<BOS>'] + html.unescape(src_line).split() + ['<EOS>']
+                tgt_words = ['<BOS>'] + html.unescape(tgt_line).split() + ['<EOS>']
 
                 if self.max_length:
                     if len(src_words) > self.max_length:

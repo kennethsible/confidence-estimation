@@ -131,6 +131,7 @@ done
 
 function lemmatize {
     output="$(python - << END
+import html
 from tqdm import tqdm
 from manager import Lemmatizer
 
@@ -143,7 +144,7 @@ with open('$1') as file:
         if not src_line or not tgt_line:
             continue
 
-        src_words = src_line.split()
+        src_words = html.unescape(src_line).split()
         if len(src_words) > $3 - 2:
             src_words = src_words[: $3 - 2]
 
