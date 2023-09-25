@@ -117,8 +117,8 @@ class MultiHeadAttention(nn.Module):
         ]
         if dict_mask is not None:
             if self.position == 'in':
-                dict_mask = torch.tensordot(torch.exp(self.weights), dict_mask, dims=([1], [0]))
+                dict_mask = torch.nan_to_num(torch.einsum('ij...,j...->', self.weights, dict_mask))
             else:
-                dict_mask = torch.tensordot(self.weights, dict_mask, dims=([1], [0]))
+                dict_mask = torch.einsum('ij...,j...->', self.weights, dict_mask)
         outputs = self.attention(query, key, value, mask, dict_mask)
         return self.linears[-1](self._reshape_to(outputs.transpose(1, 2)))
