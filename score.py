@@ -87,8 +87,8 @@ def main():
         codes_list,
         args.dict,
         args.freq,
-        lem_data=None,
-        lem_test=args.lem_test,
+        lem_data_file=None,
+        lem_test_file=args.lem_data,
         data_file=None,
         test_file=args.data,
     )
