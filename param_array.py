@@ -1,7 +1,6 @@
 import json
 import os
 from itertools import product
-from time import sleep
 
 queues = [
     'gpu@@nlp-a10',
@@ -39,7 +38,7 @@ def main():
             job_file.write(f'#!/bin/bash\n\n')
             job_file.write(f'touch {args.model}/{job_name}.log\n')
             job_file.write(f'fsync -d 30 {args.model}/{job_name}.log &\n\n')
-            job_file.write(f'mamba activate pytorch\n\n')
+            job_file.write(f'conda activate pytorch\n\n')
             job_file.write(f"python main.py --lang {' '.join(args.lang)} \\\n")
             job_file.write(f'  --data {args.data} \\\n')
             job_file.write(f'  --test {args.test} \\\n')
@@ -61,7 +60,6 @@ def main():
         os.system(
             f"{qf_submit} --name {job_name} --deferred -- -l gpu_card=1 {args.model}/{job_name}.sh"
         )
-        sleep(1)
     os.system('qf check')
 
 

@@ -51,6 +51,9 @@ def train_epoch(
             scaler.step(optimizer)
             scaler.update()
 
+        if loss.isnan():
+            print(loss)
+            exit()
         total_loss += batch_length * loss.item()
         num_tokens += batch_length
         del logits, loss
@@ -160,12 +163,9 @@ def main():
 
     append_data = None
     if 'append_dict' in config and config['append_dict']:
-        if config['append_dict'] == 1:
-            append_data = manager.append_dict_1(args.dict, tokenizer)
-        elif config['append_dict'] == 2:
-            append_data = manager.append_dict_2(args.dict, tokenizer)
+        append_data = manager.append_data(args.dict, tokenizer)
 
-    manager.data = manager.load_data(args.data, manager.lem_data, append_data)
+    manager.data = manager.load_data(args.data, manager.lem_data, append_data, tokenizer)
     manager.test = manager.load_data(args.test, manager.lem_test)
 
     if device == 'cuda' and torch.cuda.get_device_capability()[0] >= 8:

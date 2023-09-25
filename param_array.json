@@ -4,13 +4,11 @@
         0
     ],
     "append_dict": [
-        2,
         1,
         0
     ],
     "exp_position": [
         "out",
-        "in",
         "none"
     ],
     "word_dropout": [

@@ -196,6 +196,7 @@ class Manager:
     max_senses: int
     exp_position: str
     word_dropout: float
+    noise_prob: float
 
     def __init__(
         self,
@@ -296,16 +297,48 @@ class Manager:
             self._model_name,
         )
 
-    def append_senses(self, src_words, src_spans):
-        i = lemma_start = 1
-        lemmas, senses = [], []
+    def append_senses_noisy(self, src_words, src_spans, tokenizer):
+        lemma_start, common_words = 1, []
         for lemma, lemma_end in zip(*src_spans):
             word = ''
-            while src_words[i].endswith('@@'):
+            for i in range(lemma_start, lemma_end):
                 word += src_words[i].rstrip('@@')
-                i += 1
-            word += src_words[i]
-            i += 1
+            if word in self.dict:
+                if word in self.freq and self.freq[word] > self.threshold:
+                    common_words.append((word, word, (lemma_start, lemma_end)))
+            elif lemma in self.dict:
+                if lemma in self.freq and self.freq[lemma] > self.threshold:
+                    common_words.append((word, lemma, (lemma_start, lemma_end)))
+            lemma_start = lemma_end
+
+        word, lemma, (lemma_start, lemma_end) = random.choice(common_words)
+        word = tokenizer.tokenize(noisify(word)).split()
+        src_words[lemma_start:lemma_end] = word
+        lemma_end = lemma_start + len(word)
+
+        sense_start = len(src_words)
+        defs = self.dict[lemma][: self.max_senses]
+        defs = [sb for w in defs for sb in w.split()]
+        sense_end = sense_start + len(defs)
+        if sense_end > self.max_length:
+            return None, None
+        src_words.extend(defs)
+
+        return (lemma_start, lemma_end), (sense_start, sense_end)
+
+    def append_senses(self, src_words, src_spans, tokenizer=None):
+        lemmas, senses = [], []
+        if tokenizer and random.random() <= self.noise_prob:
+            lemma_span, sense_span = self.append_senses_noisy(src_words, src_spans, tokenizer)
+            if lemma_span and sense_span:
+                lemmas.append(lemma_span)
+                senses.append(sense_span)
+
+        lemma_start = 1
+        for lemma, lemma_end in zip(*src_spans):
+            word = ''
+            for i in range(lemma_start, lemma_end):
+                word += src_words[i].rstrip('@@')
 
             if word in self.dict:
                 if word not in self.freq or self.freq[word] <= self.threshold:
@@ -320,7 +353,7 @@ class Manager:
                     defs = [sb for w in defs for sb in w.split()]
                     sense_end = sense_start + len(defs)
                     if sense_end > self.max_length:
-                        break
+                        continue
                     src_words.extend(defs)
 
                     lemmas.append((lemma_start, lemma_end))
@@ -337,9 +370,9 @@ class Manager:
 
         return lemmas, senses
 
-    def append_dict_1(self, dict_file, tokenizer):
-        append_data = []
-        with open(dict_file) as file:
+    def append_data(self, data_file, tokenizer):
+        data = []
+        with open(data_file) as file:
             for lemma, sense in json.load(file).items():
                 src_words = tokenizer.tokenize(''.join(lemma)).split()
                 defs = sense[: self.max_senses]
@@ -354,27 +387,8 @@ class Manager:
                     if len(tgt_words) > self.max_length:
                         tgt_words = tgt_words[: self.max_length]
 
-                append_data.append((src_words, tgt_words, [], []))
-        return append_data
-
-    def append_dict_2(self, dict_file, tokenizer):
-        append_data = []
-        with open(dict_file) as file:
-            for lemma, sense in json.load(file).items():
-                src_words = tokenizer.tokenize(''.join(lemma)).split()
-                src_words = ['<BOS>'] + src_words + ['<EOS>']
-
-                for w in sense[: self.max_senses]:
-                    tgt_words = ['<BOS>'] + w.split() + ['<EOS>']
-
-                    if self.max_length:
-                        if len(src_words) > self.max_length:
-                            src_words = src_words[: self.max_length]
-                        if len(tgt_words) > self.max_length:
-                            tgt_words = tgt_words[: self.max_length]
-
-                    append_data.append((src_words, tgt_words, [], []))
-        return append_data
+                data.append((src_words, tgt_words, [], []))
+        return data
 
     def batch_data(self, data) -> list[Batch]:
         batched_data = []
@@ -433,7 +447,7 @@ class Manager:
 
         return batched_data
 
-    def load_data(self, data_file, src_spans=None, append_data=None):
+    def load_data(self, data_file, src_spans=None, append_data=None, tokenizer=None):
         i, data = 0, []
         with open(data_file) as file:
             for line in file.readlines():
@@ -451,7 +465,7 @@ class Manager:
                         tgt_words = tgt_words[: self.max_length]
 
                 if self.dict:
-                    lemmas, senses = self.append_senses(src_words, src_spans[i])
+                    lemmas, senses = self.append_senses(src_words, src_spans[i], tokenizer)
                     data.append((src_words, tgt_words, lemmas, senses))
                 else:
                     data.append((src_words, tgt_words, None, None))
