@@ -17,7 +17,7 @@ def translate_string(string: str, manager: Manager, tokenizer: Tokenizer) -> str
         src_spans = list(lemmatizer.lemmatize([src_words]))[0]
     src_words = ['<BOS>'] + src_words + ['<EOS>']
     if manager.dict:
-        lemmas, senses = manager.append_senses(src_words, src_spans, tokenizer)
+        lemmas, senses = manager.attach_senses(src_words, src_spans, tokenizer)
     else:
         dict_mask = None
 

@@ -193,10 +193,11 @@ class Manager:
     beam_size: int
     threshold: int
     learnable: int
+    lemmatize: int
     max_senses: int
     exp_position: str
     word_dropout: float
-    noise_prob: float
+    common_words: float
 
     def __init__(
         self,
@@ -297,27 +298,37 @@ class Manager:
             self._model_name,
         )
 
-    def append_senses_noisy(self, src_words, src_spans, tokenizer):
+    def _attach_senses(self, src_words, src_spans, tokenizer):
         lemma_start, common_words = 1, []
         for lemma, lemma_end in zip(*src_spans):
-            word = ''
+            headword = word = ''
             for i in range(lemma_start, lemma_end):
                 word += src_words[i].rstrip('@@')
+
             if word in self.dict:
                 if word in self.freq and self.freq[word] > self.threshold:
-                    common_words.append((word, word, (lemma_start, lemma_end)))
-            elif lemma in self.dict:
+                    headword = word
+            elif self.lemmatize == 'on' and lemma in self.dict:
                 if lemma in self.freq and self.freq[lemma] > self.threshold:
-                    common_words.append((word, lemma, (lemma_start, lemma_end)))
+                    headword = lemma
+
+            if headword:
+                common_words.append((word, headword, (lemma_start, lemma_end)))
+
             lemma_start = lemma_end
 
-        word, lemma, (lemma_start, lemma_end) = random.choice(common_words)
+        if not common_words:
+            return None, None
+        word, headword, (lemma_start, lemma_end) = random.choice(common_words)
         word = tokenizer.tokenize(noisify(word)).split()
+        shift = len(word) - (lemma_end - lemma_start)
+        if len(src_words) + shift > self.max_length:
+            return None, None
         src_words[lemma_start:lemma_end] = word
         lemma_end = lemma_start + len(word)
 
         sense_start = len(src_words)
-        defs = self.dict[lemma][: self.max_senses]
+        defs = self.dict[headword][: self.max_senses]
         defs = [sb for w in defs for sb in w.split()]
         sense_end = sense_start + len(defs)
         if sense_end > self.max_length:
@@ -326,51 +337,51 @@ class Manager:
 
         return (lemma_start, lemma_end), (sense_start, sense_end)
 
-    def append_senses(self, src_words, src_spans, tokenizer=None):
+    def attach_senses(self, src_words, src_spans, tokenizer=None):
         lemmas, senses = [], []
-        if tokenizer and random.random() <= self.noise_prob:
-            lemma_span, sense_span = self.append_senses_noisy(src_words, src_spans, tokenizer)
+        if tokenizer and random.random() <= self.common_words:
+            lemma_span, sense_span = self._attach_senses(src_words, src_spans, tokenizer)
             if lemma_span and sense_span:
                 lemmas.append(lemma_span)
                 senses.append(sense_span)
 
         lemma_start = 1
         for lemma, lemma_end in zip(*src_spans):
-            word = ''
+            headword = word = ''
             for i in range(lemma_start, lemma_end):
                 word += src_words[i].rstrip('@@')
 
             if word in self.dict:
                 if word not in self.freq or self.freq[word] <= self.threshold:
-                    lemma = word
-                else:
-                    lemma_start = lemma_end
-                    continue
-            if lemma in self.dict:
+                    headword = word
+            elif self.lemmatize == 'on' and lemma in self.dict:
                 if lemma not in self.freq or self.freq[lemma] <= self.threshold:
-                    sense_start = len(src_words)
-                    defs = self.dict[lemma][: self.max_senses]
-                    defs = [sb for w in defs for sb in w.split()]
-                    sense_end = sense_start + len(defs)
-                    if sense_end > self.max_length:
-                        continue
-                    src_words.extend(defs)
+                    headword = lemma
 
-                    lemmas.append((lemma_start, lemma_end))
-                    senses.append((sense_start, sense_end))
+            if headword:
+                sense_start = len(src_words)
+                defs = self.dict[headword][: self.max_senses]
+                defs = [sb for w in defs for sb in w.split()]
+                sense_end = sense_start + len(defs)
+                if sense_end > self.max_length:
+                    continue
+                src_words.extend(defs)
 
-                    ###= Unit Test =###
-                    # word = ''
-                    # for j in range(lemma_start, lemma_end):
-                    #     word += src_words[j].rstrip('@@')
-                    # assert similarity(word, lemma) >= 0.5
-                    ###################
+                lemmas.append((lemma_start, lemma_end))
+                senses.append((sense_start, sense_end))
+
+                ##= Unit Test =###
+                # word = ''
+                # for j in range(lemma_start, lemma_end):
+                #     word += src_words[j].rstrip('@@')
+                # assert similarity(word, lemma) >= 0.5
+                ##################
 
             lemma_start = lemma_end
 
         return lemmas, senses
 
-    def append_data(self, data_file, tokenizer):
+    def append_dict_data(self, data_file, tokenizer):
         data = []
         with open(data_file) as file:
             for lemma, sense in json.load(file).items():
@@ -465,8 +476,11 @@ class Manager:
                         tgt_words = tgt_words[: self.max_length]
 
                 if self.dict:
-                    lemmas, senses = self.append_senses(src_words, src_spans[i], tokenizer)
-                    data.append((src_words, tgt_words, lemmas, senses))
+                    lemmas, senses = self.attach_senses(src_words, src_spans[i], tokenizer)
+                    if self.learnable == 'none':
+                        data.append((src_words, tgt_words, None, None))
+                    else:
+                        data.append((src_words, tgt_words, lemmas, senses))
                 else:
                     data.append((src_words, tgt_words, None, None))
                 i += 1

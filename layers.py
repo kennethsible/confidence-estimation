@@ -69,7 +69,7 @@ class MultiHeadAttention(nn.Module):
         super(MultiHeadAttention, self).__init__()
         assert embed_dim % num_heads == 0
         self.linears = clone(nn.Linear(embed_dim, embed_dim), 4)
-        if learnable:
+        if learnable == 'on':
             self.weights = nn.Parameter(torch.zeros((num_heads, 2)))
         else:
             weights = torch.full((num_heads, 2), 1e9)
@@ -116,9 +116,7 @@ class MultiHeadAttention(nn.Module):
             for linear, x in zip(self.linears, (query, key, value))
         ]
         if dict_mask is not None:
-            if self.position == 'in':
-                dict_mask = torch.nan_to_num(torch.einsum('ij...,j...->', self.weights, dict_mask))
-            else:
-                dict_mask = torch.einsum('ij...,j...->', self.weights, dict_mask)
+            weights = torch.exp(self.weights) if self.position == 'in' else self.weights
+            dict_mask = torch.nan_to_num(torch.einsum('ij,j...->i...', weights, dict_mask))
         outputs = self.attention(query, key, value, mask, dict_mask)
         return self.linears[-1](self._reshape_to(outputs.transpose(1, 2)))

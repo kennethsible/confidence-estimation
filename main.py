@@ -77,6 +77,7 @@ def train_model(
 
     best_loss = torch.inf
     for epoch in range(manager.max_epochs):
+        # TODO reapply character-level noise every epoch
         random.shuffle(manager.data)
 
         model.train()
@@ -162,8 +163,8 @@ def main():
     tokenizer = Tokenizer(manager.bpe, src_lang, tgt_lang)
 
     append_data = None
-    if 'append_dict' in config and config['append_dict']:
-        append_data = manager.append_data(args.dict, tokenizer)
+    if 'append_dict' in config and config['append_dict'] == 'on':
+        append_data = manager.append_dict_data(args.dict, tokenizer)
 
     manager.data = manager.load_data(args.data, manager.lem_data, append_data, tokenizer)
     manager.test = manager.load_data(args.test, manager.lem_test)
