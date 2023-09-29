@@ -275,7 +275,7 @@ class Manager:
             with open(lem_data_file) as file:
                 for line in file:
                     words, spans = line.split('\t')
-                    self.lem_data.append((words.split(), list(map(int, spans.split()))))
+                    self.lem_data.append([words.split(), list(map(int, spans.split()))])
         self.lem_data_file = lem_data_file
 
         self.lem_test = None
@@ -284,7 +284,7 @@ class Manager:
             with open(lem_test_file) as file:
                 for line in file:
                     words, spans = line.split('\t')
-                    self.lem_test.append((words.split(), list(map(int, spans.split()))))
+                    self.lem_test.append([words.split(), list(map(int, spans.split()))])
         self.lem_test_file = lem_data_file
 
         self.data: list[Batch] | None = None
@@ -308,10 +308,10 @@ class Manager:
 
     def _attach_senses(self, src_words, src_spans, tokenizer):
         lemma_start, common_words = 1, []
-        for lemma, lemma_end in zip(*src_spans):
+        for i, (lemma, lemma_end) in enumerate(zip(*src_spans)):
             headword = word = ''
-            for i in range(lemma_start, lemma_end):
-                word += src_words[i].rstrip('@@')
+            for j in range(lemma_start, lemma_end):
+                word += src_words[j].rstrip('@@')
 
             if word in self.dict:
                 if word in self.freq and self.freq[word] > self.threshold:
@@ -321,14 +321,16 @@ class Manager:
                     headword = lemma
 
             if headword:
-                common_words.append((word, headword, (lemma_start, lemma_end)))
+                lemma_span = (lemma_start, lemma_end)
+                common_words.append((i, word, headword, lemma_span))
 
             lemma_start = lemma_end
 
         if not common_words:
             return None, None
-        word, headword, (lemma_start, lemma_end) = random.choice(common_words)
+        k, word, headword, lemma_span = random.choice(common_words)
         word = tokenizer.tokenize(noisify(word)).split()
+        lemma_start, lemma_end = lemma_span
         shift = len(word) - (lemma_end - lemma_start)
         if len(src_words) + shift > self.max_length:
             return None, None
@@ -341,9 +343,22 @@ class Manager:
         sense_end = sense_start + len(defs)
         if sense_end > self.max_length:
             return None, None
+
+        lemma_span = (lemma_start, lemma_end)
+        sense_span = (sense_start, sense_end)
         src_words.extend(defs)
 
-        return (lemma_start, lemma_end), (sense_start, sense_end)
+        for j, lemma_end in enumerate(src_spans[1][k:]):
+            src_spans[1][j + k] = lemma_end + shift
+
+        ##= Unit Test =###
+        # lemma_start = 1
+        # for lemma, lemma_end in zip(*src_spans):
+        #     print(lemma, src_words[lemma_start:lemma_end])
+        #     lemma_start = lemma_end
+        ##################
+
+        return lemma_span, sense_span
 
     def attach_senses(self, src_words, src_spans, tokenizer=None):
         lemmas, senses = [], []
