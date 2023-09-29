@@ -191,13 +191,14 @@ class Manager:
     batch_size: int
     max_length: int
     beam_size: int
-    threshold: int
-    learnable: int
-    lemmatize: int
-    max_senses: int
+    learnable: str
+    lemmatize: str
+    append_dict: str
     exp_position: str
     word_dropout: float
     common_words: float
+    threshold: int
+    max_senses: int
 
     def __init__(
         self,
@@ -257,6 +258,7 @@ class Manager:
         if dict_file:
             with open(dict_file) as file:
                 self.dict = json.load(file)
+        self.dict_file = dict_file
 
         self.freq = None
         if freq_file:
@@ -265,6 +267,7 @@ class Manager:
                 for line in file:
                     word, freq = line.split()
                     self.freq[word] = int(freq)
+        self.freq_file = freq_file
 
         self.lem_data = None
         if lem_data_file:
@@ -273,6 +276,7 @@ class Manager:
                 for line in file:
                     words, spans = line.split('\t')
                     self.lem_data.append((words.split(), list(map(int, spans.split()))))
+        self.lem_data_file = lem_data_file
 
         self.lem_test = None
         if lem_test_file:
@@ -281,9 +285,13 @@ class Manager:
                 for line in file:
                     words, spans = line.split('\t')
                     self.lem_test.append((words.split(), list(map(int, spans.split()))))
+        self.lem_test_file = lem_data_file
 
         self.data: list[Batch] | None = None
+        self.data_file = data_file
+
         self.test: list[Batch] | None = None
+        self.test_file = test_file
 
     def save_model(self):
         torch.save(

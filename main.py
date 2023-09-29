@@ -77,7 +77,14 @@ def train_model(
 
     best_loss = torch.inf
     for epoch in range(manager.max_epochs):
-        # TODO reapply character-level noise every epoch
+        if epoch > 0 and manager.common_words > 0:
+            manager.data = append_data = None
+            if manager.append_dict == 'on':
+                append_data = manager.append_dict_data(manager.dict_file, tokenizer)
+
+            manager.data = manager.load_data(
+                manager.data_file, manager.lem_data, append_data, tokenizer
+            )
         random.shuffle(manager.data)
 
         model.train()
