@@ -460,7 +460,7 @@ class Manager:
                     tgt_nums,
                     self.vocab.PAD,
                     self.device,
-                    list(zip(lemmas, senses)) if self.dict else None,
+                    list(zip(lemmas, senses)),
                 )
             )
 
@@ -486,11 +486,11 @@ class Manager:
                 if self.dict:
                     lemmas, senses = self.attach_senses(src_words, src_spans[i], tokenizer)
                     if self.learnable == 'none':
-                        data.append((src_words, tgt_words, None, None))
+                        data.append((src_words, tgt_words, [], []))
                     else:
                         data.append((src_words, tgt_words, lemmas, senses))
                 else:
-                    data.append((src_words, tgt_words, None, None))
+                    data.append((src_words, tgt_words, [], []))
                 i += 1
 
         if append_data:
