@@ -1,3 +1,4 @@
+import copy
 import html
 import json
 import math
@@ -363,6 +364,7 @@ class Manager:
     def attach_senses(self, src_words, src_spans, tokenizer=None):
         lemmas, senses = [], []
         if tokenizer and random.random() <= self.common_words:
+            src_spans = copy.deepcopy(src_spans)
             lemma_span, sense_span = self._attach_senses(src_words, src_spans, tokenizer)
             if lemma_span and sense_span:
                 lemmas.append(lemma_span)
