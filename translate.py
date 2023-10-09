@@ -17,7 +17,7 @@ def translate_string(string: str, manager: Manager, tokenizer: Tokenizer) -> str
         src_spans = list(lemmatizer.lemmatize([src_words]))[0]
     src_words = ['<BOS>'] + src_words + ['<EOS>']
     if manager.dict:
-        lemmas, senses = manager.attach_senses(src_words, src_spans, tokenizer)
+        lemmas, senses = manager.attach_senses(src_words, src_spans)
     else:
         dict_mask = None
 
@@ -55,7 +55,10 @@ def main():
     for i, arg in enumerate(unknown):
         if arg[:2] == '--' and len(unknown) > i:
             option, value = arg[2:].replace('-', '_'), unknown[i + 1]
-            config[option] = (int if value.isdigit() else float)(value)
+            try:
+                config[option] = (int if value.isdigit() else float)(value)
+            except ValueError:
+                config[option] = value
 
     manager = Manager(
         src_lang,

@@ -30,7 +30,7 @@ options:
   --config FILE     config file (.toml)
   --log FILE        log file (.log)
   --seed SEED       random seed
-  --tqdm            import tqdm
+  --tqdm            progress bar
 ```
 
 ## Score Model
@@ -44,7 +44,7 @@ options:
   --dict FILE      dictionary data
   --freq FILE      frequency data
   --lem-data FILE  lemmatized testing data
-  --tqdm           import tqdm
+  --tqdm           progress bar
 ```
 
 ## Translate Input

@@ -65,19 +65,17 @@ class ScaleNorm(nn.Module):
 
 
 class MultiHeadAttention(nn.Module):
-    def __init__(self, embed_dim: int, num_heads: int, dropout: float, position, learnable):
+    def __init__(self, embed_dim: int, num_heads: int, dropout: float, exp_function):
         super(MultiHeadAttention, self).__init__()
         assert embed_dim % num_heads == 0
         self.linears = clone(nn.Linear(embed_dim, embed_dim), 4)
-        if learnable == 'on':
-            self.weights = nn.Parameter(torch.zeros((num_heads, 2)))
-        else:
-            weights = torch.full((num_heads, 2), 1e9)
-            self.register_buffer('weights', weights)
+        self.weights = nn.Parameter(torch.zeros((num_heads, 2)))
+        # weights = torch.full((num_heads, 2), torch.inf)
+        # self.register_buffer('weights', weights)
         self.dropout = nn.Dropout(dropout)
         self.head_dim = embed_dim // num_heads
         self.num_heads = num_heads
-        self.position = position
+        self.exp_function = exp_function
 
     def attention(
         self,
@@ -91,7 +89,7 @@ class MultiHeadAttention(nn.Module):
         if mask is not None:
             scores.masked_fill_(mask.unsqueeze(1) == 0, -torch.inf)
         if dict_mask is not None:
-            if self.position == 'out':
+            if self.exp_function == 'out':
                 scores -= torch.exp(dict_mask.transpose(0, 1))
             else:
                 scores -= dict_mask.transpose(0, 1)
@@ -116,7 +114,7 @@ class MultiHeadAttention(nn.Module):
             for linear, x in zip(self.linears, (query, key, value))
         ]
         if dict_mask is not None:
-            weights = torch.exp(self.weights) if self.position == 'in' else self.weights
+            weights = torch.exp(self.weights) if self.exp_function == 'in' else self.weights
             dict_mask = torch.nan_to_num(torch.einsum('ij,j...->i...', weights, dict_mask))
         outputs = self.attention(query, key, value, mask, dict_mask)
         return self.linears[-1](self._reshape_to(outputs.transpose(1, 2)))

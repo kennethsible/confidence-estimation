@@ -192,12 +192,11 @@ class Manager:
     batch_size: int
     max_length: int
     beam_size: int
-    learnable: str
-    lemmatize: str
-    append_dict: str
-    exp_position: str
+    lemmatize: int
+    append_dict: int
     word_dropout: float
-    common_words: float
+    exp_function: str
+    noise_level: float
     threshold: int
     max_senses: int
 
@@ -245,8 +244,7 @@ class Manager:
             self.num_heads,
             self.dropout,
             self.num_layers,
-            self.exp_position,
-            self.learnable,
+            self.exp_function if dict_file else None,
         ).to(device)
 
         def init_weights(m):
@@ -317,7 +315,7 @@ class Manager:
             if word in self.dict:
                 if word in self.freq and self.freq[word] > self.threshold:
                     headword = word
-            elif self.lemmatize == 'on' and lemma in self.dict:
+            elif self.lemmatize and lemma in self.dict:
                 if lemma in self.freq and self.freq[lemma] > self.threshold:
                     headword = lemma
 
@@ -363,7 +361,7 @@ class Manager:
 
     def attach_senses(self, src_words, src_spans, tokenizer=None):
         lemmas, senses = [], []
-        if tokenizer and random.random() <= self.common_words:
+        if tokenizer and random.random() <= self.noise_level:
             src_spans = copy.deepcopy(src_spans)
             lemma_span, sense_span = self._attach_senses(src_words, src_spans, tokenizer)
             if lemma_span and sense_span:
@@ -379,7 +377,7 @@ class Manager:
             if word in self.dict:
                 if word not in self.freq or self.freq[word] <= self.threshold:
                     headword = word
-            elif self.lemmatize == 'on' and lemma in self.dict:
+            elif self.lemmatize and lemma in self.dict:
                 if lemma not in self.freq or self.freq[lemma] <= self.threshold:
                     headword = lemma
 
@@ -439,7 +437,12 @@ class Manager:
             while True:
                 batch_size = min(self.batch_size // (max(src_len, tgt_len) * 8) * 8, 1000)
 
-                src_batch, tgt_batch, lemmas, senses = zip(*data[i : (i + batch_size)])
+                if self.dict:
+                    src_batch, tgt_batch, lemmas, senses = zip(*data[i : (i + batch_size)])
+                else:
+                    src_batch, tgt_batch = zip(*data[i : (i + batch_size)])
+                dict_data = list(zip(lemmas, senses)) if self.dict else None
+
                 max_src_len = max(len(src_words) for src_words in src_batch)
                 max_tgt_len = max(len(tgt_words) for tgt_words in tgt_batch)
 
@@ -477,7 +480,7 @@ class Manager:
                     tgt_nums,
                     self.vocab.PAD,
                     self.device,
-                    list(zip(lemmas, senses)),
+                    dict_data,
                 )
             )
 
@@ -502,12 +505,9 @@ class Manager:
 
                 if self.dict:
                     lemmas, senses = self.attach_senses(src_words, src_spans[i], tokenizer)
-                    if self.learnable == 'none':
-                        data.append((src_words, tgt_words, [], []))
-                    else:
-                        data.append((src_words, tgt_words, lemmas, senses))
+                    data.append((src_words, tgt_words, lemmas, senses))
                 else:
-                    data.append((src_words, tgt_words, [], []))
+                    data.append((src_words, tgt_words))
                 i += 1
 
         if append_data:

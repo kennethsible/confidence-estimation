@@ -60,7 +60,7 @@ def main():
     parser.add_argument('--dict', metavar='FILE', required=False, help='dictionary data')
     parser.add_argument('--freq', metavar='FILE', required=False, help='frequency data')
     parser.add_argument('--lem-data', metavar='FILE', help='lemmatized testing data')
-    parser.add_argument('--tqdm', action='store_true', help='import tqdm')
+    parser.add_argument('--tqdm', action='store_true', help='progress bar')
     args, unknown = parser.parse_known_args()
 
     if args.dict or args.freq:
@@ -75,7 +75,10 @@ def main():
     for i, arg in enumerate(unknown):
         if arg[:2] == '--' and len(unknown) > i:
             option, value = arg[2:].replace('-', '_'), unknown[i + 1]
-            config[option] = (int if value.isdigit() else float)(value)
+            try:
+                config[option] = (int if value.isdigit() else float)(value)
+            except ValueError:
+                config[option] = value
 
     manager = Manager(
         src_lang,
