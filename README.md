@@ -11,6 +11,8 @@ and any output from `stdout` can be diverted using the output redirection operat
 $ python translate.py --model model.deen.pt --file input.de > output.en
 ```
 
+German-English Dictionary from Technische Universität Chemnitz ([Source](https://ftp.tu-chemnitz.de/pub/Local/urz/ding/de-en-devel/))
+
 ## Preprocess Data
 ```
 usage: preprocess.py [-h] --lang LANG LANG --merge-ops FILE --max-length FILE --len-ratio FILE
