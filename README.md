@@ -11,6 +11,18 @@ and any output from `stdout` can be diverted using the output redirection operat
 $ python translate.py --model model.deen.pt --file input.de > output.en
 ```
 
+## Preprocess Data
+```
+usage: preprocess.py [-h] --lang LANG LANG --merge-ops FILE --max-length FILE --len-ratio FILE
+
+options:
+  -h, --help         show this help message and exit
+  --lang LANG LANG   source/target language
+  --merge-ops FILE   merge operations (BPE)
+  --max-length FILE  maximum string length
+  --len-ratio FILE   maximum length ratio
+```
+
 ## Train Model
 ```
 usage: main.py [-h] --lang LANG LANG --data FILE --test FILE [--dict FILE] [--freq FILE] [--lem-data FILE] [--lem-test FILE] --vocab FILE --codes FILE --model FILE --config FILE --log FILE [--seed SEED] [--tqdm]

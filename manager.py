@@ -1,5 +1,4 @@
 import copy
-import html
 import json
 import math
 import random
@@ -11,7 +10,7 @@ from io import StringIO
 import spacy
 import torch
 import torch.nn as nn
-from sacremoses import MosesDetokenizer, MosesTokenizer
+from sacremoses import MosesDetokenizer, MosesPunctNormalizer, MosesTokenizer
 from subword_nmt.apply_bpe import BPE
 from torch import Tensor
 
@@ -137,11 +136,13 @@ class Tokenizer:
         self.bpe = bpe
         self.src_lang = src_lang
         self.tgt_lang = tgt_lang
+        self.normalizer = MosesPunctNormalizer()
         self.tokenizer = MosesTokenizer(src_lang)
         lang = tgt_lang if tgt_lang else src_lang
         self.detokenizer = MosesDetokenizer(lang)
 
     def tokenize(self, text: str) -> str:
+        text = self.normalizer.normalize(text)
         tokens = self.tokenizer.tokenize(text)
         return self.bpe.process_line(' '.join(tokens))
 
@@ -487,28 +488,18 @@ class Manager:
         return batched_data
 
     def load_data(self, data_file, src_spans=None, append_data=None, tokenizer=None):
-        i, data = 0, []
+        data = []
         with open(data_file) as file:
-            for line in file.readlines():
+            for i, line in enumerate(file.readlines()):
                 src_line, tgt_line = line.split('\t')
-                if not src_line or not tgt_line:
-                    continue
-
-                src_words = ['<BOS>'] + html.unescape(src_line).split() + ['<EOS>']
-                tgt_words = ['<BOS>'] + html.unescape(tgt_line).split() + ['<EOS>']
-
-                if self.max_length:
-                    if len(src_words) > self.max_length:
-                        src_words = src_words[: self.max_length]
-                    if len(tgt_words) > self.max_length:
-                        tgt_words = tgt_words[: self.max_length]
+                src_words = ['<BOS>'] + src_line.split() + ['<EOS>']
+                tgt_words = ['<BOS>'] + tgt_line.split() + ['<EOS>']
 
                 if self.dict:
                     lemmas, senses = self.attach_senses(src_words, src_spans[i], tokenizer)
                     data.append((src_words, tgt_words, lemmas, senses))
                 else:
                     data.append((src_words, tgt_words))
-                i += 1
 
         if append_data:
             data.extend(append_data)
