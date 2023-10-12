@@ -1,4 +1,3 @@
-import copy
 import json
 import math
 import random
@@ -106,15 +105,15 @@ class Batch:
     def dict_mask_from_data(dict_data, mask_size, device):
         dict_mask = torch.zeros(mask_size, device=device).repeat((2, 1, mask_size[-1], 1))
         for i, (lemmas, senses) in enumerate(dict_data):
-            if len(senses) > 0:
-                c_first = senses[0][0]
-            for (a, b), (c, d) in zip(lemmas, senses):
-                # only lemmas can attend to their senses
-                dict_mask[0, i, :c_first, c:d] = 1.0
-                dict_mask[0, i, a:b, c:d] = 0.0
-                # senses can only attend to themselves
-                dict_mask[1, i, c:d, :] = 1.0
-                dict_mask[1, i, c:d, c:d] = 0.0
+            for (a, b), sense_spans in zip(lemmas, senses):
+                for c, d in sense_spans:
+                    # only lemmas can attend to their senses
+                    dict_mask[0, i, :, c:d] = 1.0
+                    dict_mask[0, i, a:b, c:d] = 0.0
+                    dict_mask[0, i, c:d, c:d] = 0.0
+                    # senses can only attend to themselves
+                    dict_mask[1, i, c:d, :] = 1.0
+                    dict_mask[1, i, c:d, c:d] = 0.0
         return dict_mask
 
     @property
@@ -363,43 +362,51 @@ class Manager:
     def attach_senses(self, src_words, src_spans, tokenizer=None):
         lemmas, senses = [], []
         if tokenizer and random.random() <= self.noise_level:
-            src_spans = copy.deepcopy(src_spans)
-            lemma_span, sense_span = self._attach_senses(src_words, src_spans, tokenizer)
-            if lemma_span and sense_span:
-                lemmas.append(lemma_span)
-                senses.append(sense_span)
+            raise NotImplementedError('noise-level out-of-date')
+        #     src_spans = copy.deepcopy(src_spans)
+        #     lemma_span, sense_span = self._attach_senses(src_words, src_spans, tokenizer)
+        #     if lemma_span and sense_span:
+        #         lemmas.append(lemma_span)
+        #         senses.append(sense_span)
 
         lemma_start = 1
         for lemma, lemma_end in zip(*src_spans):
-            headword = word = ''
+            word = ''
             for i in range(lemma_start, lemma_end):
                 word += src_words[i].rstrip('@@')
 
-            if word in self.dict:
-                if word not in self.freq or self.freq[word] <= self.threshold:
-                    headword = word
-            elif self.lemmatize and lemma in self.dict:
-                if lemma not in self.freq or self.freq[lemma] <= self.threshold:
-                    headword = lemma
+            headword = (
+                word
+                if word in self.dict
+                and (word not in self.freq or self.freq[word] <= self.threshold)
+                else (
+                    lemma
+                    if self.lemmatize
+                    and lemma in self.dict
+                    and (lemma not in self.freq or self.freq[lemma] <= self.threshold)
+                    else ''
+                )
+            )
 
-            if headword:
-                sense_start = len(src_words)
+            if len(headword) > 0:
                 defs = self.dict[headword][: self.max_senses]
-                defs = [sb for w in defs for sb in w.split()]
-                sense_end = sense_start + len(defs)
-                if sense_end > self.max_length:
-                    continue
-                src_words.extend(defs)
+                sense_start, sense_spans = len(src_words), []
+                for w in defs:
+                    sense_end = sense_start + len(w.split())
+                    sense_spans.append((sense_start, sense_end))
+                    sense_start = sense_end
+                if sense_end <= self.max_length:
+                    for w in defs:
+                        src_words.extend(w.split())
+                    lemmas.append((lemma_start, lemma_end))
+                    senses.append(sense_spans)
 
-                lemmas.append((lemma_start, lemma_end))
-                senses.append((sense_start, sense_end))
-
-                ##= Unit Test =###
-                # word = ''
-                # for j in range(lemma_start, lemma_end):
-                #     word += src_words[j].rstrip('@@')
-                # assert similarity(word, lemma) >= 0.5
-                ##################
+                    ##= Unit Test =###
+                    # word = ''
+                    # for j in range(lemma_start, lemma_end):
+                    #     word += src_words[j].rstrip('@@')
+                    # assert similarity(word, lemma) >= 0.5
+                    ##################
 
             lemma_start = lemma_end
 
@@ -408,21 +415,14 @@ class Manager:
     def append_dict_data(self, data_file, tokenizer):
         data = []
         with open(data_file) as file:
-            for lemma, sense in json.load(file).items():
-                src_words = tokenizer.tokenize(''.join(lemma)).split()
-                defs = sense[: self.max_senses]
-                tgt_words = [sb for w in defs for sb in w.split()]
-
+            for headword, senses in json.load(file).items():
+                src_words = tokenizer.tokenize(''.join(headword)).split()
                 src_words = ['<BOS>'] + src_words + ['<EOS>']
-                tgt_words = ['<BOS>'] + tgt_words + ['<EOS>']
-
-                if self.max_length:
-                    if len(src_words) > self.max_length:
-                        src_words = src_words[: self.max_length]
-                    if len(tgt_words) > self.max_length:
-                        tgt_words = tgt_words[: self.max_length]
-
-                data.append((src_words, tgt_words, [], []))
+                for sense in senses[: self.max_senses]:
+                    src_words += sense.split()
+                    tgt_words = ['<BOS>'] + sense.split() + ['<EOS>']
+                    if len(src_words) <= self.max_length and len(tgt_words) <= self.max_length:
+                        data.append((src_words, tgt_words, [], []))
         return data
 
     def batch_data(self, data) -> list[Batch]:
