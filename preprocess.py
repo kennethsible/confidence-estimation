@@ -56,7 +56,10 @@ def sgml_to_text(sgml_file: str, text_file: str):
 
 def download(url: str, outfile: str):
     os.system(f'wget -q -O {outfile} {url} --show-progress')
-    os.system(f'tar -xzf {outfile} -C data && rm {outfile}')
+    if url.split('.')[-1] == 'gz':
+        os.system(f'gzip -cd {outfile} > data/{outfile} && rm {outfile}')
+    else:
+        os.system(f'tar -xzf {outfile} -C data && rm {outfile}')
 
 
 def main():
