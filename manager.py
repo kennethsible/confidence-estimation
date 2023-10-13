@@ -1,3 +1,4 @@
+import copy
 import json
 import math
 import random
@@ -113,6 +114,7 @@ class Batch:
                     dict_mask[0, i, c:d, c:d] = 0.0
                     # senses can only attend to themselves
                     dict_mask[1, i, c:d, :] = 1.0
+                    dict_mask[1, i, c:d, a:b] = 0.0
                     dict_mask[1, i, c:d, c:d] = 0.0
         return dict_mask
 
@@ -308,18 +310,24 @@ class Manager:
     def _attach_senses(self, src_words, src_spans, tokenizer):
         lemma_start, common_words = 1, []
         for i, (lemma, lemma_end) in enumerate(zip(*src_spans)):
-            headword = word = ''
+            word = ''
             for j in range(lemma_start, lemma_end):
                 word += src_words[j].rstrip('@@')
 
-            if word in self.dict:
-                if word in self.freq and self.freq[word] > self.threshold:
-                    headword = word
-            elif self.lemmatize and lemma in self.dict:
-                if lemma in self.freq and self.freq[lemma] > self.threshold:
-                    headword = lemma
+            headword = (
+                word
+                if word in self.dict
+                and (word not in self.freq or self.freq[word] <= self.threshold)
+                else (
+                    lemma
+                    if self.lemmatize
+                    and lemma in self.dict
+                    and (lemma not in self.freq or self.freq[lemma] <= self.threshold)
+                    else ''
+                )
+            )
 
-            if headword:
+            if len(headword) > 0:
                 lemma_span = (lemma_start, lemma_end)
                 common_words.append((i, word, headword, lemma_span))
 
@@ -336,16 +344,17 @@ class Manager:
         src_words[lemma_start:lemma_end] = word
         lemma_end = lemma_start + len(word)
 
-        sense_start = len(src_words)
         defs = self.dict[headword][: self.max_senses]
-        defs = [sb for w in defs for sb in w.split()]
-        sense_end = sense_start + len(defs)
+        sense_start, sense_spans = len(src_words), []
+        for w in defs:
+            sense_end = sense_start + len(w.split())
+            sense_spans.append((sense_start, sense_end))
+            sense_start = sense_end
         if sense_end > self.max_length:
             return None, None
 
-        lemma_span = (lemma_start, lemma_end)
-        sense_span = (sense_start, sense_end)
-        src_words.extend(defs)
+        for w in defs:
+            src_words.extend(w.split())
 
         for j, lemma_end in enumerate(src_spans[1][k:]):
             src_spans[1][j + k] = lemma_end + shift
@@ -357,17 +366,16 @@ class Manager:
         #     lemma_start = lemma_end
         ##################
 
-        return lemma_span, sense_span
+        return lemma_span, sense_spans
 
     def attach_senses(self, src_words, src_spans, tokenizer=None):
         lemmas, senses = [], []
         if tokenizer and random.random() <= self.noise_level:
-            raise NotImplementedError('noise-level out-of-date')
-        #     src_spans = copy.deepcopy(src_spans)
-        #     lemma_span, sense_span = self._attach_senses(src_words, src_spans, tokenizer)
-        #     if lemma_span and sense_span:
-        #         lemmas.append(lemma_span)
-        #         senses.append(sense_span)
+            src_spans = copy.deepcopy(src_spans)
+            lemma_span, sense_spans = self._attach_senses(src_words, src_spans, tokenizer)
+            if lemma_span and sense_spans:
+                lemmas.append(lemma_span)
+                senses.append(sense_spans)
 
         lemma_start = 1
         for lemma, lemma_end in zip(*src_spans):
