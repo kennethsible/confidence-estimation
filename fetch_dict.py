@@ -98,7 +98,7 @@ def main():
 
     with open('data/dict.json', 'w') as dict_file:
         deen_dict = dict(sorted(deen_dict.items(), key=lambda x: x[0]))
-        json.dump(deen_dict, dict_file, indent=4)
+        json.dump(deen_dict, dict_file, indent=4, ensure_ascii=False)
     print(len(deen_dict), 'data/dict.json')
 
 

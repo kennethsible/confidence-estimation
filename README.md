@@ -49,15 +49,15 @@ options:
 
 ## Score Model
 ```
-usage: score.py [-h] --data FILE --model FILE [--dict FILE] [--freq FILE] [--lem-data FILE] [--tqdm]
+usage: score.py [-h] --test FILE --model FILE [--dict FILE] [--freq FILE] [--lem-test FILE] [--tqdm]
 
 options:
   -h, --help       show this help message and exit
-  --data FILE      testing data
+  --test FILE      testing data
   --model FILE     model file (.pt)
   --dict FILE      dictionary data
   --freq FILE      frequency data
-  --lem-data FILE  lemmatized testing data
+  --lem-test FILE  lemmatized testing data
   --tqdm           progress bar
 ```
 

@@ -55,11 +55,11 @@ def score_model(
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--data', metavar='FILE', required=True, help='testing data')
+    parser.add_argument('--test', metavar='FILE', required=True, help='testing data')
     parser.add_argument('--model', metavar='FILE', required=True, help='model file (.pt)')
     parser.add_argument('--dict', metavar='FILE', required=False, help='dictionary data')
     parser.add_argument('--freq', metavar='FILE', required=False, help='frequency data')
-    parser.add_argument('--lem-data', metavar='FILE', help='lemmatized testing data')
+    parser.add_argument('--lem-test', metavar='FILE', help='lemmatized testing data')
     parser.add_argument('--tqdm', action='store_true', help='progress bar')
     args, unknown = parser.parse_known_args()
 
@@ -91,13 +91,13 @@ def main():
         args.dict,
         args.freq,
         lem_data_file=None,
-        lem_test_file=args.lem_data,
+        lem_test_file=args.lem_test,
         data_file=None,
-        test_file=args.data,
+        test_file=args.test,
     )
     manager.model.load_state_dict(model_dict['state_dict'])
     tokenizer = Tokenizer(manager.bpe, src_lang, tgt_lang)
-    manager.test = manager.load_data(args.data, manager.lem_test)
+    manager.test = manager.load_data(args.test, manager.lem_test)
 
     if device == 'cuda' and torch.cuda.get_device_capability()[0] >= 8:
         torch.set_float32_matmul_precision('high')

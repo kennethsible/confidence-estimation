@@ -31,10 +31,6 @@ def train_epoch(
         src_nums, src_mask = batch.src_nums, batch.src_mask
         tgt_nums, tgt_mask = batch.tgt_nums, batch.tgt_mask
         dict_mask, batch_length = batch.dict_mask, batch.length()
-        for i, (lemmas, _) in enumerate(batch._dict_data):
-            for lemma_start, lemma_end in lemmas:
-                if random.random() <= manager.word_dropout:
-                    src_nums[i, lemma_start:lemma_end] = manager.vocab.UNK
 
         with torch.cuda.amp.autocast(enabled=False):
             logits = manager.model(src_nums, tgt_nums[:, :-1], src_mask, tgt_mask, dict_mask)
@@ -74,13 +70,9 @@ def train_model(
 
     best_loss = torch.inf
     for epoch in range(manager.max_epochs):
-        if epoch > 0 and manager.noise_level > 0:
-            manager.data = append_data = None
-            if manager.append_dict:
-                append_data = manager.append_dict_data(manager.dict_file, tokenizer)
-            manager.data = manager.load_data(
-                manager.data_file, manager.lem_data, append_data, tokenizer
-            )
+        if epoch > 0 and manager.dict_file and manager.lem_data:
+            manager.data = manager.load_data(manager.data_file, manager.lem_data, tokenizer)
+        assert manager.data is not None
         random.shuffle(manager.data)
 
         model.train()
@@ -165,12 +157,8 @@ def main():
     )
     tokenizer = Tokenizer(manager.bpe, src_lang, tgt_lang)
 
-    append_data = None
-    if 'append_dict' in config and config['append_dict']:
-        append_data = manager.append_dict_data(args.dict, tokenizer)
-
-    manager.data = manager.load_data(args.data, manager.lem_data, append_data, tokenizer)
-    manager.test = manager.load_data(args.test, manager.lem_test)
+    manager.data = manager.load_data(args.data, manager.lem_data, tokenizer)
+    manager.test = manager.load_data(args.test, manager.lem_test, tokenizer)
 
     if device == 'cuda' and torch.cuda.get_device_capability()[0] >= 8:
         torch.set_float32_matmul_precision('high')

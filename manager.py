@@ -1,12 +1,10 @@
-import copy
 import json
 import math
 import random
 import re
-
-# from difflib import SequenceMatcher
 from io import StringIO
 
+import numpy as np
 import spacy
 import torch
 import torch.nn as nn
@@ -17,23 +15,40 @@ from torch import Tensor
 from decoder import triu_mask
 from model import Model
 
-# def similarity(a: str, b: str) -> float:
-#     return SequenceMatcher(None, a, b).ratio()
+
+def skewdist(size: int) -> list[int]:
+    r = int(0.6 * size)
+    p = r * [5.0] + (size - r) * [1.0]
+    return (p / np.sum(p)).tolist()
 
 
-def noisify(text: str) -> str:
-    i, chars = random.choice(range(len(text))), list(text)
+def noisify(text: str, uniform: bool = False) -> str:
+    if uniform:
+        i = random.choice(range(len(text)))
+    else:
+        i = np.random.choice(range(len(text)), p=skewdist(len(text)))
+    chars = list(text)
     if i == 0 and chars[0].isupper():
-        chars[i] = random.choice([chr(i) for i in range(65, 91)] + list('ÄÖÜ'))
+        alphabet = [chr(i) for i in range(65, 91)] + list('ÄÖÜ')
+        if uniform:
+            chars[i] = random.choice(alphabet)
+        else:
+            chars[i] = np.random.choice(alphabet, p=skewdist(len(alphabet)))
     else:
         alphabet = [chr(i) for i in range(97, 123)] + list('äöüß')
         match random.randint(1, 3 if i + 1 == len(chars) else 4):
             case 1:  # Insert
-                chars.insert(i, random.choice(alphabet))
+                if uniform:
+                    chars.insert(i, random.choice(alphabet))
+                else:
+                    chars.insert(i, np.random.choice(alphabet, p=skewdist(len(alphabet))))
             case 2:  # Delete
                 chars.pop(i)
             case 3:  # Replace
-                chars[i] = random.choice(alphabet)
+                if uniform:
+                    chars[i] = random.choice(alphabet)
+                else:
+                    chars[i] = np.random.choice(alphabet, p=skewdist(len(alphabet)))
             case 4:  # Swap
                 chars[i], chars[i + 1] = chars[i + 1], chars[i]
     return ''.join(chars)
@@ -144,7 +159,7 @@ class Tokenizer:
 
     def tokenize(self, text: str) -> str:
         text = self.normalizer.normalize(text)
-        tokens = self.tokenizer.tokenize(text)
+        tokens = self.tokenizer.tokenize(text, escape=False)
         return self.bpe.process_line(' '.join(tokens))
 
     def detokenize(self, tokens: list[str]) -> str:
@@ -194,11 +209,8 @@ class Manager:
     batch_size: int
     max_length: int
     beam_size: int
-    lemmatize: int
-    append_dict: int
-    word_dropout: float
     exp_function: str
-    noise_level: float
+    uniform_dist: int
     threshold: int
     max_senses: int
 
@@ -307,78 +319,14 @@ class Manager:
             self._model_name,
         )
 
-    def _attach_senses(self, src_words, src_spans, tokenizer):
-        lemma_start, common_words = 1, []
-        for i, (lemma, lemma_end) in enumerate(zip(*src_spans)):
-            word = ''
-            for j in range(lemma_start, lemma_end):
-                word += src_words[j].rstrip('@@')
-
-            headword = (
-                word
-                if word in self.dict
-                and (word not in self.freq or self.freq[word] <= self.threshold)
-                else (
-                    lemma
-                    if self.lemmatize
-                    and lemma in self.dict
-                    and (lemma not in self.freq or self.freq[lemma] <= self.threshold)
-                    else ''
-                )
-            )
-
-            if len(headword) > 0:
-                lemma_span = (lemma_start, lemma_end)
-                common_words.append((i, word, headword, lemma_span))
-
-            lemma_start = lemma_end
-
-        if not common_words:
-            return None, None
-        k, word, headword, lemma_span = random.choice(common_words)
-        word = tokenizer.tokenize(noisify(word)).split()
-        lemma_start, lemma_end = lemma_span
-        shift = len(word) - (lemma_end - lemma_start)
-        if len(src_words) + shift > self.max_length:
-            return None, None
-        src_words[lemma_start:lemma_end] = word
-        lemma_end = lemma_start + len(word)
-
-        defs = self.dict[headword][: self.max_senses]
-        sense_start, sense_spans = len(src_words), []
-        for w in defs:
-            sense_end = sense_start + len(w.split())
-            sense_spans.append((sense_start, sense_end))
-            sense_start = sense_end
-        if sense_end > self.max_length:
-            return None, None
-
-        for w in defs:
-            src_words.extend(w.split())
-
-        for j, lemma_end in enumerate(src_spans[1][k:]):
-            src_spans[1][j + k] = lemma_end + shift
-
-        ##= Unit Test =###
-        # lemma_start = 1
-        # for lemma, lemma_end in zip(*src_spans):
-        #     print(lemma, src_words[lemma_start:lemma_end])
-        #     lemma_start = lemma_end
-        ##################
-
-        return lemma_span, sense_spans
-
-    def attach_senses(self, src_words, src_spans, tokenizer=None):
+    def attach_senses(self, src_words, src_spans, tokenizer):
         lemmas, senses = [], []
-        if tokenizer and random.random() <= self.noise_level:
-            src_spans = copy.deepcopy(src_spans)
-            lemma_span, sense_spans = self._attach_senses(src_words, src_spans, tokenizer)
-            if lemma_span and sense_spans:
-                lemmas.append(lemma_span)
-                senses.append(sense_spans)
 
+        headwords = []
         lemma_start = 1
-        for lemma, lemma_end in zip(*src_spans):
+        total_shift = 0
+        for k, (lemma, lemma_end) in enumerate(zip(*src_spans)):
+            lemma_end += total_shift
             word = ''
             for i in range(lemma_start, lemma_end):
                 word += src_words[i].rstrip('@@')
@@ -389,49 +337,41 @@ class Manager:
                 and (word not in self.freq or self.freq[word] <= self.threshold)
                 else (
                     lemma
-                    if self.lemmatize
-                    and lemma in self.dict
+                    if lemma in self.dict
                     and (lemma not in self.freq or self.freq[lemma] <= self.threshold)
                     else ''
                 )
             )
 
             if len(headword) > 0:
-                defs = self.dict[headword][: self.max_senses]
-                sense_start, sense_spans = len(src_words), []
-                for w in defs:
-                    sense_end = sense_start + len(w.split())
-                    sense_spans.append((sense_start, sense_end))
-                    sense_start = sense_end
-                if sense_end <= self.max_length:
-                    for w in defs:
-                        src_words.extend(w.split())
-                    lemmas.append((lemma_start, lemma_end))
-                    senses.append(sense_spans)
-
-                    ##= Unit Test =###
-                    # word = ''
-                    # for j in range(lemma_start, lemma_end):
-                    #     word += src_words[j].rstrip('@@')
-                    # assert similarity(word, lemma) >= 0.5
-                    ##################
+                word = tokenizer.tokenize(noisify(word, self.uniform_dist)).split()
+                shift = len(word) - (lemma_end - lemma_start)
+                if len(src_words) + shift > self.max_length:
+                    lemma_start = lemma_end
+                    continue
+                headwords.append(headword)
+                total_shift += shift
+                src_words[lemma_start:lemma_end] = word
+                lemma_end = lemma_start + len(word)
+                lemmas.append((lemma_start, lemma_end))
 
             lemma_start = lemma_end
 
-        return lemmas, senses
+        for i, headword in enumerate(headwords):
+            defs = self.dict[headword][: self.max_senses]
+            sense_start, sense_spans = len(src_words), []
+            for w in defs:
+                sense_end = sense_start + len(w.split())
+                sense_spans.append((sense_start, sense_end))
+                sense_start = sense_end
+            if sense_end > self.max_length:
+                lemmas = lemmas[:i]
+                break
+            for w in defs:
+                src_words.extend(w.split())
+            senses.append(sense_spans)
 
-    def append_dict_data(self, data_file, tokenizer):
-        data = []
-        with open(data_file) as file:
-            for headword, senses in json.load(file).items():
-                src_words = tokenizer.tokenize(''.join(headword)).split()
-                src_words = ['<BOS>'] + src_words + ['<EOS>']
-                for sense in senses[: self.max_senses]:
-                    src_words += sense.split()
-                    tgt_words = ['<BOS>'] + sense.split() + ['<EOS>']
-                    if len(src_words) <= self.max_length and len(tgt_words) <= self.max_length:
-                        data.append((src_words, tgt_words, [], []))
-        return data
+        return lemmas, senses
 
     def batch_data(self, data) -> list[Batch]:
         batched_data = []
@@ -495,7 +435,7 @@ class Manager:
 
         return batched_data
 
-    def load_data(self, data_file, src_spans=None, append_data=None, tokenizer=None):
+    def load_data(self, data_file, src_spans=None, tokenizer=None):
         data = []
         with open(data_file) as file:
             for i, line in enumerate(file.readlines()):
@@ -508,8 +448,5 @@ class Manager:
                     data.append((src_words, tgt_words, lemmas, senses))
                 else:
                     data.append((src_words, tgt_words))
-
-        if append_data:
-            data.extend(append_data)
 
         return self.batch_data(data)
