@@ -1,12 +1,18 @@
 {
-    "uniform_dist": [
-        0,
+    "apply_noise": [
         1
+    ],
+    "uniform_dist": [
+        0
     ],
     "exp_function": [
         "in",
         "out",
         "none"
+    ],
+    "max_senses": [
+        10,
+        1
     ],
     "threshold": [
         50,

@@ -1,8 +1,10 @@
 import logging
+import random
 import time
 from datetime import timedelta
 
 import comet
+import numpy
 import torch
 from sacrebleu.metrics import BLEU, CHRF
 from tqdm import tqdm
@@ -60,11 +62,17 @@ def main():
     parser.add_argument('--dict', metavar='FILE', required=False, help='dictionary data')
     parser.add_argument('--freq', metavar='FILE', required=False, help='frequency data')
     parser.add_argument('--lem-test', metavar='FILE', help='lemmatized testing data')
+    parser.add_argument('--seed', type=int, help='random seed')
     parser.add_argument('--tqdm', action='store_true', help='progress bar')
     args, unknown = parser.parse_known_args()
 
     if args.dict or args.freq:
         assert args.dict and args.freq
+
+    if args.seed:
+        random.seed(args.seed)
+        numpy.random.seed(args.seed)
+        torch.manual_seed(args.seed)
 
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     model_dict = torch.load(args.model, map_location=device)

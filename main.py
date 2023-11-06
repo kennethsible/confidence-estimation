@@ -5,6 +5,7 @@ import time
 import tomllib
 from datetime import timedelta
 
+import numpy
 import torch
 from tqdm import tqdm
 
@@ -125,6 +126,7 @@ def main():
 
     if args.seed:
         random.seed(args.seed)
+        numpy.random.seed(args.seed)
         torch.manual_seed(args.seed)
 
     src_lang, tgt_lang = args.lang

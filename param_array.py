@@ -22,6 +22,7 @@ def main():
     parser.add_argument('--vocab', metavar='FILE', required=True, help='vocab file (shared)')
     parser.add_argument('--codes', metavar='FILE', required=True, help='codes file (shared)')
     parser.add_argument('--model', metavar='FILE', required=True, help='model name')
+    parser.add_argument('--seed', type=int, required=False, help='random seed')
     args = parser.parse_args()
 
     qf_submit = 'qf submit --queue ' + ' --queue '.join(queues)
@@ -55,6 +56,8 @@ def main():
             job_file.write(f'  --model {args.model}/{job_name}.pt \\\n')
             job_file.write(f'  --config config.toml \\\n')
             job_file.write(f'  --log {args.model}/{job_name}.log \\\n')
+            if args.seed:
+                job_file.write(f'  --seed {args.seed} \\\n')
             for option, value in params:
                 job_file.write(f'  --{option} {value} \\\n')
         os.system(

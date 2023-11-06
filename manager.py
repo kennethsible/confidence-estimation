@@ -211,6 +211,7 @@ class Manager:
     beam_size: int
     exp_function: str
     uniform_dist: int
+    apply_noise: int
     threshold: int
     max_senses: int
 
@@ -344,7 +345,10 @@ class Manager:
             )
 
             if len(headword) > 0:
-                word = tokenizer.tokenize(noisify(word, self.uniform_dist)).split()
+                if self.apply_noise:
+                    word = tokenizer.tokenize(noisify(word, self.uniform_dist)).split()
+                else:
+                    word = tokenizer.tokenize(word).split()
                 shift = len(word) - (lemma_end - lemma_start)
                 if len(src_words) + shift > self.max_length:
                     lemma_start = lemma_end

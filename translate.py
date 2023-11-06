@@ -1,3 +1,6 @@
+import random
+
+import numpy
 import torch
 
 from decoder import beam_search
@@ -38,6 +41,7 @@ def main():
     parser.add_argument('--model', metavar='FILE', required=True, help='model file (.pt)')
     parser.add_argument('--dict', metavar='FILE', required=False, help='dictionary data')
     parser.add_argument('--freq', metavar='FILE', required=False, help='frequency data')
+    parser.add_argument('--seed', type=int, help='random seed')
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument('--string', metavar='STRING', help='input string')
     group.add_argument('--file', metavar='FILE', help='input file')
@@ -45,6 +49,11 @@ def main():
 
     if args.dict or args.freq:
         assert args.dict and args.freq
+
+    if args.seed:
+        random.seed(args.seed)
+        numpy.random.seed(args.seed)
+        torch.manual_seed(args.seed)
 
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     model_dict = torch.load(args.model, map_location=device)
