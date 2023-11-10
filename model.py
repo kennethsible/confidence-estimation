@@ -131,13 +131,17 @@ class Model(nn.Module):
         self.encoder = Encoder(embed_dim, ff_dim, num_heads, dropout, num_layers, exp_function)
         self.decoder = Decoder(embed_dim, ff_dim, num_heads, dropout, num_layers, exp_function)
         self.out_embed = Embedding(embed_dim, vocab_dim)
-        self.src_embed = nn.Sequential(self.out_embed, PositionalEncoding(embed_dim, dropout))
+        self.src_embed = PositionalEncoding(embed_dim, dropout)
         self.tgt_embed = nn.Sequential(self.out_embed, PositionalEncoding(embed_dim, dropout))
 
     def encode(
-        self, src_nums: Tensor, src_mask: Tensor | None = None, dict_mask: Tensor | None = None
+        self,
+        src_nums: Tensor,
+        src_mask: Tensor | None = None,
+        dict_mask: Tensor | None = None,
+        dict_data: list | None = None,
     ) -> Tensor:
-        src_embs = self.src_embed(src_nums)
+        src_embs = self.src_embed(self.out_embed(src_nums, dict_data=dict_data))
         return self.encoder(src_embs, src_mask, dict_mask)
 
     def decode(
@@ -157,7 +161,8 @@ class Model(nn.Module):
         src_mask: Tensor | None = None,
         tgt_mask: Tensor | None = None,
         dict_mask: Tensor | None = None,
+        dict_data: list | None = None,
     ) -> Tensor:
-        src_encs = self.encode(src_nums, src_mask, dict_mask)
+        src_encs = self.encode(src_nums, src_mask, dict_mask, dict_data)
         tgt_encs = self.decode(src_encs, tgt_nums, src_mask, tgt_mask)
         return self.out_embed(tgt_encs, inverse=True)

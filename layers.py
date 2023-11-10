@@ -20,10 +20,19 @@ class Embedding(nn.Module):
         nn.init.uniform_(self.weight, -0.01, 0.01)
         self.scale = embed_dim**0.5
 
-    def forward(self, x: Tensor, inverse: bool = False) -> Tensor:
+        self.noise = nn.Parameter(torch.empty(embed_dim))
+        nn.init.uniform_(self.noise, -0.01, 0.01)
+
+    def forward(self, x: Tensor, inverse: bool = False, dict_data: list | None = None) -> Tensor:
         if inverse:
             return x @ nn.functional.normalize(self.weight, dim=-1).transpose(0, 1)
-        return self.scale * nn.functional.normalize(self.weight[x], dim=-1)
+        output = self.weight[x]
+        if dict_data:
+            for i, (lemmas, _) in enumerate(dict_data):
+                for lemma_start, lemma_end in lemmas:
+                    for j in range(lemma_start, lemma_end):
+                        output[i, j] += self.noise
+        return self.scale * nn.functional.normalize(output, dim=-1)
 
 
 class PositionalEncoding(nn.Module):

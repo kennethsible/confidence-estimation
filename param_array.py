@@ -23,7 +23,10 @@ def main():
     parser.add_argument('--codes', metavar='FILE', required=True, help='codes file (shared)')
     parser.add_argument('--model', metavar='FILE', required=True, help='model name')
     parser.add_argument('--seed', type=int, required=False, help='random seed')
+    parser.add_argument('--email', type=str, required=False, help='email address')
     args = parser.parse_args()
+
+    email = f'-M {args.email} -m abe' if args.email else ''
 
     qf_submit = 'qf submit --queue ' + ' --queue '.join(queues)
 
@@ -61,7 +64,7 @@ def main():
             for option, value in params:
                 job_file.write(f'  --{option} {value} \\\n')
         os.system(
-            f"{qf_submit} --name {job_name} --deferred -- -l gpu_card=1 {args.model}/{job_name}.sh"
+            f"{qf_submit} --name {job_name} --deferred -- {email} -l gpu_card=1 {args.model}/{job_name}.sh"
         )
     os.system('qf check')
 

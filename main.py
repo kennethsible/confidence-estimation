@@ -34,7 +34,9 @@ def train_epoch(
         dict_mask, batch_length = batch.dict_mask, batch.length()
 
         with torch.cuda.amp.autocast(enabled=False):
-            logits = manager.model(src_nums, tgt_nums[:, :-1], src_mask, tgt_mask, dict_mask)
+            logits = manager.model(
+                src_nums, tgt_nums[:, :-1], src_mask, tgt_mask, dict_mask, batch._dict_data
+            )
             loss = criterion(torch.flatten(logits, 0, 1), torch.flatten(tgt_nums[:, 1:]))
 
         if optimizer and scaler:
