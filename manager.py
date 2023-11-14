@@ -157,10 +157,10 @@ class Tokenizer:
         lang = tgt_lang if tgt_lang else src_lang
         self.detokenizer = MosesDetokenizer(lang)
 
-    def tokenize(self, text: str) -> str:
+    def tokenize(self, text: str, dropout: int = 0) -> str:
         text = self.normalizer.normalize(text)
         tokens = self.tokenizer.tokenize(text, escape=False)
-        return self.bpe.process_line(' '.join(tokens))
+        return self.bpe.process_line(' '.join(tokens), dropout)
 
     def detokenize(self, tokens: list[str]) -> str:
         text = self.detokenizer.detokenize(tokens)
@@ -214,6 +214,7 @@ class Manager:
     apply_noise: int
     threshold: int
     max_senses: int
+    bpe_dropout: int
 
     def __init__(
         self,
@@ -241,6 +242,7 @@ class Manager:
 
         for option, value in config.items():
             self.__setattr__(option, value)
+        assert self.apply_noise != self.bpe_dropout
 
         if isinstance(self._vocab_list, str):
             with open(self._vocab_list) as file:
@@ -347,6 +349,8 @@ class Manager:
             if len(headword) > 0:
                 if self.apply_noise:
                     word = tokenizer.tokenize(noisify(word, self.uniform_dist)).split()
+                elif self.bpe_dropout:
+                    word = tokenizer.tokenize(word, self.bpe_dropout).split()
                 else:
                     word = tokenizer.tokenize(word).split()
                 shift = len(word) - (lemma_end - lemma_start)

@@ -1,18 +1,18 @@
 {
+    "bpe_dropout": [
+        0.1,
+        0.2,
+        0.3
+    ],
     "apply_noise": [
-        1
+        0
     ],
     "uniform_dist": [
         0
     ],
     "exp_function": [
         "in",
-        "out",
-        "none"
-    ],
-    "max_senses": [
-        10,
-        1
+        "out"
     ],
     "threshold": [
         50,
