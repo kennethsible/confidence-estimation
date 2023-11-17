@@ -209,11 +209,9 @@ class Manager:
     batch_size: int
     max_length: int
     beam_size: int
-    exp_function: str
-    uniform_dist: int
-    apply_noise: int
     threshold: int
     max_senses: int
+    append_dict: int
     bpe_dropout: int
 
     def __init__(
@@ -242,7 +240,6 @@ class Manager:
 
         for option, value in config.items():
             self.__setattr__(option, value)
-        assert self.apply_noise != self.bpe_dropout
 
         if isinstance(self._vocab_list, str):
             with open(self._vocab_list) as file:
@@ -261,7 +258,6 @@ class Manager:
             self.num_heads,
             self.dropout,
             self.num_layers,
-            self.exp_function if dict_file else None,
         ).to(device)
 
         def init_weights(m):
@@ -347,12 +343,7 @@ class Manager:
             )
 
             if len(headword) > 0:
-                if self.apply_noise:
-                    word = tokenizer.tokenize(noisify(word, self.uniform_dist)).split()
-                elif self.bpe_dropout:
-                    word = tokenizer.tokenize(word, self.bpe_dropout).split()
-                else:
-                    word = tokenizer.tokenize(word).split()
+                word = tokenizer.tokenize(word, self.bpe_dropout).split()
                 shift = len(word) - (lemma_end - lemma_start)
                 if len(src_words) + shift > self.max_length:
                     lemma_start = lemma_end
@@ -380,6 +371,19 @@ class Manager:
             senses.append(sense_spans)
 
         return lemmas, senses
+
+    def append_dict_data(self, data_file, tokenizer):
+        data = []
+        with open(data_file) as file:
+            for headword, senses in json.load(file).items():
+                src_words = tokenizer.tokenize(''.join(headword)).split()
+                src_words = ['<BOS>'] + src_words + ['<EOS>']
+                for sense in senses[: self.max_senses]:
+                    src_words += sense.split()
+                    tgt_words = ['<BOS>'] + sense.split() + ['<EOS>']
+                    if len(src_words) <= self.max_length and len(tgt_words) <= self.max_length:
+                        data.append((src_words, tgt_words, [], []))
+        return data
 
     def batch_data(self, data) -> list[Batch]:
         batched_data = []
@@ -443,7 +447,7 @@ class Manager:
 
         return batched_data
 
-    def load_data(self, data_file, src_spans=None, tokenizer=None):
+    def load_data(self, data_file, src_spans=None, append_data=None, tokenizer=None):
         data = []
         with open(data_file) as file:
             for i, line in enumerate(file.readlines()):
@@ -456,5 +460,8 @@ class Manager:
                     data.append((src_words, tgt_words, lemmas, senses))
                 else:
                     data.append((src_words, tgt_words))
+
+        if append_data:
+            data.extend(append_data)
 
         return self.batch_data(data)

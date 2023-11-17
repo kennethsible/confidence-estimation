@@ -26,9 +26,9 @@ class SublayerConnection(nn.Module):
 
 
 class EncoderLayer(nn.Module):
-    def __init__(self, embed_dim: int, ff_dim: int, num_heads: int, dropout: float, exp_function):
+    def __init__(self, embed_dim: int, ff_dim: int, num_heads: int, dropout: float):
         super(EncoderLayer, self).__init__()
-        self.self_attn = MultiHeadAttention(embed_dim, num_heads, dropout, exp_function)
+        self.self_attn = MultiHeadAttention(embed_dim, num_heads, dropout)
         self.ff = FeedForward(embed_dim, ff_dim, dropout)
         self.sublayers = clone(SublayerConnection(embed_dim, dropout), 2)
 
@@ -43,18 +43,10 @@ class EncoderLayer(nn.Module):
 
 class Encoder(nn.Module):
     def __init__(
-        self,
-        embed_dim: int,
-        ff_dim: int,
-        num_heads: int,
-        dropout: float,
-        num_layers: int,
-        exp_function,
+        self, embed_dim: int, ff_dim: int, num_heads: int, dropout: float, num_layers: int
     ):
         super(Encoder, self).__init__()
-        self.layers = clone(
-            EncoderLayer(embed_dim, ff_dim, num_heads, dropout, exp_function), num_layers
-        )
+        self.layers = clone(EncoderLayer(embed_dim, ff_dim, num_heads, dropout), num_layers)
         self.norm = ScaleNorm(embed_dim**0.5)
 
     def forward(
@@ -67,10 +59,10 @@ class Encoder(nn.Module):
 
 
 class DecoderLayer(nn.Module):
-    def __init__(self, embed_dim: int, ff_dim: int, num_heads: int, dropout: float, exp_function):
+    def __init__(self, embed_dim: int, ff_dim: int, num_heads: int, dropout: float):
         super(DecoderLayer, self).__init__()
-        self.self_attn = MultiHeadAttention(embed_dim, num_heads, dropout, exp_function)
-        self.crss_attn = MultiHeadAttention(embed_dim, num_heads, dropout, exp_function)
+        self.self_attn = MultiHeadAttention(embed_dim, num_heads, dropout)
+        self.crss_attn = MultiHeadAttention(embed_dim, num_heads, dropout)
         self.ff = FeedForward(embed_dim, ff_dim, dropout)
         self.sublayers = clone(SublayerConnection(embed_dim, dropout), 3)
 
@@ -89,18 +81,10 @@ class DecoderLayer(nn.Module):
 
 class Decoder(nn.Module):
     def __init__(
-        self,
-        embed_dim: int,
-        ff_dim: int,
-        num_heads: int,
-        dropout: float,
-        num_layers: int,
-        exp_function,
+        self, embed_dim: int, ff_dim: int, num_heads: int, dropout: float, num_layers: int
     ):
         super(Decoder, self).__init__()
-        self.layers = clone(
-            DecoderLayer(embed_dim, ff_dim, num_heads, dropout, exp_function), num_layers
-        )
+        self.layers = clone(DecoderLayer(embed_dim, ff_dim, num_heads, dropout), num_layers)
         self.norm = ScaleNorm(embed_dim**0.5)
 
     def forward(
@@ -125,13 +109,12 @@ class Model(nn.Module):
         num_heads: int,
         dropout: float,
         num_layers: int,
-        exp_function,
     ):
         super(Model, self).__init__()
-        self.encoder = Encoder(embed_dim, ff_dim, num_heads, dropout, num_layers, exp_function)
-        self.decoder = Decoder(embed_dim, ff_dim, num_heads, dropout, num_layers, exp_function)
+        self.encoder = Encoder(embed_dim, ff_dim, num_heads, dropout, num_layers)
+        self.decoder = Decoder(embed_dim, ff_dim, num_heads, dropout, num_layers)
         self.out_embed = Embedding(embed_dim, vocab_dim)
-        self.src_embed = PositionalEncoding(embed_dim, dropout)
+        self.src_embed = nn.Sequential(self.out_embed, PositionalEncoding(embed_dim, dropout))
         self.tgt_embed = nn.Sequential(self.out_embed, PositionalEncoding(embed_dim, dropout))
 
     def encode(
@@ -139,9 +122,8 @@ class Model(nn.Module):
         src_nums: Tensor,
         src_mask: Tensor | None = None,
         dict_mask: Tensor | None = None,
-        dict_data: list | None = None,
     ) -> Tensor:
-        src_embs = self.src_embed(self.out_embed(src_nums, dict_data=dict_data))
+        src_embs = self.src_embed(src_nums)
         return self.encoder(src_embs, src_mask, dict_mask)
 
     def decode(
@@ -161,8 +143,7 @@ class Model(nn.Module):
         src_mask: Tensor | None = None,
         tgt_mask: Tensor | None = None,
         dict_mask: Tensor | None = None,
-        dict_data: list | None = None,
     ) -> Tensor:
-        src_encs = self.encode(src_nums, src_mask, dict_mask, dict_data)
+        src_encs = self.encode(src_nums, src_mask, dict_mask)
         tgt_encs = self.decode(src_encs, tgt_nums, src_mask, tgt_mask)
         return self.out_embed(tgt_encs, inverse=True)

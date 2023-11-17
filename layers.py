@@ -20,19 +20,10 @@ class Embedding(nn.Module):
         nn.init.uniform_(self.weight, -0.01, 0.01)
         self.scale = embed_dim**0.5
 
-        self.noise = nn.Parameter(torch.empty(embed_dim))
-        nn.init.uniform_(self.noise, -0.01, 0.01)
-
-    def forward(self, x: Tensor, inverse: bool = False, dict_data: list | None = None) -> Tensor:
+    def forward(self, x: Tensor, inverse: bool = False) -> Tensor:
         if inverse:
             return x @ nn.functional.normalize(self.weight, dim=-1).transpose(0, 1)
-        output = self.weight[x]
-        if dict_data:
-            for i, (lemmas, _) in enumerate(dict_data):
-                for lemma_start, lemma_end in lemmas:
-                    for j in range(lemma_start, lemma_end):
-                        output[i, j] += self.noise
-        return self.scale * nn.functional.normalize(output, dim=-1)
+        return self.scale * nn.functional.normalize(self.weight[x], dim=-1)
 
 
 class PositionalEncoding(nn.Module):
@@ -74,17 +65,14 @@ class ScaleNorm(nn.Module):
 
 
 class MultiHeadAttention(nn.Module):
-    def __init__(self, embed_dim: int, num_heads: int, dropout: float, exp_function):
+    def __init__(self, embed_dim: int, num_heads: int, dropout: float):
         super(MultiHeadAttention, self).__init__()
         assert embed_dim % num_heads == 0
         self.linears = clone(nn.Linear(embed_dim, embed_dim), 4)
         self.weights = nn.Parameter(torch.zeros((num_heads, 2)))
-        # weights = torch.full((num_heads, 2), torch.inf)
-        # self.register_buffer('weights', weights)
         self.dropout = nn.Dropout(dropout)
         self.head_dim = embed_dim // num_heads
         self.num_heads = num_heads
-        self.exp_function = exp_function
 
     def attention(
         self,
@@ -98,10 +86,7 @@ class MultiHeadAttention(nn.Module):
         if mask is not None:
             scores.masked_fill_(mask.unsqueeze(1) == 0, -torch.inf)
         if dict_mask is not None:
-            if self.exp_function == 'out':
-                scores -= torch.exp(dict_mask.transpose(0, 1))
-            else:
-                scores -= dict_mask.transpose(0, 1)
+            scores -= torch.nan_to_num(dict_mask.transpose(0, 1))
         return self.dropout(scores.softmax(dim=-1)) @ value
 
     def _reshape_from(self, x: Tensor) -> Tensor:
@@ -123,7 +108,6 @@ class MultiHeadAttention(nn.Module):
             for linear, x in zip(self.linears, (query, key, value))
         ]
         if dict_mask is not None:
-            weights = torch.exp(self.weights) if self.exp_function == 'in' else self.weights
-            dict_mask = torch.nan_to_num(torch.einsum('ij,j...->i...', weights, dict_mask))
+            dict_mask = torch.einsum('ij,j...->i...', torch.exp(self.weights), dict_mask)
         outputs = self.attention(query, key, value, mask, dict_mask)
         return self.linears[-1](self._reshape_to(outputs.transpose(1, 2)))

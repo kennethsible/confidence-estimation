@@ -1,24 +1,19 @@
 {
+    "append_dict": [
+        1,
+        0
+    ],
     "bpe_dropout": [
         0.1,
-        0.2,
-        0.3
-    ],
-    "apply_noise": [
-        0
-    ],
-    "uniform_dist": [
-        0
-    ],
-    "exp_function": [
-        "in",
-        "out"
+        0.3,
+        0.5,
+        0.0
     ],
     "threshold": [
-        50,
-        25,
-        10,
         5,
-        1
+        10,
+        15,
+        25,
+        50
     ]
 }

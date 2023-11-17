@@ -34,9 +34,7 @@ def train_epoch(
         dict_mask, batch_length = batch.dict_mask, batch.length()
 
         with torch.cuda.amp.autocast(enabled=False):
-            logits = manager.model(
-                src_nums, tgt_nums[:, :-1], src_mask, tgt_mask, dict_mask, batch._dict_data
-            )
+            logits = manager.model(src_nums, tgt_nums[:, :-1], src_mask, tgt_mask, dict_mask)
             loss = criterion(torch.flatten(logits, 0, 1), torch.flatten(tgt_nums[:, 1:]))
 
         if optimizer and scaler:
@@ -73,9 +71,6 @@ def train_model(
 
     best_loss = torch.inf
     for epoch in range(manager.max_epochs):
-        if epoch > 0 and manager.dict_file and manager.lem_data:
-            manager.data = manager.load_data(manager.data_file, manager.lem_data, tokenizer)
-        assert manager.data is not None
         random.shuffle(manager.data)
 
         model.train()
@@ -161,8 +156,12 @@ def main():
     )
     tokenizer = Tokenizer(manager.bpe, src_lang, tgt_lang)
 
-    manager.data = manager.load_data(args.data, manager.lem_data, tokenizer)
-    manager.test = manager.load_data(args.test, manager.lem_test, tokenizer)
+    append_data = None
+    if 'append_dict' in config and config['append_dict']:
+        append_data = manager.append_dict_data(args.dict, tokenizer)
+
+    manager.data = manager.load_data(args.data, manager.lem_data, append_data, tokenizer)
+    manager.test = manager.load_data(args.test, manager.lem_test, tokenizer=tokenizer)
 
     if device == 'cuda' and torch.cuda.get_device_capability()[0] >= 8:
         torch.set_float32_matmul_precision('high')
