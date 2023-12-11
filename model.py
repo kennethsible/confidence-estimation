@@ -125,19 +125,18 @@ class Model(nn.Module):
         src_nums: Tensor,
         src_mask: Tensor | None = None,
         dict_mask: Tensor | None = None,
-        dict_data = None,
+        dict_data=None,
     ) -> Tensor:
         src_embs = self.src_embed(src_nums)
         if dict_data is not None:
             for i, (lemmas, senses) in enumerate(dict_data):
-                offset = 0
                 for (a, b), sense_spans in zip(lemmas, senses):
                     for c, d in sense_spans:
-                        if not offset:
-                            offset = c
-                        src_embs[i, c:d] = src_embs[i, a].unsqueeze(0) \
-                            + self.out_embed(torch.arange(c, d)) \
-                            + self.dpe_embed(torch.arange(c - offset, d - offset))
+                        src_embs[i, c:d] = (
+                            src_embs[i, a].unsqueeze(0)
+                            + self.out_embed(torch.arange(c, d))
+                            + self.dpe_embed(torch.arange(0, d - c))
+                        )
         return self.encoder(src_embs, src_mask, dict_mask)
 
     def decode(
@@ -157,7 +156,7 @@ class Model(nn.Module):
         src_mask: Tensor | None = None,
         tgt_mask: Tensor | None = None,
         dict_mask: Tensor | None = None,
-        dict_data = None,
+        dict_data=None,
     ) -> Tensor:
         src_encs = self.encode(src_nums, src_mask, dict_mask, dict_data)
         tgt_encs = self.decode(src_encs, tgt_nums, src_mask, tgt_mask)
