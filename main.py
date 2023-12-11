@@ -31,8 +31,12 @@ def train_epoch(
     for batch in tqdm(data, disable=(not use_tqdm)):
         src_nums, src_mask = batch.src_nums, batch.src_mask
         tgt_nums, tgt_mask = batch.tgt_nums, batch.tgt_mask
-        dict_mask, batch_length = batch.dict_mask, batch.length()
-        dict_data = batch._dict_data if dpe_embed else None
+        batch_length = batch.length()
+
+        if dpe_embed:
+            dict_mask, dict_data = None, batch._dict_data
+        else:
+            dict_mask, dict_data = batch.dict_mask, None
 
         with torch.cuda.amp.autocast(enabled=False):
             logits = manager.model(
