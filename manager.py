@@ -164,6 +164,7 @@ class Manager:
     patience: int
     decay_factor: float
     min_lr: float
+    max_patience: int
     label_smoothing: float
     clip_grad: float
     batch_size: int

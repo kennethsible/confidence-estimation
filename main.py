@@ -76,7 +76,7 @@ def train_model(
     )
     scaler = torch.cuda.amp.GradScaler(enabled=False)
 
-    best_loss = torch.inf
+    patience, best_loss = 0, torch.inf
     for epoch in range(manager.max_epochs):
         random.shuffle(manager.data)
 
@@ -100,8 +100,13 @@ def train_model(
 
         if val_loss < best_loss:
             manager.save_model()
-            best_loss = val_loss
+            patience, best_loss = 0, val_loss
+        else:
+            patience += 1
+
         if optimizer.param_groups[0]['lr'] < manager.min_lr:
+            break
+        if patience >= manager.max_patience:
             break
 
     return score_model(manager, tokenizer, logger, use_tqdm)

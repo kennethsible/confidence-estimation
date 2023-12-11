@@ -25,6 +25,7 @@ class Embedding(nn.Module):
             return x @ nn.functional.normalize(self.weight, dim=-1).transpose(0, 1)
         return self.scale * nn.functional.normalize(self.weight[x], dim=-1)
 
+
 class DPEncoding(nn.Module):
     def __init__(self, embed_dim: int, max_length: int = 5000):
         super(DPEncoding, self).__init__()
@@ -33,6 +34,7 @@ class DPEncoding(nn.Module):
 
     def forward(self, x: Tensor) -> Tensor:
         return self.weight[x]
+
 
 class PositionalEncoding(nn.Module):
     enc: Tensor
