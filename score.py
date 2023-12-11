@@ -4,7 +4,6 @@ import time
 from datetime import timedelta
 
 import comet
-import numpy
 import torch
 from sacrebleu.metrics import BLEU, CHRF
 from tqdm import tqdm
@@ -66,12 +65,8 @@ def main():
     parser.add_argument('--tqdm', action='store_true', help='progress bar')
     args, unknown = parser.parse_known_args()
 
-    if args.dict or args.freq:
-        assert args.dict and args.freq
-
     if args.seed:
         random.seed(args.seed)
-        numpy.random.seed(args.seed)
         torch.manual_seed(args.seed)
 
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -105,7 +100,7 @@ def main():
     )
     manager.model.load_state_dict(model_dict['state_dict'])
     tokenizer = Tokenizer(manager.bpe, src_lang, tgt_lang)
-    manager.test = manager.load_data(args.test, manager.lem_test, tokenizer=tokenizer)
+    manager.test = manager.load_data(args.test, manager.lem_test, tokenizer)
 
     if device == 'cuda' and torch.cuda.get_device_capability()[0] >= 8:
         torch.set_float32_matmul_precision('high')

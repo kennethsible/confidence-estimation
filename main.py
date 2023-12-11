@@ -5,7 +5,6 @@ import time
 import tomllib
 from datetime import timedelta
 
-import numpy
 import torch
 from tqdm import tqdm
 
@@ -26,15 +25,19 @@ def train_epoch(
     use_tqdm: bool = False,
 ) -> float:
     data = manager.data if optimizer else manager.test
+    dpe_embed = 'dpe_embed' in manager.config and manager.config['dpe_embed']
 
     total_loss, num_tokens = 0.0, 0
     for batch in tqdm(data, disable=(not use_tqdm)):
         src_nums, src_mask = batch.src_nums, batch.src_mask
         tgt_nums, tgt_mask = batch.tgt_nums, batch.tgt_mask
         dict_mask, batch_length = batch.dict_mask, batch.length()
+        dict_data = batch._dict_data if dpe_embed else None
 
         with torch.cuda.amp.autocast(enabled=False):
-            logits = manager.model(src_nums, tgt_nums[:, :-1], src_mask, tgt_mask, dict_mask)
+            logits = manager.model(
+                src_nums, tgt_nums[:, :-1], src_mask, tgt_mask, dict_mask, dict_data
+            )
             loss = criterion(torch.flatten(logits, 0, 1), torch.flatten(tgt_nums[:, 1:]))
 
         if optimizer and scaler:
@@ -118,12 +121,8 @@ def main():
     parser.add_argument('--tqdm', action='store_true', help='progress bar')
     args, unknown = parser.parse_known_args()
 
-    if args.dict or args.freq:
-        assert args.dict and args.freq
-
     if args.seed:
         random.seed(args.seed)
-        numpy.random.seed(args.seed)
         torch.manual_seed(args.seed)
 
     src_lang, tgt_lang = args.lang
@@ -155,13 +154,9 @@ def main():
         args.test,
     )
     tokenizer = Tokenizer(manager.bpe, src_lang, tgt_lang)
-
-    append_data = None
-    if 'append_dict' in config and config['append_dict']:
-        append_data = manager.append_dict_data(args.dict, tokenizer)
-
-    manager.data = manager.load_data(args.data, manager.lem_data, append_data, tokenizer)
-    manager.test = manager.load_data(args.test, manager.lem_test, tokenizer=tokenizer)
+    append_dict = bool(config['append_dict']) if 'append_dict' in config else None
+    manager.data = manager.load_data(args.data, manager.lem_data, tokenizer, append_dict)
+    manager.test = manager.load_data(args.test, manager.lem_test, tokenizer)
 
     if device == 'cuda' and torch.cuda.get_device_capability()[0] >= 8:
         torch.set_float32_matmul_precision('high')

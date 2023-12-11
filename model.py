@@ -1,9 +1,11 @@
 from typing import Callable
 
+import torch
 import torch.nn as nn
 from torch import Tensor
 
 from layers import (
+    DPEncoding,
     Embedding,
     FeedForward,
     MultiHeadAttention,
@@ -116,14 +118,26 @@ class Model(nn.Module):
         self.out_embed = Embedding(embed_dim, vocab_dim)
         self.src_embed = nn.Sequential(self.out_embed, PositionalEncoding(embed_dim, dropout))
         self.tgt_embed = nn.Sequential(self.out_embed, PositionalEncoding(embed_dim, dropout))
+        self.dpe_embed = DPEncoding(embed_dim)
 
     def encode(
         self,
         src_nums: Tensor,
         src_mask: Tensor | None = None,
         dict_mask: Tensor | None = None,
+        dict_data = None,
     ) -> Tensor:
         src_embs = self.src_embed(src_nums)
+        if dict_data is not None:
+            for i, (lemmas, senses) in enumerate(dict_data):
+                offset = 0
+                for (a, b), sense_spans in zip(lemmas, senses):
+                    for c, d in sense_spans:
+                        if not offset:
+                            offset = c
+                        src_embs[i, c:d] = src_embs[i, a].unsqueeze(0) \
+                            + self.out_embed(torch.arange(c, d)) \
+                            + self.dpe_embed(torch.arange(c - offset, d - offset))
         return self.encoder(src_embs, src_mask, dict_mask)
 
     def decode(
@@ -143,7 +157,8 @@ class Model(nn.Module):
         src_mask: Tensor | None = None,
         tgt_mask: Tensor | None = None,
         dict_mask: Tensor | None = None,
+        dict_data = None,
     ) -> Tensor:
-        src_encs = self.encode(src_nums, src_mask, dict_mask)
+        src_encs = self.encode(src_nums, src_mask, dict_mask, dict_data)
         tgt_encs = self.decode(src_encs, tgt_nums, src_mask, tgt_mask)
         return self.out_embed(tgt_encs, inverse=True)

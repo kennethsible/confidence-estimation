@@ -1,14 +1,4 @@
 {
-    "append_dict": [
-        1,
-        0
-    ],
-    "bpe_dropout": [
-        0.1,
-        0.3,
-        0.5,
-        0.0
-    ],
     "threshold": [
         5,
         10,

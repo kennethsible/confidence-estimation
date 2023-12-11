@@ -1,10 +1,8 @@
 import json
 import math
-import random
 import re
 from io import StringIO
 
-import numpy as np
 import spacy
 import torch
 import torch.nn as nn
@@ -14,44 +12,6 @@ from torch import Tensor
 
 from decoder import triu_mask
 from model import Model
-
-
-def skewdist(size: int) -> list[int]:
-    r = int(0.6 * size)
-    p = r * [5.0] + (size - r) * [1.0]
-    return (p / np.sum(p)).tolist()
-
-
-def noisify(text: str, uniform: bool = False) -> str:
-    if uniform:
-        i = random.choice(range(len(text)))
-    else:
-        i = np.random.choice(range(len(text)), p=skewdist(len(text)))
-    chars = list(text)
-    if i == 0 and chars[0].isupper():
-        alphabet = [chr(i) for i in range(65, 91)] + list('ÄÖÜ')
-        if uniform:
-            chars[i] = random.choice(alphabet)
-        else:
-            chars[i] = np.random.choice(alphabet, p=skewdist(len(alphabet)))
-    else:
-        alphabet = [chr(i) for i in range(97, 123)] + list('äöüß')
-        match random.randint(1, 3 if i + 1 == len(chars) else 4):
-            case 1:  # Insert
-                if uniform:
-                    chars.insert(i, random.choice(alphabet))
-                else:
-                    chars.insert(i, np.random.choice(alphabet, p=skewdist(len(alphabet))))
-            case 2:  # Delete
-                chars.pop(i)
-            case 3:  # Replace
-                if uniform:
-                    chars[i] = random.choice(alphabet)
-                else:
-                    chars[i] = np.random.choice(alphabet, p=skewdist(len(alphabet)))
-            case 4:  # Swap
-                chars[i], chars[i + 1] = chars[i + 1], chars[i]
-    return ''.join(chars)
 
 
 class Vocab:
@@ -184,9 +144,9 @@ class Lemmatizer:
             yield words.rstrip(), spans
 
     def lemmatize(self, texts):
-        texts = list(self.subword_mapping(texts))
-        docs = self.nlp.pipe(texts, as_tuples=True)
-        for (words, spans), (doc, _) in zip(texts, docs):
+        _texts = list(self.subword_mapping(texts))
+        docs = self.nlp.pipe(_texts, as_tuples=True)
+        for (words, spans), (doc, _) in zip(_texts, docs):
             if words.split() == [token.text for token in doc]:
                 yield [token.lemma_ for token in doc], spans
             else:
@@ -210,9 +170,7 @@ class Manager:
     max_length: int
     beam_size: int
     threshold: int
-    max_senses: int
-    append_dict: int
-    bpe_dropout: int
+    max_append: int
 
     def __init__(
         self,
@@ -343,21 +301,21 @@ class Manager:
             )
 
             if len(headword) > 0:
-                word = tokenizer.tokenize(word, self.bpe_dropout).split()
-                shift = len(word) - (lemma_end - lemma_start)
+                subwords = tokenizer.tokenize(word).split()
+                shift = len(subwords) - (lemma_end - lemma_start)
                 if len(src_words) + shift > self.max_length:
                     lemma_start = lemma_end
                     continue
                 headwords.append(headword)
                 total_shift += shift
-                src_words[lemma_start:lemma_end] = word
-                lemma_end = lemma_start + len(word)
+                src_words[lemma_start:lemma_end] = subwords
+                lemma_end = lemma_start + len(subwords)
                 lemmas.append((lemma_start, lemma_end))
 
             lemma_start = lemma_end
 
         for i, headword in enumerate(headwords):
-            defs = self.dict[headword][: self.max_senses]
+            defs = self.dict[headword][: self.max_append]
             sense_start, sense_spans = len(src_words), []
             for w in defs:
                 sense_end = sense_start + len(w.split())
@@ -372,19 +330,6 @@ class Manager:
 
         return lemmas, senses
 
-    def append_dict_data(self, data_file, tokenizer):
-        data = []
-        with open(data_file) as file:
-            for headword, senses in json.load(file).items():
-                src_words = tokenizer.tokenize(''.join(headword)).split()
-                src_words = ['<BOS>'] + src_words + ['<EOS>']
-                for sense in senses[: self.max_senses]:
-                    src_words += sense.split()
-                    tgt_words = ['<BOS>'] + sense.split() + ['<EOS>']
-                    if len(src_words) <= self.max_length and len(tgt_words) <= self.max_length:
-                        data.append((src_words, tgt_words, [], []))
-        return data
-
     def batch_data(self, data) -> list[Batch]:
         batched_data = []
 
@@ -398,11 +343,12 @@ class Manager:
             while True:
                 batch_size = min(self.batch_size // (max(src_len, tgt_len) * 8) * 8, 1000)
 
-                if self.dict:
+                if self.dict and self.freq:
                     src_batch, tgt_batch, lemmas, senses = zip(*data[i : (i + batch_size)])
+                    dict_data = list(zip(lemmas, senses))
                 else:
                     src_batch, tgt_batch = zip(*data[i : (i + batch_size)])
-                dict_data = list(zip(lemmas, senses)) if self.dict else None
+                    dict_data = None
 
                 max_src_len = max(len(src_words) for src_words in src_batch)
                 max_tgt_len = max(len(tgt_words) for tgt_words in tgt_batch)
@@ -447,7 +393,7 @@ class Manager:
 
         return batched_data
 
-    def load_data(self, data_file, src_spans=None, append_data=None, tokenizer=None):
+    def load_data(self, data_file, src_spans=None, tokenizer=None, append_dict=False):
         data = []
         with open(data_file) as file:
             for i, line in enumerate(file.readlines()):
@@ -455,13 +401,24 @@ class Manager:
                 src_words = ['<BOS>'] + src_line.split() + ['<EOS>']
                 tgt_words = ['<BOS>'] + tgt_line.split() + ['<EOS>']
 
-                if self.dict:
+                if self.dict and self.freq and src_spans and tokenizer:
                     lemmas, senses = self.attach_senses(src_words, src_spans[i], tokenizer)
                     data.append((src_words, tgt_words, lemmas, senses))
                 else:
                     data.append((src_words, tgt_words))
 
-        if append_data:
-            data.extend(append_data)
+        if append_dict and self.dict_file and tokenizer:
+            with open(self.dict_file) as file:
+                for headword, senses in json.load(file).items():
+                    src_words = tokenizer.tokenize(''.join(headword)).split()
+                    src_words = ['<BOS>'] + src_words + ['<EOS>']
+                    for sense in senses[: self.max_append]:
+                        src_words += sense.split()
+                        tgt_words = ['<BOS>'] + sense.split() + ['<EOS>']
+                        if len(src_words) <= self.max_length and len(tgt_words) <= self.max_length:
+                            if self.dict and self.freq:
+                                data.append((src_words, tgt_words, [], []))
+                            else:
+                                data.append((src_words, tgt_words))
 
         return self.batch_data(data)

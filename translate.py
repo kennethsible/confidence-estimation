@@ -1,6 +1,5 @@
 import random
 
-import numpy
 import torch
 
 from decoder import beam_search
@@ -47,12 +46,8 @@ def main():
     group.add_argument('--file', metavar='FILE', help='input file')
     args, unknown = parser.parse_known_args()
 
-    if args.dict or args.freq:
-        assert args.dict and args.freq
-
     if args.seed:
         random.seed(args.seed)
-        numpy.random.seed(args.seed)
         torch.manual_seed(args.seed)
 
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
