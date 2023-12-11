@@ -1,7 +1,6 @@
 import json
 import re
 
-from sacremoses import MosesPunctNormalizer
 from subword_nmt.apply_bpe import BPE
 from tqdm import tqdm
 
@@ -9,10 +8,17 @@ from manager import Tokenizer
 from preprocess import download
 
 filters = [
-    r'\([^)]+\)',
+    r'\([^\)]+\)',
     r'\[[^\]]+\]',
-    r'\{[^}]+\}',
-    r'sich',
+    r'\{[^\}]+\}',
+    r'<[^>]+>',
+]
+
+abbrs = [
+    r'etw\.',
+    r'jdm\.',
+    r'jdn\.',
+    r'jds\.',
 ]
 
 preps = [
@@ -22,7 +28,6 @@ preps = [
     'vor',
     'an',
     'auf',
-    'neben',
     'über',
     'unter',
     'zwischen',
@@ -46,13 +51,6 @@ preps = [
     'wegen',
 ]
 
-abbrs = [
-    'etw.',
-    'jdm.',
-    'jdn.',
-    'jds.',
-]
-
 for prep in preps:
     for abbr1 in abbrs:
         for abbr2 in abbrs:
@@ -69,7 +67,6 @@ filters.extend(abbrs)
 def main():
     download('https://ftp.tu-chemnitz.de/pub/Local/urz/ding/de-en-devel/de-en.txt.gz', 'dict.deen')
 
-    mpn = MosesPunctNormalizer()
     with open('data/codes.ende') as codes_file:
         tokenizer = Tokenizer(BPE(codes_file), 'en')
 
@@ -84,17 +81,21 @@ def main():
                 de, en = line.split('::')
             for words, defns in zip(de.split('|'), en.split('|')):
                 for headword in words.split(';'):
-                    headword = mpn.normalize(headword.strip())
-                    if not headword.isalpha() or len(headword.split()) > 1:
+                    headword = headword.strip()
+                    if not headword.replace('-', '').isalpha():
                         continue
-                    for defn in defns.split(';'):
-                        if headword == defn.strip():
+                    headword = re.sub(r'^sich ', '', headword)
+                    for definition in defns.split(';'):
+                        definition = definition.strip()
+                        if headword == definition:
                             continue
-                        defn = tokenizer.tokenize(defn.strip())
+                        definition = tokenizer.tokenize(definition)
+                        if not definition:
+                            continue
                         if headword not in deen_dict:
                             deen_dict[headword] = []
-                        if defn not in deen_dict[headword]:
-                            deen_dict[headword].append(defn)
+                        if definition not in deen_dict[headword]:
+                            deen_dict[headword].append(definition)
 
     with open('data/dict.json', 'w') as dict_file:
         deen_dict = dict(sorted(deen_dict.items(), key=lambda x: x[0]))
@@ -102,5 +103,5 @@ def main():
     print(len(deen_dict), 'data/dict.json')
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
