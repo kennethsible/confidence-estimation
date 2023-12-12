@@ -51,11 +51,9 @@ def main():
         torch.manual_seed(args.seed)
 
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    model_dict = torch.load(args.model, map_location=device)
-    src_lang, tgt_lang = model_dict['src_lang'], model_dict['tgt_lang']
-    vocab_list, codes_list = model_dict['vocab_list'], model_dict['codes_list']
+    model_state = torch.load(args.model, map_location=device)
 
-    config = model_dict['model_config']
+    config = model_state['model_config']
     for i, arg in enumerate(unknown):
         if arg[:2] == '--' and len(unknown) > i:
             option, value = arg[2:].replace('-', '_'), unknown[i + 1]
@@ -65,20 +63,20 @@ def main():
                 config[option] = value
 
     manager = Manager(
-        src_lang,
-        tgt_lang,
+        model_state['src_lang'],
+        model_state['tgt_lang'],
         config,
         device,
         args.model,
-        vocab_list,
-        codes_list,
+        model_state['vocab_list'],
+        model_state['codes_list'],
         args.dict,
         args.freq,
         data_file=None,
         test_file=None,
     )
-    manager.model.load_state_dict(model_dict['state_dict'])
-    tokenizer = Tokenizer(manager.bpe, src_lang, tgt_lang)
+    manager.model.load_state_dict(model_state['state_dict'])
+    tokenizer = Tokenizer(manager.bpe, manager.src_lang, manager.tgt_lang)
 
     if device == 'cuda' and torch.cuda.get_device_capability()[0] >= 8:
         torch.set_float32_matmul_precision('high')

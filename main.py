@@ -105,10 +105,14 @@ def train_model(
             patience += 1
 
         if optimizer.param_groups[0]['lr'] < manager.min_lr:
+            logger.info('Reached Minimum Learning Rate.')
             break
         if patience >= manager.max_patience:
+            logger.info('Reached Maximum Patience.')
             break
 
+    model_state = torch.load(manager._model_name, map_location=manager.device)
+    manager.model.load_state_dict(model_state['state_dict'])
     return score_model(manager, tokenizer, logger, use_tqdm)
 
 
