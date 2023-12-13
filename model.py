@@ -1,11 +1,10 @@
 from typing import Callable
 
-import torch
 import torch.nn as nn
 from torch import Tensor
 
 from layers import (
-    DPEncoding,
+    DictionaryEncoding,
     Embedding,
     FeedForward,
     MultiHeadAttention,
@@ -118,7 +117,7 @@ class Model(nn.Module):
         self.out_embed = Embedding(embed_dim, vocab_dim)
         self.src_embed = nn.Sequential(self.out_embed, PositionalEncoding(embed_dim, dropout))
         self.tgt_embed = nn.Sequential(self.out_embed, PositionalEncoding(embed_dim, dropout))
-        self.dpe_embed = DPEncoding(embed_dim)
+        self.dpe_embed = nn.Sequential(self.out_embed, DictionaryEncoding(embed_dim))
 
     def encode(
         self,
@@ -132,11 +131,7 @@ class Model(nn.Module):
             for i, (lemmas, senses) in enumerate(dict_data):
                 for (a, b), sense_spans in zip(lemmas, senses):
                     for c, d in sense_spans:
-                        src_embs[i, c:d] = (
-                            src_embs[i, a].unsqueeze(0)
-                            + self.out_embed(torch.arange(c, d))
-                            + self.dpe_embed(torch.arange(0, d - c))
-                        )
+                        src_embs[i, c:d] = src_embs[i, a] + self.dpe_embed(src_nums[i, c:d])
         return self.encoder(src_embs, src_mask, dict_mask)
 
     def decode(
