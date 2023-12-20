@@ -21,12 +21,19 @@ def score_model(
     assert manager.test and len(manager.test) > 0
     candidate, reference = [], []
 
+    dpe_embed = 'dpe_embed' in manager.config and manager.config['dpe_embed']
+
     start = time.perf_counter()
     model.eval()
     with torch.no_grad():
         for batch in tqdm(manager.test, disable=(not use_tqdm)):
             src_nums, src_mask = batch.src_nums, batch.src_mask
-            src_encs, tgt_nums = model.encode(src_nums, src_mask, batch.dict_mask), batch.tgt_nums
+            if dpe_embed:
+                dict_mask, dict_data = None, batch._dict_data
+            else:
+                dict_mask, dict_data = batch.dict_mask, None
+            src_encs = model.encode(src_nums, src_mask, dict_mask, dict_data)
+            tgt_nums = batch.tgt_nums
             for i in tqdm(range(src_encs.size(0)), leave=False, disable=(not use_tqdm)):
                 out_nums = beam_search(manager, src_encs[i], src_mask[i], manager.beam_size)
                 reference.append(tokenizer.detokenize(vocab.denumberize(tgt_nums[i].tolist())))

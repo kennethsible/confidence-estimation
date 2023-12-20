@@ -20,16 +20,23 @@ def translate_string(string: str, manager: Manager, tokenizer: Tokenizer) -> str
     src_words = ['<BOS>'] + src_words + ['<EOS>']
     if manager.dict:
         lemmas, senses = manager.attach_senses(src_words, src_spans, tokenizer)
-    else:
-        dict_mask = None
+
+    dpe_embed = 'dpe_embed' in manager.config and manager.config['dpe_embed']
 
     model.eval()
     with torch.no_grad():
         src_nums, src_mask = torch.tensor(vocab.numberize(src_words)), None
         mask_size = src_nums.unsqueeze(-2).size()
         if manager.dict:
-            dict_mask = Batch.dict_mask_from_data(zip([lemmas], [senses]), mask_size, device)
-        src_encs = model.encode(src_nums.unsqueeze(0).to(device), src_mask, dict_mask)
+            if dpe_embed:
+                dict_mask = None
+                dict_data = zip([lemmas], [senses])
+            else:
+                dict_mask = Batch.dict_mask_from_data(zip([lemmas], [senses]), mask_size, device)
+                dict_data = None
+        else:
+            dict_mask = dict_data = None
+        src_encs = model.encode(src_nums.unsqueeze(0).to(device), src_mask, dict_mask, dict_data)
         out_nums = beam_search(manager, src_encs, src_mask, manager.beam_size)
 
     return tokenizer.detokenize(vocab.denumberize(out_nums.tolist()))
