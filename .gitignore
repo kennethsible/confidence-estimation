@@ -1,5 +1,7 @@
-.mypy_cache/
 __pycache__/
+.mypy_cache/
+.vscode/
+.venv/
 *.pyc
-data/*
-!data/dict.json
+deen_data/*
+!deen_data/dict.json

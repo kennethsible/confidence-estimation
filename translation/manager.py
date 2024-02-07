@@ -6,12 +6,11 @@ from io import StringIO
 import spacy
 import torch
 import torch.nn as nn
+from decoder import triu_mask
+from model import Model
 from sacremoses import MosesDetokenizer, MosesPunctNormalizer, MosesTokenizer
 from subword_nmt.apply_bpe import BPE
 from torch import Tensor
-
-from decoder import triu_mask
-from model import Model
 
 
 class Vocab:

@@ -4,7 +4,7 @@ import torch
 from torch import Tensor
 
 if TYPE_CHECKING:
-    from manager import Manager
+    from .manager import Manager
 
 
 def triu_mask(size: int, device: str | None = None) -> Tensor:

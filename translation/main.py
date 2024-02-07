@@ -8,8 +8,8 @@ from datetime import timedelta
 import torch
 from tqdm import tqdm
 
-from manager import Manager, Tokenizer
-from score import score_model
+from .manager import Manager, Tokenizer
+from .score import score_model
 
 Criterion = torch.nn.CrossEntropyLoss
 Optimizer = torch.optim.Optimizer

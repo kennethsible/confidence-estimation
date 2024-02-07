@@ -91,6 +91,6 @@ clip_grad           = 1.0   # maximum allowed value of gradients
 batch_size          = 4096  # number of tokens per batch (source/target)
 max_length          = 512   # maximum sentence length (during training)
 beam_size           = 4     # beam search decoding (length normalization)
-threshold           = 10    # frequency threshold to append word senses
-max_senses          = 10    # maximum number of word senses to append
+threshold           = 10    # frequency threshold, append definitions
+max_senses          = 10    # maximum number of definitions/headword
 ```

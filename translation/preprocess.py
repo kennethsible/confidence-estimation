@@ -3,7 +3,7 @@ import re
 
 from tqdm import tqdm
 
-from manager import Lemmatizer
+from .manager import Lemmatizer
 
 DATA_DIR = 'data'
 TRAIN_DIR = f'{DATA_DIR}/training'

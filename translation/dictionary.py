@@ -4,8 +4,8 @@ import re
 from subword_nmt.apply_bpe import BPE
 from tqdm import tqdm
 
-from manager import Tokenizer
-from preprocess import download
+from .manager import Tokenizer
+from .preprocess import download
 
 filters = [
     r'\([^\)]+\)',
