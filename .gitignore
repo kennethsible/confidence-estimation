@@ -3,5 +3,5 @@ __pycache__/
 .vscode/
 .venv/
 *.pyc
-deen_data/*
-!deen_data/dict.json
+data_deen/*
+!data_deen/de-en.json

@@ -1,11 +1,11 @@
 import json
+import os
 import re
 
 from subword_nmt.apply_bpe import BPE
 from tqdm import tqdm
 
-from .manager import Tokenizer
-from .preprocess import download
+from translation.manager import Tokenizer
 
 filters = [
     r'\([^\)]+\)',
@@ -65,20 +65,23 @@ filters.extend(abbrs)
 
 
 def main():
-    download('https://ftp.tu-chemnitz.de/pub/Local/urz/ding/de-en-devel/de-en.txt.gz', 'dict.deen')
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--data-dir', required=True, help='output directory')
+    args = parser.parse_args()
+    url = 'https://ftp.tu-chemnitz.de/pub/Local/urz/ding/de-en-devel/de-en.txt.gz'
+    os.system(f'wget -q -P {args.data_dir} {url} --show-progress')
 
-    with open('data/codes.ende') as codes_file:
+    with open(f'{args.data_dir}/codes.tsv') as codes_file:
         tokenizer = Tokenizer(BPE(codes_file), 'en')
 
     deen_dict = {}
-    with open('data/dict.deen') as dict_file:
+    with open(f'{args.data_dir}/de-en.txt') as dict_file:
         for line in tqdm(dict_file.readlines()):
             if line.startswith('#'):
                 continue
             line = re.sub('|'.join(filters), '', line)
             line = re.sub(r'\s+', ' ', line)
-            if '::' in line:
-                de, en = line.split('::')
+            de, en = line.split('::')
             for words, defns in zip(de.split('|'), en.split('|')):
                 for headword in words.split(';'):
                     headword = headword.strip()
@@ -97,11 +100,13 @@ def main():
                         if definition not in deen_dict[headword]:
                             deen_dict[headword].append(definition)
 
-    with open('data/dict.json', 'w') as dict_file:
+    with open(f'{args.data_dir}/de-en.json', 'w') as dict_file:
         deen_dict = dict(sorted(deen_dict.items(), key=lambda x: x[0]))
         json.dump(deen_dict, dict_file, indent=4, ensure_ascii=False)
-    print(len(deen_dict), 'data/dict.json')
+    print(len(deen_dict), f'{args.data_dir}/de-en.json')
 
 
 if __name__ == '__main__':
+    import argparse
+
     main()
