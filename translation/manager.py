@@ -6,11 +6,12 @@ from io import StringIO
 import spacy
 import torch
 import torch.nn as nn
-from decoder import triu_mask
-from model import Model
 from sacremoses import MosesDetokenizer, MosesPunctNormalizer, MosesTokenizer
 from subword_nmt.apply_bpe import BPE
 from torch import Tensor
+
+from translation.decoder import triu_mask
+from translation.model import Model
 
 
 class Vocab:
@@ -79,14 +80,14 @@ class Batch:
     @staticmethod
     def dict_mask_from_data(dict_data, mask_size, device):
         dict_mask = torch.zeros(mask_size, device=device).repeat((2, 1, mask_size[-1], 1))
-        for i, (lemmas, senses) in enumerate(dict_data):
-            for (a, b), sense_spans in zip(lemmas, senses):
-                for c, d in sense_spans:
-                    # only lemmas can attend to their senses
+        for i, (src_spans, tgt_spans) in enumerate(dict_data):
+            for (a, b), spans in zip(src_spans, tgt_spans):
+                for c, d in spans:
+                    # only headwords can attend to their definitions
                     dict_mask[0, i, :, c:d] = 1.0
                     dict_mask[0, i, a:b, c:d] = 0.0
                     dict_mask[0, i, c:d, c:d] = 0.0
-                    # senses can only attend to themselves
+                    # definitions can only attend to themselves
                     dict_mask[1, i, c:d, :] = 1.0
                     dict_mask[1, i, c:d, a:b] = 0.0
                     dict_mask[1, i, c:d, c:d] = 0.0
@@ -107,11 +108,11 @@ class Batch:
 
 
 class Tokenizer:
-    def __init__(self, bpe: BPE, src_lang: str, tgt_lang: str | None = None):
-        self.bpe = bpe
+    def __init__(self, codes: BPE, src_lang: str, tgt_lang: str | None = None):
+        self.codes = codes
         self.src_lang = src_lang
         self.tgt_lang = tgt_lang
-        self.normalizer = MosesPunctNormalizer()
+        self.normalizer = MosesPunctNormalizer(src_lang)
         self.tokenizer = MosesTokenizer(src_lang)
         lang = tgt_lang if tgt_lang else src_lang
         self.detokenizer = MosesDetokenizer(lang)
@@ -119,7 +120,7 @@ class Tokenizer:
     def tokenize(self, text: str, dropout: int = 0) -> str:
         text = self.normalizer.normalize(text)
         tokens = self.tokenizer.tokenize(text, escape=False)
-        return self.bpe.process_line(' '.join(tokens), dropout)
+        return self.codes.process_line(' '.join(tokens), dropout)
 
     def detokenize(self, tokens: list[str]) -> str:
         text = self.detokenizer.detokenize(tokens)
@@ -168,30 +169,28 @@ class Manager:
     clip_grad: float
     batch_size: int
     max_length: int
+    len_ratio: int
     beam_size: int
     threshold: int
     max_append: int
+    dpe_embed: int
 
     def __init__(
         self,
-        src_lang: str,
-        tgt_lang: str,
         config: dict,
         device: str,
+        src_lang: str,
+        tgt_lang: str,
         model_file: str,
         vocab_file: str | list[str],
         codes_file: str | list[str],
-        dict_file=None,
-        freq_file=None,
-        lem_data_file=None,
-        lem_test_file=None,
-        data_file: str | None = None,
-        test_file: str | None = None,
+        dict_file: str | None = None,
+        freq_file: str | None = None,
     ):
-        self.src_lang = src_lang
-        self.tgt_lang = tgt_lang
         self.config = config
         self.device = device
+        self.src_lang = src_lang
+        self.tgt_lang = tgt_lang
         self._model_name = model_file
         self._vocab_list = vocab_file
         self._codes_list = codes_file
@@ -200,14 +199,14 @@ class Manager:
             self.__setattr__(option, value)
 
         if isinstance(self._vocab_list, str):
-            with open(self._vocab_list) as file:
-                self._vocab_list = list(file.readlines())
+            with open(self._vocab_list) as vocab_f:
+                self._vocab_list = list(vocab_f.readlines())
         self.vocab = Vocab(self._vocab_list)
 
         if isinstance(self._codes_list, str):
-            with open(self._codes_list) as file:
-                self._codes_list = list(file.readlines())
-        self.bpe = BPE(StringIO(''.join(self._codes_list)))
+            with open(self._codes_list) as codes_f:
+                self._codes_list = list(codes_f.readlines())
+        self.codes = BPE(StringIO(''.join(self._codes_list)))
 
         self.model = Model(
             self.vocab.size(),
@@ -224,68 +223,43 @@ class Manager:
 
         self.model.apply(init_weights)
 
-        self.dict = None
+        self.dict: dict[str, list[str]] = {}
         if dict_file:
-            with open(dict_file) as file:
-                self.dict = json.load(file)
-        self.dict_file = dict_file
+            with open(dict_file) as dict_f:
+                self.dict = json.load(dict_f)
 
-        self.freq = None
+        self.freq: dict[str, int] = {}
         if freq_file:
-            self.freq = {}
-            with open(freq_file) as file:
-                for line in file:
+            with open(freq_file) as freq_f:
+                for line in freq_f:
                     word, freq = line.split()
                     self.freq[word] = int(freq)
-        self.freq_file = freq_file
 
-        self.lem_data = None
-        if lem_data_file:
-            self.lem_data = []
-            with open(lem_data_file) as file:
-                for line in file:
-                    words, spans = line.split('\t')
-                    self.lem_data.append([words.split(), list(map(int, spans.split()))])
-        self.lem_data_file = lem_data_file
-
-        self.lem_test = None
-        if lem_test_file:
-            self.lem_test = []
-            with open(lem_test_file) as file:
-                for line in file:
-                    words, spans = line.split('\t')
-                    self.lem_test.append([words.split(), list(map(int, spans.split()))])
-        self.lem_test_file = lem_data_file
-
-        self.data: list[Batch] | None = None
-        self.data_file = data_file
-
-        self.test: list[Batch] | None = None
-        self.test_file = test_file
+        self.tokenizer = Tokenizer(self.codes, src_lang, tgt_lang)
+        self.lemmatizer = Lemmatizer('de_core_news_sm')
 
     def save_model(self):
         torch.save(
             {
-                'state_dict': self.model.state_dict(),
+                'config': self.config,
                 'src_lang': self.src_lang,
                 'tgt_lang': self.tgt_lang,
                 'vocab_list': self._vocab_list,
                 'codes_list': self._codes_list,
-                'model_config': self.config,
+                'state_dict': self.model.state_dict(),
             },
             self._model_name,
         )
 
-    def attach_senses(self, src_words, src_spans, tokenizer):
-        lemmas, senses = [], []
+    def append_defs(self, src_words: list[str], lem_data):
+        src_spans, tgt_spans = [], []
 
         headwords = []
-        lemma_start = 1
-        total_shift = 0
-        for k, (lemma, lemma_end) in enumerate(zip(*src_spans)):
-            lemma_end += total_shift
+        src_start, total_shift = 1, 0
+        for lemma, src_end in zip(*lem_data):
+            src_end += total_shift
             word = ''
-            for i in range(lemma_start, lemma_end):
+            for i in range(src_start, src_end):
                 word += src_words[i].rstrip('@@')
 
             headword = (
@@ -301,34 +275,34 @@ class Manager:
             )
 
             if len(headword) > 0:
-                subwords = tokenizer.tokenize(word).split()
-                shift = len(subwords) - (lemma_end - lemma_start)
+                subwords = self.tokenizer.tokenize(word).split()
+                shift = len(subwords) - (src_end - src_start)
                 if len(src_words) + shift > self.max_length:
-                    lemma_start = lemma_end
+                    src_start = src_end
                     continue
                 headwords.append(headword)
                 total_shift += shift
-                src_words[lemma_start:lemma_end] = subwords
-                lemma_end = lemma_start + len(subwords)
-                lemmas.append((lemma_start, lemma_end))
+                src_words[src_start:src_end] = subwords
+                src_end = src_start + len(subwords)
+                src_spans.append((src_start, src_end))
 
-            lemma_start = lemma_end
+            src_start = src_end
 
         for i, headword in enumerate(headwords):
-            defs = self.dict[headword][: self.max_append]
-            sense_start, sense_spans = len(src_words), []
-            for w in defs:
-                sense_end = sense_start + len(w.split())
-                sense_spans.append((sense_start, sense_end))
-                sense_start = sense_end
-            if sense_end > self.max_length:
-                lemmas = lemmas[:i]
+            definitions = self.dict[headword][: self.max_append]
+            tgt_start, spans = len(src_words), []
+            for definition in definitions:
+                tgt_end = tgt_start + len(definition.split())
+                spans.append((tgt_start, tgt_end))
+                tgt_start = tgt_end
+            if tgt_end > self.max_length:
+                src_spans = src_spans[:i]
                 break
-            for w in defs:
-                src_words.extend(w.split())
-            senses.append(sense_spans)
+            for definition in definitions:
+                src_words.extend(definition.split())
+            tgt_spans.append(spans)
 
-        return lemmas, senses
+        return src_spans, tgt_spans
 
     def batch_data(self, data) -> list[Batch]:
         batched_data = []
@@ -342,18 +316,12 @@ class Manager:
 
             while True:
                 batch_size = min(self.batch_size // (max(src_len, tgt_len) * 8) * 8, 1000)
-
-                if self.dict and self.freq:
-                    src_batch, tgt_batch, lemmas, senses = zip(*data[i : (i + batch_size)])
-                    dict_data = list(zip(lemmas, senses))
-                else:
-                    src_batch, tgt_batch = zip(*data[i : (i + batch_size)])
-                    dict_data = None
-
+                src_batch, tgt_batch, src_spans, tgt_spans = zip(*data[i : (i + batch_size)])
                 max_src_len = max(len(src_words) for src_words in src_batch)
                 max_tgt_len = max(len(tgt_words) for tgt_words in tgt_batch)
 
                 if src_len >= max_src_len and tgt_len >= max_tgt_len:
+                    dict_data = list(zip(src_spans, tgt_spans))
                     break
                 src_len, tgt_len = max_src_len, max_tgt_len
 
@@ -381,44 +349,45 @@ class Manager:
                 ]
             )
 
-            batched_data.append(
-                Batch(
-                    src_nums,
-                    tgt_nums,
-                    self.vocab.PAD,
-                    self.device,
-                    dict_data,
-                )
-            )
+            batched_data.append(Batch(src_nums, tgt_nums, self.vocab.PAD, self.device, dict_data))
 
         return batched_data
 
-    def load_data(self, data_file, src_spans=None, tokenizer=None, append_dict=False):
+    def load_data(
+        self, data_file: str, lem_file: str | None = None, dict_file: str | None = None
+    ) -> list[Batch]:
+        lem_data = []
+        if lem_file:
+            with open(lem_file) as lem_f:
+                for line in lem_f.readlines():
+                    words, spans = line.split('\t')
+                    lem_data.append([words.split(), list(map(int, spans.split()))])
+
         data = []
         with open(data_file) as file:
             for i, line in enumerate(file.readlines()):
                 src_line, tgt_line = line.split('\t')
                 src_words = ['<BOS>'] + src_line.split() + ['<EOS>']
                 tgt_words = ['<BOS>'] + tgt_line.split() + ['<EOS>']
+                src_spans, tgt_spans = [], []
+                if lem_data and self.dict and self.freq:
+                    src_spans, tgt_spans = self.append_defs(src_words, lem_data[i])
+                data.append((src_words, tgt_words, src_spans, tgt_spans))
 
-                if self.dict and self.freq and src_spans and tokenizer:
-                    lemmas, senses = self.attach_senses(src_words, src_spans[i], tokenizer)
-                    data.append((src_words, tgt_words, lemmas, senses))
-                else:
-                    data.append((src_words, tgt_words))
-
-        if append_dict and self.dict_file and tokenizer:
-            with open(self.dict_file) as file:
-                for headword, senses in json.load(file).items():
-                    src_words = tokenizer.tokenize(''.join(headword)).split()
+        if dict_file:
+            with open(dict_file) as file:
+                for headword, definitions in json.load(file).items():
+                    src_words = self.tokenizer.tokenize(''.join(headword)).split()
                     src_words = ['<BOS>'] + src_words + ['<EOS>']
-                    for sense in senses[: self.max_append]:
-                        src_words += sense.split()
-                        tgt_words = ['<BOS>'] + sense.split() + ['<EOS>']
-                        if len(src_words) <= self.max_length and len(tgt_words) <= self.max_length:
-                            if self.dict and self.freq:
-                                data.append((src_words, tgt_words, [], []))
-                            else:
-                                data.append((src_words, tgt_words))
+                    for definition in definitions[: self.max_append]:
+                        src_words += definition.split()
+                        tgt_words = ['<BOS>'] + definition.split() + ['<EOS>']
+                        if (
+                            1 <= len(src_words) <= self.max_length
+                            and 1 <= len(tgt_words) <= self.max_length
+                            and len(src_words) / len(tgt_words) <= self.len_ratio
+                            and len(tgt_words) / len(src_words) <= self.len_ratio
+                        ):
+                            data.append((src_words, tgt_words, [], []))
 
         return self.batch_data(data)

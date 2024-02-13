@@ -2,14 +2,13 @@ import logging
 import math
 import random
 import time
-import tomllib
 from datetime import timedelta
 
+import tomllib
 import torch
 from tqdm import tqdm
 
-from .manager import Manager, Tokenizer
-from .score import score_model
+from translation.manager import Batch, Manager
 
 Criterion = torch.nn.CrossEntropyLoss
 Optimizer = torch.optim.Optimizer
@@ -18,27 +17,24 @@ Logger = logging.Logger
 
 
 def train_epoch(
+    data: list[Batch],
     manager: Manager,
     criterion: Criterion,
     optimizer: Optimizer | None = None,
     scaler: Scaler | None = None,
-    use_tqdm: bool = False,
 ) -> float:
-    data = manager.data if optimizer else manager.test
-    dpe_embed = 'dpe_embed' in manager.config and manager.config['dpe_embed']
-
     total_loss, num_tokens = 0.0, 0
-    for batch in tqdm(data, disable=(not use_tqdm)):
+    for batch in tqdm(data):
         src_nums, src_mask = batch.src_nums, batch.src_mask
         tgt_nums, tgt_mask = batch.tgt_nums, batch.tgt_mask
         batch_length = batch.length()
 
-        if dpe_embed:
+        if manager.dpe_embed:
             dict_mask, dict_data = None, batch._dict_data
         else:
             dict_mask, dict_data = batch.dict_mask, None
 
-        with torch.cuda.amp.autocast(enabled=False):
+        with torch.cuda.amp.autocast():
             logits = manager.model(
                 src_nums, tgt_nums[:, :-1], src_mask, tgt_mask, dict_mask, dict_data
             )
@@ -62,11 +58,8 @@ def train_epoch(
     return total_loss / num_tokens
 
 
-def train_model(
-    manager: Manager, tokenizer: Tokenizer, logger: Logger, use_tqdm: bool = False
-) -> tuple[tuple, list[str]]:
+def train_model(train_data: list[Batch], val_data: list[Batch], manager: Manager):
     model, vocab = manager.model, manager.vocab
-    assert manager.data and len(manager.data) > 0
     criterion = torch.nn.CrossEntropyLoss(
         ignore_index=vocab.PAD, label_smoothing=manager.label_smoothing
     )
@@ -74,20 +67,21 @@ def train_model(
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
         optimizer, factor=manager.decay_factor, patience=manager.patience
     )
-    scaler = torch.cuda.amp.GradScaler(enabled=False)
+    scaler = torch.cuda.amp.GradScaler()
 
-    patience, best_loss = 0, torch.inf
-    for epoch in range(manager.max_epochs):
-        random.shuffle(manager.data)
+    epoch = patience = 0
+    best_loss = torch.inf
+    while epoch < manager.max_epochs:
+        random.shuffle(train_data)
 
         model.train()
         start = time.perf_counter()
-        train_loss = train_epoch(manager, criterion, optimizer, scaler, use_tqdm)
+        train_loss = train_epoch(train_data, manager, criterion, optimizer, scaler)
         elapsed = timedelta(seconds=(time.perf_counter() - start))
 
         model.eval()
         with torch.no_grad():
-            val_loss = train_epoch(manager, criterion, use_tqdm=use_tqdm)
+            val_loss = train_epoch(val_data, manager, criterion)
         scheduler.step(val_loss)
 
         checkpoint = f'[{str(epoch + 1).rjust(len(str(manager.max_epochs)), "0")}]'
@@ -95,8 +89,7 @@ def train_model(
         checkpoint += f' | Validation PPL = {math.exp(val_loss):.16f}'
         checkpoint += f' | Learning Rate = {optimizer.param_groups[0]["lr"]:.16f}'
         checkpoint += f' | Elapsed Time = {elapsed}'
-        logger.info(checkpoint)
-        print()
+        print(checkpoint)
 
         if val_loss < best_loss:
             manager.save_model()
@@ -105,41 +98,41 @@ def train_model(
             patience += 1
 
         if optimizer.param_groups[0]['lr'] < manager.min_lr:
-            logger.info('Reached Minimum Learning Rate.')
+            print('Reached Minimum Learning Rate.')
             break
         if patience >= manager.max_patience:
-            logger.info('Reached Maximum Patience.')
+            print('Reached Maximum Patience.')
             break
-
-    model_state = torch.load(manager._model_name, map_location=manager.device)
-    manager.model.load_state_dict(model_state['state_dict'])
-    return score_model(manager, tokenizer, logger, use_tqdm)
+        epoch += 1
+    else:
+        print('Maximum Number of Epochs Reached.')
 
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--lang', nargs=2, required=True, help='source/target language')
-    parser.add_argument('--data', metavar='FILE', required=True, help='training data')
-    parser.add_argument('--test', metavar='FILE', required=True, help='validation data')
-    parser.add_argument('--dict', metavar='FILE', required=False, help='dictionary data')
-    parser.add_argument('--freq', metavar='FILE', required=False, help='frequency data')
-    parser.add_argument('--lem-data', metavar='FILE', help='lemmatized training data')
-    parser.add_argument('--lem-test', metavar='FILE', help='lemmatized validation data')
-    parser.add_argument('--vocab', metavar='FILE', required=True, help='vocab file (shared)')
-    parser.add_argument('--codes', metavar='FILE', required=True, help='codes file (shared)')
-    parser.add_argument('--model', metavar='FILE', required=True, help='model file (.pt)')
-    parser.add_argument('--config', metavar='FILE', required=True, help='config file (.toml)')
-    parser.add_argument('--log', metavar='FILE', required=True, help='log file (.log)')
+    parser.add_argument('--lang-pair', required=True, help='source-target language pair')
+    parser.add_argument(
+        '--train-data', metavar='FILE_PATH', required=True, help='parallel training'
+    )
+    parser.add_argument(
+        '--val-data', metavar='FILE_PATH', required=True, help='parallel validation'
+    )
+    parser.add_argument('--lem-train', metavar='FILE_PATH', help='lemmatized training')
+    parser.add_argument('--lem-val', metavar='FILE_PATH', help='lemmatized validation')
+    parser.add_argument('--dict', metavar='FILE_PATH', help='bilingual dictionary')
+    parser.add_argument('--freq', metavar='FILE_PATH', help='frequency statistics')
+    parser.add_argument('--vocab', metavar='FILE_PATH', required=True, help='shared vocabulary')
+    parser.add_argument('--codes', metavar='FILE_PATH', required=True, help='subword-nmt codes')
+    parser.add_argument('--model', metavar='FILE_PATH', required=True, help='translation model')
     parser.add_argument('--seed', type=int, help='random seed')
-    parser.add_argument('--tqdm', action='store_true', help='progress bar')
     args, unknown = parser.parse_known_args()
 
     if args.seed:
         random.seed(args.seed)
         torch.manual_seed(args.seed)
 
-    src_lang, tgt_lang = args.lang
-    with open(args.config, 'rb') as config_file:
+    src_lang, tgt_lang = args.lang_pair.split('-')
+    with open('translation/config.toml', 'rb') as config_file:
         config = tomllib.load(config_file)
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
@@ -152,32 +145,24 @@ def main():
                 config[option] = value
 
     manager = Manager(
-        src_lang,
-        tgt_lang,
         config,
         device,
+        src_lang,
+        tgt_lang,
         args.model,
         args.vocab,
         args.codes,
         args.dict,
         args.freq,
-        args.lem_data,
-        args.lem_test,
-        args.data,
-        args.test,
     )
-    tokenizer = Tokenizer(manager.bpe, src_lang, tgt_lang)
-    append_dict = bool(config['append_dict']) if 'append_dict' in config else None
-    manager.data = manager.load_data(args.data, manager.lem_data, tokenizer, append_dict)
-    manager.test = manager.load_data(args.test, manager.lem_test, tokenizer)
+    dict_file = args.dict if 'append_dict' in config else None
+    train_data = manager.load_data(args.train_data, args.lem_train, dict_file)
+    val_data = manager.load_data(args.val_data, args.lem_val)
 
     if device == 'cuda' and torch.cuda.get_device_capability()[0] >= 8:
         torch.set_float32_matmul_precision('high')
 
-    logger = logging.getLogger('torch.logger')
-    logger.addHandler(logging.FileHandler(args.log))
-
-    train_model(manager, tokenizer, logger, args.tqdm)
+    train_model(train_data, val_data, manager)
 
 
 if __name__ == '__main__':

@@ -4,7 +4,7 @@ import torch
 from torch import Tensor
 
 if TYPE_CHECKING:
-    from .manager import Manager
+    from translation.manager import Manager
 
 
 def triu_mask(size: int, device: str | None = None) -> Tensor:
@@ -12,15 +12,13 @@ def triu_mask(size: int, device: str | None = None) -> Tensor:
     return torch.triu(mask, diagonal=1) == 0
 
 
-def greedy_search(
-    manager: 'Manager', src_encs: Tensor, src_mask: Tensor | None = None, max_length: int = 512
-) -> Tensor:
+def greedy_search(manager: 'Manager', src_encs: Tensor, max_length: int = 512) -> Tensor:
     model, vocab, device = manager.model, manager.vocab, manager.device
     tgt_mask = triu_mask(max_length, device=device)
     path = torch.full((1, max_length), vocab.BOS, device=device)
 
     for i in range(1, max_length):
-        tgt_encs = model.decode(src_encs.unsqueeze(0), path[:, :i], src_mask, tgt_mask[:, :i, :i])
+        tgt_encs = model.decode(src_encs.unsqueeze(0), path[:, :i], tgt_mask=tgt_mask[:, :i, :i])
         logits = model.out_embed(tgt_encs[:, -1], inverse=True)
         path[0, i] = logits.log_softmax(dim=-1).argmax(dim=-1)
         if path[0, i] == vocab.EOS:
@@ -30,11 +28,7 @@ def greedy_search(
 
 
 def beam_search(
-    manager: 'Manager',
-    src_encs: Tensor,
-    src_mask: Tensor | None = None,
-    beam_size: int = 4,
-    max_length: int = 512,
+    manager: 'Manager', src_encs: Tensor, beam_size: int = 4, max_length: int = 512
 ) -> Tensor:
     model, vocab, device = manager.model, manager.vocab, manager.device
     tgt_mask = triu_mask(max_length, device=device)
@@ -45,7 +39,7 @@ def beam_search(
     i, init_size = 0, beam_size
     while (i := i + 1) < max_length and beam_size > 0:
         tgt_encs = model.decode(
-            src_encs.expand(beam_size, -1, -1), paths[active, :i], src_mask, tgt_mask[:, :i, :i]
+            src_encs.expand(beam_size, -1, -1), paths[active, :i], tgt_mask=tgt_mask[:, :i, :i]
         )
         logits = model.out_embed(tgt_encs[:, -1], inverse=True)
         scores = probs[active].unsqueeze(1) + logits.log_softmax(dim=-1)

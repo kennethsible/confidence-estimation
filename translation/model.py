@@ -1,7 +1,9 @@
 from typing import Callable
 
 import torch.nn as nn
-from layers import (
+from torch import Tensor
+
+from translation.layers import (
     DictionaryEncoding,
     Embedding,
     FeedForward,
@@ -10,7 +12,6 @@ from layers import (
     ScaleNorm,
     clone,
 )
-from torch import Tensor
 
 Sublayer = Callable[[Tensor], Tensor]
 

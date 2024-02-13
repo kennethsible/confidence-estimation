@@ -1,65 +1,56 @@
-import random
-
 import torch
-from decoder import beam_search
-from manager import Batch, Lemmatizer, Manager, Tokenizer
+from tqdm import tqdm
+
+from translation.decoder import beam_search
+from translation.manager import Batch, Manager
 
 
-def translate_file(data_file: str, manager: Manager, tokenizer: Tokenizer) -> list[str]:
-    with open(data_file) as file:
-        return [translate_string(line, manager, tokenizer) for line in file]
+def translate_batch():
+    # ! TODO batch pre-encode and batch pre-lemmatize
+    pass
 
 
-def translate_string(string: str, manager: Manager, tokenizer: Tokenizer) -> str:
+def translate(string: str, manager: Manager) -> str:
     model, vocab, device = manager.model, manager.vocab, manager.device
-    src_words = tokenizer.tokenize(string).split()
-    if manager.dict:
-        lemmatizer = Lemmatizer('de_core_news_sm')
-        src_spans = list(lemmatizer.lemmatize([src_words]))[0]
-    src_words = ['<BOS>'] + src_words + ['<EOS>']
-    if manager.dict:
-        lemmas, senses = manager.attach_senses(src_words, src_spans, tokenizer)
-
-    dpe_embed = 'dpe_embed' in manager.config and manager.config['dpe_embed']
+    tokenizer, lemmatizer = manager.tokenizer, manager.lemmatizer
+    src_words = ['<BOS>'] + tokenizer.tokenize(string).split() + ['<EOS>']
 
     model.eval()
     with torch.no_grad():
-        src_nums, src_mask = torch.tensor(vocab.numberize(src_words)), None
-        mask_size = src_nums.unsqueeze(-2).size()
-        if manager.dict:
-            if dpe_embed:
-                dict_mask = None
-                dict_data = zip([lemmas], [senses])
+        if manager.dict and manager.freq:
+            lem_data = next(lemmatizer.lemmatize([src_words[1:-1]]))
+            src_spans, tgt_spans = manager.append_defs(src_words, lem_data)
+            src_nums = torch.tensor(vocab.numberize(src_words), device=device)
+            dict_data = list(zip([src_spans], [tgt_spans]))
+            if manager.dpe_embed:
+                src_encs = model.encode(src_nums.unsqueeze(0), dict_mask=None, dict_data=dict_data)
             else:
-                dict_mask = Batch.dict_mask_from_data(zip([lemmas], [senses]), mask_size, device)
-                dict_data = None
+                mask_size = src_nums.unsqueeze(-2).size()
+                dict_mask = Batch.dict_mask_from_data(dict_data, mask_size, device)
+                src_encs = model.encode(src_nums.unsqueeze(0), dict_mask=dict_mask, dict_data=None)
         else:
-            dict_mask = dict_data = None
-        src_encs = model.encode(src_nums.unsqueeze(0).to(device), src_mask, dict_mask, dict_data)
-        out_nums = beam_search(manager, src_encs, src_mask, manager.beam_size)
+            src_nums = torch.tensor(vocab.numberize(src_words), device=device)
+            src_encs = model.encode(src_nums.unsqueeze(0))
+        if manager.beam_size:
+            out_nums = beam_search(manager, src_encs, manager.beam_size, manager.max_length * 2)
+        else:
+            out_nums = beam_search(manager, src_encs, max_length=manager.max_length * 2)
 
     return tokenizer.detokenize(vocab.denumberize(out_nums.tolist()))
 
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--model', metavar='FILE', required=True, help='model file (.pt)')
-    parser.add_argument('--dict', metavar='FILE', required=False, help='dictionary data')
-    parser.add_argument('--freq', metavar='FILE', required=False, help='frequency data')
-    parser.add_argument('--seed', type=int, help='random seed')
-    group = parser.add_mutually_exclusive_group(required=True)
-    group.add_argument('--string', metavar='STRING', help='input string')
-    group.add_argument('--file', metavar='FILE', help='input file')
+    parser.add_argument('--dict', metavar='FILE_PATH', help='bilingual dictionary')
+    parser.add_argument('--freq', metavar='FILE_PATH', help='frequency statistics')
+    parser.add_argument('--model', metavar='FILE_PATH', required=True, help='translation model')
+    parser.add_argument('--input', metavar='FILE_PATH', help='detokenized input')
     args, unknown = parser.parse_known_args()
-
-    if args.seed:
-        random.seed(args.seed)
-        torch.manual_seed(args.seed)
 
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     model_state = torch.load(args.model, map_location=device)
 
-    config = model_state['model_config']
+    config = model_state['config']
     for i, arg in enumerate(unknown):
         if arg[:2] == '--' and len(unknown) > i:
             option, value = arg[2:].replace('-', '_'), unknown[i + 1]
@@ -69,30 +60,22 @@ def main():
                 config[option] = value
 
     manager = Manager(
-        model_state['src_lang'],
-        model_state['tgt_lang'],
         config,
         device,
+        model_state['src_lang'],
+        model_state['tgt_lang'],
         args.model,
         model_state['vocab_list'],
         model_state['codes_list'],
-        args.dict,
-        args.freq,
-        data_file=None,
-        test_file=None,
     )
     manager.model.load_state_dict(model_state['state_dict'])
-    tokenizer = Tokenizer(manager.bpe, manager.src_lang, manager.tgt_lang)
 
     if device == 'cuda' and torch.cuda.get_device_capability()[0] >= 8:
         torch.set_float32_matmul_precision('high')
 
-    if args.file:
-        data_file = open(args.file)
-        print(*translate_file(data_file, manager, tokenizer), sep='\n')
-        data_file.close()
-    elif args.string:
-        print(translate_string(args.string, manager, tokenizer))
+    with open(args.input) as data_f:
+        for string in tqdm(data_f.readlines()):
+            print(translate(string, manager))
 
 
 if __name__ == '__main__':
