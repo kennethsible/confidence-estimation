@@ -1,5 +1,6 @@
 import os
 
+import tomllib
 from tqdm import tqdm
 
 from translation.manager import Lemmatizer
@@ -10,8 +11,7 @@ lemmatizer = Lemmatizer('de_core_news_sm')
 def lemmatize(src_file: str, lem_file: str):
     src_words = []
     with open(src_file) as infile:
-        for line in infile.readlines():
-            src_line = line.split('\t')[0]
+        for src_line in infile.readlines():
             src_words.append(src_line.split())
 
     data = lemmatizer.lemmatize(src_words)
@@ -33,6 +33,10 @@ def main():
     data_dir = args.data_dir
     os.system(f'mkdir -p {data_dir}')
 
+    with open('translation/config.toml', 'rb') as config_f:
+        config = tomllib.load(config_f)
+    max_length, len_ratio = config['max_length'], config['len_ratio']
+
     print('\n[1/11] Downloading Training Corpus...')
     train_path = f'{data_dir}/europarl-v10'
     os.system(f'mkdir -p {train_path}')
@@ -44,7 +48,13 @@ def main():
         with open(f'{train_path}.src', 'w') as src_file, open(f'{train_path}.ref', 'w') as tgt_file:
             for line in open(f'{train_path}.{src_lang}-{tgt_lang}.tsv'):
                 src_line, tgt_line, *_ = line.split('\t')
-                if not src_line or not tgt_line:
+                src_words, tgt_words = src_line.split(), tgt_line.split()
+                if not (
+                    1 <= len(src_words) <= max_length
+                    and 1 <= len(tgt_words) <= max_length
+                    and len(src_words) / len(tgt_words) <= len_ratio
+                    and len(tgt_words) / len(src_words) <= len_ratio
+                ):
                     continue
                 src_file.write(src_line + '\n')
                 tgt_file.write(tgt_line + '\n')
@@ -52,28 +62,19 @@ def main():
     os.system(f'wc -l {train_path}.src')
 
     print('\n[2/11] Normalizing Training Corpus...')
-    os.system(
-        f'sacremoses -l {src_lang} -j 4 normalize < {train_path}.src \
-            > {train_path}.norm.src'
-    )
-    os.system(
-        f'sacremoses -l {tgt_lang} -j 4 normalize < {train_path}.ref \
-            > {train_path}.norm.ref'
-    )
+    os.system(f'sacremoses -l {src_lang} -j 4 normalize < {train_path}.src > {train_path}.norm.src')
+    os.system(f'sacremoses -l {tgt_lang} -j 4 normalize < {train_path}.ref > {train_path}.norm.ref')
     root_path = 'norm'
 
     print('\n[3/11] Tokenizing Training Corpus...')
     os.system(
-        f'sacremoses -l {src_lang} -j 4 tokenize -x < {train_path}.{root_path}.src \
-            > {train_path}.{root_path}.tok.src'
+        f'sacremoses -l {src_lang} -j 4 tokenize -x < {train_path}.{root_path}.src > {train_path}.{root_path}.tok.src'
     )
     os.system(
-        f'cat {train_path}.{root_path}.tok.src | subword-nmt get-vocab \
-            > {data_dir}/{src_lang}-freq.tsv'
+        f'sacremoses -l {tgt_lang} -j 4 tokenize -x < {train_path}.{root_path}.ref > {train_path}.{root_path}.tok.ref'
     )
     os.system(
-        f'sacremoses -l {tgt_lang} -j 4 tokenize -x < {train_path}.{root_path}.ref \
-            > {train_path}.{root_path}.tok.ref'
+        f'cat {train_path}.{root_path}.tok.src | subword-nmt get-vocab > {data_dir}/{src_lang}-freq.tsv'
     )
     root_path += '.tok'
 
@@ -85,19 +86,22 @@ def main():
     os.system(
         f'cp ~/.sacrebleu/{args.val_set}/{args.val_set}.{src_lang}-{tgt_lang}.src {val_path}.src'
     )
+    os.system(
+        f'cp ~/.sacrebleu/{args.val_set}/{args.val_set}.{src_lang}-{tgt_lang}.ref {val_path}.ref'
+    )
     os.system(f'wc -l {val_path}.src')
 
     print('\n[5/11] Normalizing Validation Set...')
-    os.system(
-        f'sacremoses -l {src_lang} -j 4 normalize < {val_path}.src \
-            > {val_path}.norm.src'
-    )
+    os.system(f'sacremoses -l {src_lang} -j 4 normalize < {val_path}.src > {val_path}.norm.src')
+    os.system(f'sacremoses -l {tgt_lang} -j 4 normalize < {val_path}.ref > {val_path}.norm.ref')
     root_path = 'norm'
 
     print('\n[6/11] Tokenizing Validation Set...')
     os.system(
-        f'sacremoses -l {src_lang} -j 4 tokenize -x < {val_path}.{root_path}.src \
-            > {val_path}.{root_path}.tok.src'
+        f'sacremoses -l {src_lang} -j 4 tokenize -x < {val_path}.{root_path}.src > {val_path}.{root_path}.tok.src'
+    )
+    os.system(
+        f'sacremoses -l {tgt_lang} -j 4 tokenize -x < {val_path}.{root_path}.ref > {val_path}.{root_path}.tok.ref'
     )
 
     print('\n[7/11] Downloading Test Set...')
@@ -111,47 +115,41 @@ def main():
     os.system(f'wc -l {test_path}.src')
 
     print('\n[8/11] Normalizing Test Set...')
-    os.system(
-        f'sacremoses -l {src_lang} -j 4 normalize < {test_path}.src \
-            > {test_path}.norm.src'
-    )
+    os.system(f'sacremoses -l {src_lang} -j 4 normalize < {test_path}.src > {test_path}.norm.src')
     root_path = 'norm'
 
     print('\n[9/11] Tokenizing Test Set...')
     os.system(
-        f'sacremoses -l {src_lang} -j 4 tokenize -x < {test_path}.{root_path}.src \
-            > {test_path}.{root_path}.tok.src'
+        f'sacremoses -l {src_lang} -j 4 tokenize -x < {test_path}.{root_path}.src > {test_path}.{root_path}.tok.src'
     )
 
     print('\n[10/11] Learning and Applying BPE...')
     root_path += '.tok'
     os.system(
-        f'cat {train_path}.{root_path}.src {train_path}.{root_path}.ref \
-            | subword-nmt learn-bpe -s {args.merge_ops} -o {data_dir}/codes.tsv'
+        f'cat {train_path}.{root_path}.src {train_path}.{root_path}.ref | subword-nmt learn-bpe -s {args.merge_ops} -o {data_dir}/codes.tsv'
     )
-    for path in (train_path, val_path, test_path):
+    for path in (train_path, val_path):
         os.system(
-            f'subword-nmt apply-bpe -c {data_dir}/codes.tsv \
-                < {path}.{root_path}.src > {path}.{root_path}.bpe.src'
+            f'subword-nmt apply-bpe -c {data_dir}/codes.tsv < {path}.{root_path}.src > {path}.{root_path}.bpe.src'
+        )
+        os.system(
+            f'subword-nmt apply-bpe -c {data_dir}/codes.tsv < {path}.{root_path}.ref > {path}.{root_path}.bpe.ref'
         )
     os.system(
-        f'subword-nmt apply-bpe -c {data_dir}/codes.tsv \
-            < {train_path}.{root_path}.ref > {train_path}.{root_path}.bpe.ref'
+        f'subword-nmt apply-bpe -c {data_dir}/codes.tsv < {test_path}.{root_path}.src > {test_path}.{root_path}.bpe.src'
     )
     root_path += '.bpe'
     os.system(
-        f'cat {train_path}.{root_path}.src {train_path}.{root_path}.ref \
-            | subword-nmt get-vocab > {data_dir}/vocab.tsv'
+        f'cat {train_path}.{root_path}.src {train_path}.{root_path}.ref | subword-nmt get-vocab > {data_dir}/vocab.tsv'
     )
-    os.system(
-        f'paste {train_path}.{root_path}.src {train_path}.{root_path}.ref \
-            > {train_path}.{root_path}.src-ref'
-    )
+    for path in (train_path, val_path):
+        os.system(
+            f'paste {path}.{root_path}.src {path}.{root_path}.ref > {path}.{root_path}.src-ref'
+        )
     os.system(f'wc -l {data_dir}/vocab.tsv')
 
-    print('\n[11/11] Lemmatizing Training Source...')
-    lemmatize(f'{train_path}.{root_path}.src-ref', f'{path}.lem.src')
-    for path in (val_path, test_path):
+    print('\n[11/11] Lemmatizing Source Data...')
+    for path in (train_path, val_path):
         lemmatize(f'{path}.{root_path}.src', f'{path}.lem.src')
 
     print('\nDone.')
