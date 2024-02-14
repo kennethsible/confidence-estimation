@@ -6,7 +6,7 @@ from translation.manager import Batch, Manager
 
 
 def translate_batch():
-    # ! TODO batch pre-encode and batch pre-lemmatize
+    # TODO batch pre-encode and batch pre-lemmatize
     pass
 
 
@@ -67,6 +67,10 @@ def main():
         args.model,
         model_state['vocab_list'],
         model_state['codes_list'],
+        args.dict,
+        args.freq,
+        model_state['samples_counter'],
+        model_state['bigrams_counter'],
     )
     manager.model.load_state_dict(model_state['state_dict'])
 

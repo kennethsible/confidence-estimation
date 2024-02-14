@@ -1,14 +1,17 @@
 import json
 import math
 import re
+from collections import Counter
 from io import StringIO
 
+import nltk
 import spacy
 import torch
 import torch.nn as nn
 from sacremoses import MosesDetokenizer, MosesPunctNormalizer, MosesTokenizer
 from subword_nmt.apply_bpe import BPE
 from torch import Tensor
+from tqdm import tqdm
 
 from translation.decoder import triu_mask
 from translation.model import Model
@@ -137,7 +140,7 @@ class Lemmatizer:
             words, spans = '', []
             for j, subword in enumerate(text):
                 if subword.endswith('@@'):
-                    words += subword.rstrip('@@')
+                    words += subword.replace('@@', '')
                 else:
                     words += subword + ' '
                     spans.append(j + 2)
@@ -186,6 +189,8 @@ class Manager:
         codes_file: str | list[str],
         dict_file: str | None = None,
         freq_file: str | None = None,
+        samples_file: str | Counter[str] | None = None,
+        bigrams_file: str | Counter[str] | None = None,
     ):
         self.config = config
         self.device = device
@@ -194,6 +199,8 @@ class Manager:
         self._model_name = model_file
         self._vocab_list = vocab_file
         self._codes_list = codes_file
+        self._samples_counter = samples_file
+        self._bigrams_counter = bigrams_file
 
         for option, value in config.items():
             self.__setattr__(option, value)
@@ -235,6 +242,18 @@ class Manager:
                     word, freq = line.split()
                     self.freq[word] = int(freq)
 
+        if isinstance(self._samples_counter, str):
+            with open(self._samples_counter) as samples_f:
+                samples = [
+                    sample
+                    for samples in samples_f.readlines()
+                    for sample in samples.split('\t')[0].split()
+                ]
+                self._samples_counter = Counter(samples)
+                self._bigrams_counter = Counter(nltk.bigrams(samples))
+        self.unigram = nltk.FreqDist(self._samples_counter)
+        self.bigram = nltk.FreqDist(self._bigrams_counter)
+
         self.tokenizer = Tokenizer(self.codes, src_lang, tgt_lang)
         self.lemmatizer = Lemmatizer('de_core_news_sm')
 
@@ -246,6 +265,8 @@ class Manager:
                 'tgt_lang': self.tgt_lang,
                 'vocab_list': self._vocab_list,
                 'codes_list': self._codes_list,
+                'samples_counter': self._samples_counter,
+                'bigrams_counter': self._bigrams_counter,
                 'state_dict': self.model.state_dict(),
             },
             self._model_name,
@@ -255,35 +276,106 @@ class Manager:
         src_spans, tgt_spans = [], []
 
         headwords = []
-        src_start, total_shift = 1, 0
+        src_start = 1
+        # src_start, total_shift = 1, 0
         for lemma, src_end in zip(*lem_data):
-            src_end += total_shift
-            word = ''
-            for i in range(src_start, src_end):
-                word += src_words[i].rstrip('@@')
+            # src_end += total_shift
 
-            headword = (
-                word
-                if word in self.dict
-                and (word not in self.freq or self.freq[word] <= self.threshold)
-                else (
-                    lemma
-                    if lemma in self.dict
-                    and (lemma not in self.freq or self.freq[lemma] <= self.threshold)
-                    else ''
-                )
-            )
+            headword = ''
+            if 'pmi_threshold' in self.config:
+                pmi_threshold: int = self.config['pmi_threshold']
+
+                word = src_words[src_start].replace('@@', '')
+                word_pmi = 0.0
+                for i in range(src_start + 1, src_end):
+                    word += src_words[i].replace('@@', '')
+                    try:
+                        word_pmi += (
+                            math.log(self.bigram.freq((src_words[i - 1], src_words[i])))
+                            - math.log(self.unigram.freq(src_words[i - 1]))
+                            - math.log(self.unigram.freq(src_words[i]))
+                        )
+                    except ValueError:
+                        pass
+                if src_start + 1 == src_end:
+                    try:
+                        word_pmi = math.log(self.unigram.freq(word))
+                    except ValueError:
+                        pass
+                if word in self.dict:
+                    if word_pmi >= pmi_threshold:
+                        headword = word
+                elif lemma in self.dict and 'lemmatize' in self.config and self.config['lemmatize']:
+                    src_lemmas = self.tokenizer.tokenize(lemma).split()  # ! BOTTLENECK
+                    lemma_pmi = 0.0
+                    for i in range(1, len(src_lemmas)):
+                        try:
+                            lemma_pmi += (
+                                math.log(self.bigram.freq((src_lemmas[i - 1], src_lemmas[i])))
+                                - math.log(self.unigram.freq(src_lemmas[i - 1]))
+                                - math.log(self.unigram.freq(src_lemmas[i]))
+                            )
+                        except ValueError:
+                            pass
+                    if len(src_lemmas) == 1:
+                        try:
+                            lemma_pmi = math.log(self.unigram.freq(lemma))
+                        except ValueError:
+                            pass
+                    if lemma_pmi >= pmi_threshold:
+                        headword = lemma
+
+                #     headword = (
+                #         word
+                #         if word in self.dict and word_pmi >= pmi_threshold
+                #         else lemma if lemma in self.dict and lemma_pmi >= pmi_threshold else ''
+                #     )
+                # else:
+                #     headword = word if word in self.dict and word_pmi >= pmi_threshold else ''
+
+                # print(
+                #     (
+                #         ' '.join([src_words[i] for i in range(src_start, src_end)]),
+                #         word,
+                #         int(word_pmi),
+                #     ),
+                #     '\t',
+                #     (lemma, int(lemma_pmi)),
+                # )  # ! DEBUG
+            else:
+                word = ''
+                for i in range(src_start, src_end):
+                    word += src_words[i].rstrip('@')
+
+                # headword = (
+                #     word
+                #     if word in self.dict
+                #     and (word not in self.freq or self.freq[word] <= self.threshold)
+                #     else (
+                #         lemma
+                #         if lemma in self.dict
+                #         and (lemma not in self.freq or self.freq[lemma] <= self.threshold)
+                #         else ''
+                #     )
+                # )
+
+                if word in self.dict:
+                    if word not in self.freq or self.freq[word] <= self.threshold:
+                        headword = word
+                elif lemma in self.dict:
+                    if lemma not in self.freq or self.freq[lemma] <= self.threshold:
+                        headword = lemma
 
             if len(headword) > 0:
-                subwords = self.tokenizer.tokenize(word).split()
-                shift = len(subwords) - (src_end - src_start)
-                if len(src_words) + shift > self.max_length:
-                    src_start = src_end
-                    continue
+                # subwords = self.tokenizer.tokenize(word).split()
+                # shift = len(subwords) - (src_end - src_start)
+                # if len(src_words) + shift > self.max_length:
+                #     src_start = src_end
+                #     continue
                 headwords.append(headword)
-                total_shift += shift
-                src_words[src_start:src_end] = subwords
-                src_end = src_start + len(subwords)
+                # total_shift += shift
+                # src_words[src_start:src_end] = subwords
+                # src_end = src_start + len(subwords)
                 src_spans.append((src_start, src_end))
 
             src_start = src_end
@@ -302,6 +394,7 @@ class Manager:
                 src_words.extend(definition.split())
             tgt_spans.append(spans)
 
+        # exit()  # ! DEBUG
         return src_spans, tgt_spans
 
     def batch_data(self, data) -> list[Batch]:
@@ -364,19 +457,25 @@ class Manager:
                     lem_data.append([words.split(), list(map(int, spans.split()))])
 
         data = []
-        with open(data_file) as file:
-            for i, line in enumerate(file.readlines()):
+        # count = total = 0
+        with open(data_file) as data_f:
+            for i, line in enumerate(tqdm(data_f.readlines())):
                 src_line, tgt_line = line.split('\t')
                 src_words = ['<BOS>'] + src_line.split() + ['<EOS>']
                 tgt_words = ['<BOS>'] + tgt_line.split() + ['<EOS>']
                 src_spans, tgt_spans = [], []
                 if lem_data and self.dict and self.freq:
                     src_spans, tgt_spans = self.append_defs(src_words, lem_data[i])
+                    # if any(src_spans):
+                    #     count += 1
                 data.append((src_words, tgt_words, src_spans, tgt_spans))
+                # total += 1
+            # print(f'{(count / total * 100):.2f}')
+            # exit()  # ! DEBUG
 
         if dict_file:
-            with open(dict_file) as file:
-                for headword, definitions in json.load(file).items():
+            with open(dict_file) as dict_f:
+                for headword, definitions in json.load(dict_f).items():
                     src_words = self.tokenizer.tokenize(''.join(headword)).split()
                     src_words = ['<BOS>'] + src_words + ['<EOS>']
                     for definition in definitions[: self.max_append]:

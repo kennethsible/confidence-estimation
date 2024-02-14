@@ -58,7 +58,7 @@ def train_epoch(
     return total_loss / num_tokens
 
 
-def train_model(train_data: list[Batch], val_data: list[Batch], manager: Manager):
+def train_model(train_data: list[Batch], val_data: list[Batch], manager: Manager, logger: Logger):
     model, vocab = manager.model, manager.vocab
     criterion = torch.nn.CrossEntropyLoss(
         ignore_index=vocab.PAD, label_smoothing=manager.label_smoothing
@@ -89,7 +89,8 @@ def train_model(train_data: list[Batch], val_data: list[Batch], manager: Manager
         checkpoint += f' | Validation PPL = {math.exp(val_loss):.16f}'
         checkpoint += f' | Learning Rate = {optimizer.param_groups[0]["lr"]:.16f}'
         checkpoint += f' | Elapsed Time = {elapsed}'
-        print(checkpoint)
+        logger.info(checkpoint)
+        print()
 
         if val_loss < best_loss:
             manager.save_model()
@@ -124,6 +125,7 @@ def main():
     parser.add_argument('--vocab', metavar='FILE_PATH', required=True, help='shared vocabulary')
     parser.add_argument('--codes', metavar='FILE_PATH', required=True, help='subword-nmt codes')
     parser.add_argument('--model', metavar='FILE_PATH', required=True, help='translation model')
+    parser.add_argument('--log', metavar='FILE_PATH', required=True, help='logger output')
     parser.add_argument('--seed', type=int, help='random seed')
     args, unknown = parser.parse_known_args()
 
@@ -154,6 +156,7 @@ def main():
         args.codes,
         args.dict,
         args.freq,
+        args.train_data,
     )
     dict_file = args.dict if 'append_dict' in config else None
     train_data = manager.load_data(args.train_data, args.lem_train, dict_file)
@@ -162,7 +165,11 @@ def main():
     if device == 'cuda' and torch.cuda.get_device_capability()[0] >= 8:
         torch.set_float32_matmul_precision('high')
 
-    train_model(train_data, val_data, manager)
+    logger = logging.getLogger('translation.logger')
+    logger.addHandler(logging.FileHandler(args.log))
+    logger.setLevel(logging.INFO)
+
+    train_model(train_data, val_data, manager, logger)
 
 
 if __name__ == '__main__':

@@ -19,6 +19,7 @@ sacrebleu = "^2.4.0"
 sacremoses = "^0.1.1"
 subword-nmt = "^0.3.8"
 tqdm = "^4.66.2"
+nltk = "^3.8.1"
 
 [tool.poetry.group.dev.dependencies]
 ipykernel = "^6.29.2"

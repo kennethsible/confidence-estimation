@@ -30,7 +30,7 @@ options:
 
 ## Model Training
 ```
-usage: main.py [-h] --lang-pair LANG_PAIR --train-data FILE_PATH --val-data FILE_PATH [--lem-train FILE_PATH] [--lem-val FILE_PATH] [--dict FILE_PATH] [--freq FILE_PATH] --vocab FILE_PATH --codes FILE_PATH --model FILE_PATH [--seed SEED]
+usage: main.py [-h] --lang-pair LANG_PAIR --train-data FILE_PATH --val-data FILE_PATH [--lem-train FILE_PATH] [--lem-val FILE_PATH] [--dict FILE_PATH] [--freq FILE_PATH] --vocab FILE_PATH --codes FILE_PATH --model FILE_PATH --log FILE_PATH [--seed SEED]
 
 options:
   -h, --help            show this help message and exit
@@ -47,6 +47,7 @@ options:
   --vocab FILE_PATH     shared vocabulary
   --codes FILE_PATH     subword-nmt codes
   --model FILE_PATH     translation model
+  --log FILE_PATH       logger output
   --seed SEED           random seed
 ```
 

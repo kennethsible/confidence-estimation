@@ -27,11 +27,11 @@ def main():
     parser.add_argument('--freq', metavar='FILE_PATH', help='frequency statistics')
     parser.add_argument('--vocab', metavar='FILE_PATH', required=True, help='shared vocabulary')
     parser.add_argument('--codes', metavar='FILE_PATH', required=True, help='subword-nmt codes')
-    parser.add_argument('--model', metavar='FILE_PATH', required=True, help='translation model')
+    parser.add_argument('--model', required=True, help='translation model')
     parser.add_argument('--seed', type=int, help='random seed')
-    parser.add_argument('--start', type=int, default=1, help='starting index')
-    parser.add_argument('--conda', help='conda environment')
-    parser.add_argument('--email', help='email address')
+    parser.add_argument('--start', metavar='INDEX', type=int, default=1, help='start index')
+    parser.add_argument('--conda', metavar='ENV', required=True, help='conda environment')
+    parser.add_argument('--email', required=True, help='email address')
     args = parser.parse_args()
 
     param_array = []
@@ -47,16 +47,17 @@ def main():
         with open(f'{args.model}/{job_name}.sh', 'w') as job_file:
             job_file.write('#!/bin/bash\n\n')
             job_file.write(f'touch {args.model}/{job_name}.log\n')
-            job_file.write(f'fsync -d 30 {args.model}/{job_name}.log &\n\n')
-            job_file.write(f'conda activate {args.conda}\n\n')
+            job_file.write(f'fsync -d 30 {args.model}/{job_name}.log &\n')
+            job_file.write('export PYTHONPATH="${PYTHONPATH}:${pwd}"\n\n')
 
+            job_file.write(f'conda activate {args.conda}\n')
             job_file.write('python translation/main.py  \\\n')
             job_file.write(f"  --lang-pair {args.lang_pair} \\\n")
             job_file.write(f'  --train-data {args.train_data} \\\n')
             job_file.write(f'  --val-data {args.val_data} \\\n')
-            if args.lem_data:
+            if args.lem_train:
                 job_file.write(f'  --lem-train {args.lem_train} \\\n')
-            if args.lem_test:
+            if args.lem_val:
                 job_file.write(f'  --lem-val {args.lem_val} \\\n')
             if args.dict:
                 job_file.write(f'  --dict {args.dict} \\\n')
@@ -65,11 +66,11 @@ def main():
             job_file.write(f'  --vocab {args.vocab} \\\n')
             job_file.write(f'  --codes {args.codes} \\\n')
             job_file.write(f'  --model {args.model}/{job_name}.pt \\\n')
+            job_file.write(f'  --log {args.model}/{job_name}.log \\\n')
             if args.seed:
                 job_file.write(f'  --seed {args.seed} \\\n')
             for option, value in params:
                 job_file.write(f'  --{option} {value} \\\n')
-            job_file.write(f'  > {args.model}/{job_name}.log \\\n\n')
 
             job_file.write('python translation/translate.py  \\\n')
             if args.dict:
@@ -78,10 +79,10 @@ def main():
                 job_file.write(f'  --freq {args.freq} \\\n')
             job_file.write(f'  --model {args.model}/{job_name}.pt \\\n')
             job_file.write(f'  --input {args.test_data} \\\n')
-            job_file.write(f'  > {args.model}/{args.test_set}.hyp \\\n\n')
+            job_file.write(f'  > {args.model}/{args.test_set}.hyp \\\n')
 
             job_file.write(
-                f'sacrebleu -t {args.test_Set} -l {args.lang_pair} -i {args.model}/{args.test_set}.hyp  \\\n'
+                f'sacrebleu -t {args.test_set} -l {args.lang_pair} -i {args.model}/{args.test_set}.hyp  \\\n'
             )
             job_file.write(f'  >> {args.model}/{job_name}.log \\\n\n')
 
