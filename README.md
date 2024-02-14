@@ -11,7 +11,8 @@ and any output from `stdout` can be diverted using `tee` or output redirection.
 $ python translation/translate.py --model de-en.pt --input data.src > data.hyp
 ```
 
-German-English Dictionary from Technische Universität Chemnitz ([Source](https://ftp.tu-chemnitz.de/pub/Local/urz/ding/de-en-devel/))
+German-English Dictionary from Technische Universität Chemnitz ([Source](https://ftp.tu-chemnitz.de/pub/Local/urz/ding/de-en-devel/))<br>
+Biomedical Test Set from WMT22 Biomedical Translation Task ([Source](https://www.statmt.org/wmt22/biomedical-translation-task.html))
 
 ## Data Preprocessing
 ```
