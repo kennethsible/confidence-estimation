@@ -6,3 +6,5 @@ __pycache__/
 *.ipynb
 data_deen/*
 !data_deen/de-en.json
+data_deen/medline/medline.*
+!data_deen/medline/

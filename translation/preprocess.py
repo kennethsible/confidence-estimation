@@ -59,7 +59,7 @@ def main():
     train_path = f'{data_dir}/europarl-v10'
     os.system(f'mkdir -p {train_path}')
     train_path += '/europarl-v10'
-    if not os.path.isfile(f'{train_path}.src'):
+    if not os.path.isfile(f'{train_path}.{src_lang}-{tgt_lang}.tsv'):
         url = f'https://www.statmt.org/europarl/v10/training/europarl-v10.{src_lang}-{tgt_lang}.tsv.gz'
         os.system(f'wget -q -P {data_dir}/europarl-v10 {url} --show-progress')
         os.system(f'gzip -d {train_path}.{src_lang}-{tgt_lang}.tsv.gz')
@@ -70,7 +70,6 @@ def main():
                     if len(src_line) > 0 and len(tgt_line) > 0:
                         src_f.write(src_line + '\n')
                         tgt_f.write(tgt_line + '\n')
-        os.system(f'rm {train_path}.{src_lang}-{tgt_lang}.tsv')
     os.system(f'wc -l {train_path}.src')
 
     print('\n[2/11] Normalizing Training Corpus...')
@@ -127,17 +126,56 @@ def main():
     )
     os.system(f'wc -l {test_path}.src')
 
-    print('\n[8/11] Normalizing Test Set...')
-    os.system(f'sacremoses -l {src_lang} -j 4 normalize < {test_path}.src > {test_path}.norm.src')
-    root_path = 'norm'
+    print('\n[8/11] Extracting Biomedical Set...')
+    med_path = f'{data_dir}/medline'
+    os.system(f'mkdir -p {med_path}')
+    ref_to_id = {}
+    with open(f'{med_path}/{src_lang}2{tgt_lang}_mapping.txt') as med_f:
+        for line in med_f.readlines():
+            doc_ref, doc_id = line.split('\t')
+            ref_to_id[doc_ref] = doc_id.strip()
+    src_data = {}
+    with open(f'{med_path}/medline_{src_lang}2{tgt_lang}_{src_lang}.txt') as med_f:
+        for line in med_f.readlines():
+            doc_id, sent_id, sentence = line.split('\t')
+            if doc_id not in src_data:
+                src_data[doc_id] = {}
+            src_data[doc_id][sent_id] = sentence.rstrip()
+    tgt_data = {}
+    with open(f'{med_path}/medline_{src_lang}2{tgt_lang}_{tgt_lang}.txt') as med_f:
+        for line in med_f.readlines():
+            doc_id, sent_id, sentence = line.split('\t')
+            if doc_id not in tgt_data:
+                tgt_data[doc_id] = {}
+            tgt_data[doc_id][sent_id] = sentence.rstrip()
+    with open(f'{med_path}/{src_lang}2{tgt_lang}_align_validation.tsv') as med_f:
+        med_path += '/medline'
+        with open(f'{med_path}.{src_lang}', 'w') as outfile:
+            for line in med_f.readlines():
+                status, doc_ref, src_sent_id, _ = line.split('\t')
+                if status != 'OK':
+                    continue
+                if ',' in src_sent_id:
+                    for sent_id in src_sent_id.split(','):
+                        outfile.write(src_data[ref_to_id[doc_ref]][sent_id] + ' ')
+                else:
+                    outfile.write(src_data[ref_to_id[doc_ref]][src_sent_id])
+                outfile.write('\n')
+        med_f.seek(0)
+        with open(f'{med_path}.{tgt_lang}', 'w') as outfile:
+            for line in med_f.readlines():
+                status, doc_ref, _, tgt_sent_id = line.split('\t')
+                if status != 'OK':
+                    continue
+                if ',' in tgt_sent_id:
+                    for sent_id in tgt_sent_id.split(','):
+                        outfile.write(tgt_data[ref_to_id[doc_ref]][sent_id.rstrip()] + ' ')
+                else:
+                    outfile.write(tgt_data[ref_to_id[doc_ref]][tgt_sent_id.rstrip()])
+                outfile.write('\n')
+    os.system(f'wc -l "{med_path}.{src_lang}"')
 
-    print('\n[9/11] Tokenizing Test Set...')
-    os.system(
-        f'sacremoses -l {src_lang} -j 4 tokenize -x < {test_path}.{root_path}.src > {test_path}.{root_path}.tok.src'
-    )
-    root_path += '.tok'
-
-    print('\n[10/11] Learning and Applying BPE...')
+    print('\n[9/11] Learning and Applying BPE...')
     os.system(
         f'cat {train_path}.{root_path}.src {train_path}.{root_path}.ref | subword-nmt learn-bpe -s {args.merge_ops} -o {data_dir}/codes.tsv'
     )
@@ -159,6 +197,9 @@ def main():
         os.system(
             f'paste {path}.{root_path}.src {path}.{root_path}.ref > {path}.{root_path}.src-ref'
         )
+    os.system(f'wc -l {data_dir}/vocab.tsv')
+
+    print('\n[10/11] Filtering Training Data...')
     apply_filter(f'{train_path}.{root_path}.src-ref', max_length, len_ratio)
     os.system(f'wc -l {train_path}.{root_path}.src-ref')
 
