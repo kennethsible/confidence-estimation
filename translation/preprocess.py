@@ -10,14 +10,32 @@ lemmatizer = Lemmatizer('de_core_news_sm')
 
 def lemmatize(src_file: str, lem_file: str):
     src_words = []
-    with open(src_file) as infile:
-        for src_line in infile.readlines():
+    with open(src_file) as src_f:
+        for line in src_f.readlines():
+            src_line = line.split('\t')[0]
             src_words.append(src_line.split())
 
     data = lemmatizer.lemmatize(src_words)
-    with open(lem_file, 'w') as outfile:
+    with open(lem_file, 'w') as lem_f:
         for words, spans in tqdm(data, total=len(src_words)):
-            outfile.write(f"{' '.join(words)}\t{' '.join(map(str, spans))}\n")
+            lem_f.write(f"{' '.join(words)}\t{' '.join(map(str, spans))}\n")
+
+
+def apply_filter(data_file: str, max_length: int, len_ratio: int):
+    data = []
+    with open(data_file) as data_f:
+        for line in tqdm(data_f.readlines()):
+            src_line, tgt_line = line.split('\t')
+            src_words, tgt_words = src_line.split(), tgt_line.split()
+            if (
+                1 <= len(src_words) <= max_length
+                and 1 <= len(tgt_words) <= max_length
+                and len(src_words) / len(tgt_words) <= len_ratio
+                and len(tgt_words) / len(src_words) <= len_ratio
+            ):
+                data.append(src_line + '\t' + tgt_line)
+    with open(data_file, 'w') as data_f:
+        data_f.writelines(data)
 
 
 def main():
@@ -45,19 +63,13 @@ def main():
         url = f'https://www.statmt.org/europarl/v10/training/europarl-v10.{src_lang}-{tgt_lang}.tsv.gz'
         os.system(f'wget -q -P {data_dir}/europarl-v10 {url} --show-progress')
         os.system(f'gzip -d {train_path}.{src_lang}-{tgt_lang}.tsv.gz')
-        with open(f'{train_path}.src', 'w') as src_file, open(f'{train_path}.ref', 'w') as tgt_file:
-            for line in open(f'{train_path}.{src_lang}-{tgt_lang}.tsv'):
-                src_line, tgt_line, *_ = line.split('\t')
-                src_words, tgt_words = src_line.split(), tgt_line.split()
-                if not (
-                    1 <= len(src_words) <= max_length
-                    and 1 <= len(tgt_words) <= max_length
-                    and len(src_words) / len(tgt_words) <= len_ratio
-                    and len(tgt_words) / len(src_words) <= len_ratio
-                ):
-                    continue
-                src_file.write(src_line + '\n')
-                tgt_file.write(tgt_line + '\n')
+        with open(f'{train_path}.src', 'w') as src_f, open(f'{train_path}.ref', 'w') as tgt_f:
+            with open(f'{train_path}.{src_lang}-{tgt_lang}.tsv') as tsv_f:
+                for line in tsv_f.readlines():
+                    src_line, tgt_line, *_ = line.split('\t')
+                    if len(src_line) > 0 and len(tgt_line) > 0:
+                        src_f.write(src_line + '\n')
+                        tgt_f.write(tgt_line + '\n')
         os.system(f'rm {train_path}.{src_lang}-{tgt_lang}.tsv')
     os.system(f'wc -l {train_path}.src')
 
@@ -103,6 +115,7 @@ def main():
     os.system(
         f'sacremoses -l {tgt_lang} -j 4 tokenize -x < {val_path}.{root_path}.ref > {val_path}.{root_path}.tok.ref'
     )
+    root_path += '.tok'
 
     print('\n[7/11] Downloading Test Set...')
     test_path = f'{data_dir}/{args.test_set}'
@@ -122,9 +135,9 @@ def main():
     os.system(
         f'sacremoses -l {src_lang} -j 4 tokenize -x < {test_path}.{root_path}.src > {test_path}.{root_path}.tok.src'
     )
+    root_path += '.tok'
 
     print('\n[10/11] Learning and Applying BPE...')
-    root_path += '.tok'
     os.system(
         f'cat {train_path}.{root_path}.src {train_path}.{root_path}.ref | subword-nmt learn-bpe -s {args.merge_ops} -o {data_dir}/codes.tsv'
     )
@@ -146,11 +159,12 @@ def main():
         os.system(
             f'paste {path}.{root_path}.src {path}.{root_path}.ref > {path}.{root_path}.src-ref'
         )
-    os.system(f'wc -l {data_dir}/vocab.tsv')
+    apply_filter(f'{train_path}.{root_path}.src-ref', max_length, len_ratio)
+    os.system(f'wc -l {train_path}.{root_path}.src-ref')
 
     print('\n[11/11] Lemmatizing Source Data...')
     for path in (train_path, val_path):
-        lemmatize(f'{path}.{root_path}.src', f'{path}.lem.src')
+        lemmatize(f'{path}.{root_path}.src-ref', f'{path}.lem.src')
 
     print('\nDone.')
 
