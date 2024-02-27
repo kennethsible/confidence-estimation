@@ -40,6 +40,8 @@ def translate(string: str, manager: Manager) -> str:
 
 
 def main():
+    import argparse
+
     parser = argparse.ArgumentParser()
     parser.add_argument('--dict', metavar='FILE_PATH', help='bilingual dictionary')
     parser.add_argument('--freq', metavar='FILE_PATH', help='frequency statistics')
@@ -83,6 +85,4 @@ def main():
 
 
 if __name__ == '__main__':
-    import argparse
-
     main()

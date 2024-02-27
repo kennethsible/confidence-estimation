@@ -1,0 +1,480 @@
+doc100	1	Neben der eigentlichen definitiven Therapie einer akuten Blutung (z. B. durch endoskopische/operative Blutstillung oder Angiografie mit Coiling) kommt in der Akut- und Intensivmedizin der Optimierung der Blutgerinnung eine Schlüsselrolle zu.
+doc100	2	Dazu ist die Kenntnis der gängigen Gerinnungstests und ihrer Schwächen ebenso notwendig wie die korrekte Anwendung und Dosierung von Gerinnungsprodukten.
+doc100	3	Das Gerinnungsmanagement kann insbesondere bei Patienten mit Leberzirrhose, angeborenen und erworbenen Gerinnungsstörungen sowie bei Patienten unter Antikoagulation herausfordernd sein.
+doc100	4	Dieses Review beleuchtet die wichtigsten Elemente der Gerinnungsdiagnostik und -therapie in der gastroenterologischen Intensiv- und Notfallmedizin inklusive neuer Antidote und erweiterter Gerinnungsdiagnostik bei Patienten mit Leberzirrhose, wie z.
+doc100	5	B. die Thrombelastometrie.
+doc12	1	LABORCHEMISCHE GERINNUNGSAUFFäLLIGKEITEN BEI COVID-19: COVID-19-Patienten weisen häufig stark erhöhte D-Dimer-Werte auf.
+doc12	2	Die Höhe und der Verlauf scheinen mit dem Krankheitsverlauf und der Prognose zu korrelieren.
+doc12	3	Bei signifikanter Erhöhung sollte eine medikamentöse Thromboseprophylaxe erwogen werden.
+doc12	4	Der Verlauf der Prothrombinfragmente F1 + F2 scheint ebenfalls mit dem klinischen Verlauf zu korrelieren und könnte bei Verfügbarkeit zur Verlaufsbeurteilung der Gerinnungsaktivierung mit herangezogen werden.
+doc12	5	Thrombozytopenien bei COVID-19-Erkrankten sind häufig, sollten jedoch mittels weiterführender Diagnostik auf Differenzialdiagnosen geprüft werden.
+doc12	6	RISIKO THROMBOEMBOLISCHER KOMPLIKATIONEN BEI COVID-19: COVID-19-Erkrankte haben ein deutlich erhöhtes Risiko für venöse und arterielle thromboembolische Ereignisse, und insbesondere intensivmedizinisch betreute Patienten bedürfen einer engmaschigen Kontrolle.
+doc12	7	Bestehende Algorithmen zur Diagnostik einer Lungenarterienembolie können wegen der sehr häufigen Konstellation „pulmonale Symptome + erhöhte D-Dimere“ bei COVID-19 nur eingeschränkt angewendet werden und bedürfen einer Anpassung an diese Erkrankung.
+doc12	8	Bei Lungenarterienembolien handelt es sich wahrscheinlich um lokal entstandene „Immunothrombosen“, was bei der Befundinterpretation einer pulmonalen Bildgebung zu beachten ist.
+doc12	9	EMPFEHLUNGEN ZUR THROMBOSEPROPHYLAXE BEI COVID-19: Aufgrund des überdurchschnittlich hohen VTE-Risikos hospitalisierter COVID-19-Patienten sollte eine leitliniengerechte Thromboseprophylaxe unbedingt durchgeführt werden – bei Patienten mit besonders hohem Basisrisiko sollten höhere Heparindosierungen, posthospitale Verlängerungen und ggf. sogar primär ambulante Thromboseprophylaxestrategien erwogen werden.
+doc12	10	Eine bereits vor der COVID-19-Erkrankung etablierte Antikoagulationstherapie (bspw. für Vorhofflimmern oder frühere VTE) sollte fortgeführt werden.
+doc13	1	Ziel der Medizininformatikinitiative und weiterer nationaler und lokaler Projekte zur digitalen Vernetzung im Gesundheitswesen ist die datenschutzkonforme Bereitstellung, der Austausch und die gemeinsame Nutzung von Patientendaten.
+doc13	2	Dies erfordert die Integration von Daten aus unterschiedlichen Quellen – beispielsweise aus digitalen Arbeitsplatzsystemen, Laborsystemen, PAC-Systemen („patient archieving and communication“) oder Tumorboards – in ein Data Warehouse oder Forschungsdatenbanken.
+doc13	3	Die zunehmende digitale Vernetzung von Leistungserbringern und Forschungseinrichtungen im Gesundheitswesen wird in Zukunft noch mehr Patienten den Zugang zu Hochleistungs- und Präzisionsmedizin (Stichwort virtuelle molekulare Tumorboards) öffnen und dabei Daten für Grundlagen- und Versorgungsforschung liefern.
+doc13	4	Mit dieser Form der Netzwerkmedizin schaffen wir einerseits die Verbindung von Grundlagen- (z. B. Genomforschung) und Patientenversorgung, gleichermaßen kann mit den aufbereiteten Real-world-Daten die Behandlungsrealität und -qualität im Sinne einer integrierten Versorgungsforschung detailliert abgebildet werden.
+doc14	1	In den vergangenen Jahren wurden zunehmend Systeme der künstlichen Intelligenz in der Medizin etabliert, die Pathologien oder Erkrankungen erkennen und schwer zu erfassende Zusammenhänge zwischen Eingangsgrößen beschreiben sollen.
+doc14	2	Ziel der Studie ist es, anhand von biometrischen Messgrößen vor der Kataraktoperation die physikalische Position der Intraokularlinse nach der Operation mit Verfahren des maschinellen Lernens vorherzusagen. 249 Augen von Patienten, die sich zur elektiven Kataraktoperation an der Augenklinik Castrop-Rauxel vorstellten, wurden mit dem IOLMaster 700 (Carl Zeiss Meditec) und vor sowie nach der Operation mit dem Casia 2 (Tomey) untersucht.
+doc14	3	Aus den Effektgrößen Augenlänge, Hornhautdicke, interne Vorderkammertiefe, Linsendicke, mittlerer Hornhautradius und Hornhautdurchmesser wurde eine Auswahl von 17 Algorithmen des Maschinenlernens auf ihre Vorhersagequalität hin getestet für die Bestimmung der postoperativen internen Vorderkammertiefe (AQD_post) und der Lage des Linsenäquators relativ zum Hornhautscheitel (LEQ_post).
+doc14	4	Die 17 Modelle (4 Algorithmusfamilien) variierten im mittleren quadratischen/mittleren absoluten Vorhersagefehler zwischen 0,187/0,139 mm und 0,255/0,204 mm (AQD_post) und 0,183/0,135 mm und 0,253/0,206 mm (LEQ_post) bei einer Kreuzvalidierung (5-fold cross validation).
+doc14	5	Der Algorithmus mit der besten Performance war bei beiden Vorhersagen ein Gaussian Process Regression Model mit einem exponentiellen Kernel.
+doc14	6	Prüft man am gesamten Datensatz (ohne Aufteilung in Trainings- und Validierungsdaten) ein einfaches multiples lineares Regressionsmodell gegen den Algorithmus mit der besten Performance, so ergibt sich bei der Vorhersage von AQD_post/LEQ_post ein mittlerer quadratischer Vorhersagefehler von 0,188/0,187 mm gegenüber dem Gaussian Process Regression Model mit 0,166/0,159 mm.
+doc14	7	In der Arbeit soll das Prinzip des überwachten Maschinenlernens in der Anwendung auf die Nachbildung der physikalisch gemessenen postoperativen axialen Position von Intraokularlinsen gezeigt werden.
+doc14	8	Bei den vorliegenden Daten ist der Gewinn durch die Verwendung von Algorithmen des maschinellen Lernens (bei den hier verwendeten Algorithmen) gegenüber einem multiplen linearen Regressionsansatz gering.
+doc2	1	MEDIKAMENTöSE THERAPIE:  Die aktualisierte Dyslipidämie-Leitlinie der European Society of Cardiology senkt nochmals die LDL-Cholesterinzielwerte.
+doc2	2	Zur Erreichung dieser Zielwerte werden hochpotente Statine und vermehrt Kombinationspartner wie Ezetimib und PCSK9-Hemmer nötig werden.
+doc2	3	LIPIDAPHERESE:  Die Bestimmung von Lipoprotein(a) zur kardiovaskulären Risikostratifizierung ist nun eine Klasse-II(a)-Empfehlung.
+doc2	4	Momentan steht lediglich die Lipidapherese zur Senkung von Lipoprotein(a) zur Verfügung, neue medikamentöse Therapieansätze sind allerdings in der klinischen Erprobung.
+doc20	1	Persistierende, große oder chronische Makulaforamina sind nach wie vor eine chirurgische Herausforderung, die mit der hier dargestellten Technik angegangen werden kann.
+doc20	2	Im Rahmen einer transkonjunktivalen, nahtlosen Pars-plana-Vitrektomie wird mittels subretinaler BSS(„balanced salt solution“)-Injektion am hinteren Pol die Makularegion eleviert und anschließend das Foramen während des Flüssigkeit-Luft-Austausches verschlossen, gefolgt von einer Gas- oder Öltamponade.
+doc20	3	Damit lassen sich in vielen Fällen anatomische Verschlüsse bzw. deutliche Verkleinerungen des Loches mit anliegendem Rand erreichen.
+doc20	4	Die genaue Aufklärung der Patienten über das zu erwartende chirurgische Ergebnis erscheint besonders wichtig.
+doc27	1	Trotz der hohen Effektivität der direkt antiviralen Therapie der chronischen Hepatitis C kommt es bei einem kleinen Teil der Patienten zu einem fehlenden virologischen Ansprechen auf die zugelassenen Therapieregime.
+doc27	2	Die Kombinationstherapie aus Voxilaprevir, Velpatasvir, Sofosbuvir wurde kürzlich für die Therapie von Patienten mit Versagen auf eine NS5A-basierte Behandlung zugelassen.
+doc27	3	In der vorliegenden Deutschen Register-Kohorte wurde bei Patienten einschließlich solcher mit Zirrhose und vorangegangener Dekompensation bei einer Therapie mit VOX/VEL/SOF über 12 Wochen hohe SVR-Raten unabhängig von der Schwere der Erkrankung und vorheriger DAA-Therapien erreicht.
+doc27	4	Dabei wurden lediglich geringe bis mäßige Nebenwirkungen beobachtet, die sich nicht von denen in den Zulassungsstudien unterschieden.
+doc3	1	Hintergrund: Es wurde die Multicomponent-Multitarget-Therapie SUC (Solidago compositum ad us. vet., Ubichinon compositum und Coenzym compositum, Heel GmbH, Baden-Baden, Deutschland) mit dem bekannten Angiotensin-Converting-Enzym-Inhibitor (ACEI) Benazepril in einer prospektiven, nichtrandomisierten, zweiarmigen Kohortenstudie an Katzen mit chronischer Nierenerkrankung (CNE) untersucht.
+doc3	2	Ziel war es, die Verträglichkeit und Wirksamkeit von SUC bei Katzen mit CNE zu beurteilen.
+doc3	3	Material und Methoden: Einhundertsechsunddreißig Katzen mit Verdacht auf CNE wurden untersucht, bei 70 Katzen wurde eine CNE diagnostiziert und diese wurden in die Studie aufgenommen.
+doc3	4	Dreiunddreißig Katzen wurden mit SUC therapiert und 35 Katzen erhielten Benazepril.
+doc3	5	Der Beobachtungszeitraum betrug 168 Tage.
+doc3	6	Das Ansprechen auf die Therapie wurde definiert als ein verbessertes bzw. ein stabiles Serumkreatinin am Ende der Studie im Vergleich zum Ausgangswert.
+doc3	7	Zusätzlich wurde zur Bewertung der Lebensqualität der Katzen ein klinischer Summenscore erfasst.
+doc3	8	Ergebnisse: Das Kreatinin blieb in beiden Studiengruppen nahezu unverändert, mit geringgradig niedrigeren Werten in der SUC-Gruppe.
+doc3	9	Der klinische Summenscore verbesserte sich in der SUC-Gruppe im Vergleich zur Benazepril-Gruppe signifikant an den Tagen 3, 28, 56 und 112, nicht aber am Tag 168.
+doc3	10	Schlussfolgerungen: Die Ergebnisse zeigen, dass SUC eine neuartige und gut verträgliche Behandlungsalternative zu ACEIs bei Katzen mit leichter bis mittelschwerer CNE darstellt.
+doc3	11	Die Ergebnisse deuten darauf hin, dass eine zweimal wöchentliche Therapie mit SUC effektiver sein könnte als eine Dosierung einmal pro Woche.
+doc30	1	HINTERGRUND: Die Pathogenese beim Plattenepithelkarzinom der Kopf- und Halsregion (HNSCC, „head and neck squamous cell carcinoma“) ist ein komplexer Mehrstufenprozess und resultiert aus der Interaktion von exogenen und endogenen zellulären Prozessen.
+doc30	2	Jeder Prozess hinterlässt ein charakteristisches Muster an Mutationen auf dem Tumorgenom, eine sog.
+doc30	3	Tumorsignatur.
+doc30	4	Gegenstand aktueller Studien ist es, spezifische Tumorsignaturen, die während der HNSCC-Pathogenese wirksam sind, zu finden und die prognostische Relevanz zu evaluieren.
+doc30	5	Mit Analysen von genomischen Sequenzierungsdaten durch The Cancer Genome Atlas (TCGA) wurden die häufigsten Mutationssignaturen beim HNSCC entschlüsselt, wobei die Signaturen 1, 2, 4, 5, 7 und 13 als hauptsächliche Akteure identifiziert werden konnten.
+doc30	6	Die Signatur 16 wurde erstmalig bei humane Papillomaviren (HPV-)negativen oralen und oropharyngealen Plattenepithelkarzinomen entdeckt.
+doc30	7	In vielen Studien wurde eine Assoziation der Signatur 16 mit dem Alkohol- und Tabakkonsum gezeigt sowie ein negativer Einfluss auf die Prognose der Patienten festgestellt.
+doc34	1	GRUNDLAGEN: Fibroblast-Growth-Factor 21 (FGF21) wird in der Leber produziert und bindet an verschiedene komplexe Rezeptor/Corezeptor-Systeme.
+doc34	2	FGF21 reguliert neben vielen anderen Prozessen die Aufnahme von einfachem Zucker und Alkohol.
+doc34	3	Erhöhte FGF21-Spiegel verringern den schädlichen Alkoholkonsum bei Mäusen.
+doc34	4	Um die Beziehung zwischen FGF21 und Alkoholkonsum beim Menschen besser zu verstehen, wurden FGF21-Spiegel bei PatientInnen mit alkoholischer Leberzirrhose (ALC) im Vergleich zu PatientInnen mit nichtalkoholischer Leberzirrhose (NALC) und gesunden Personen gemessen und in Korrelation mit ihrem gegenwärtigen Alkoholkonsum analysiert.
+doc34	5	Der Alkoholkonsum wurde durch Ethylglukuronid(uETG)-Werte im Urin, das Ess- und Trinkverhalten durch einen Lebensmittelfrequenz-Fragebogen verifiziert, und die FGF21-Plasmaspiegel wurden mittels ELISA bei 96 Personen bestimmt (ALC n = 41; NALC n = 34; gesund n = 21).
+doc34	6	ALC- und NALC-PatientInnen mit erhöhten ETG-Spiegeln (≥0,5 μg/ml; entspricht Alkoholkonsum in den letzten 12–72 h) zeigten signifikant höhere FGF21-Plasmaspiegel im Vergleich zu Patienten mit negativen ETG-Spiegeln.
+doc34	7	Das Essverhalten hatte keinen Einfluss auf die FGF21-Plasmaspiegel.
+doc34	8	Erhöhte FGF21-Spiegel bei Patienten mit kürzlich aufgetretenem Alkoholkonsum (durch ETG verifiziert) bestätigten den ersten Teil der endokrinen Achse von Leber und Gehirn: Alkoholkonsum ist mit erhöhten FGF21-Spiegeln verbunden.
+doc34	9	Wir konnten nicht bestätigen, dass erhöhte FGF21-Spiegel mit einem in Folge reduzierten Alkoholkonsum einhergehen.
+doc34	10	Dies deutet auf eine Pathologie auf diesem Weg hin, die durch eine Fehlfunktion der β‑Klotho- oder FGF-Rezeptoren und die chronische Alkoholkrankheit verursacht werden könnte.
+doc34	11	Weitere Forschungen sind erforderlich, um diese Pathologien zu klären, die möglicherweise eine neue pharmakologische Behandlung für Patienten mit Alkoholkonsumstörung und Alkoholabhängigkeit eröffnen.
+doc38	1	Die canine atopische Dermatitis (cAD) ist eine häufige entzündliche und juckende Hauterkrankung, für die es verschiedene Behandlungsmöglichkeiten gibt.
+doc38	2	Die Verwendung von topischen Produkten, die natürliche Wirkstoffe beinhalten, haben sich als zunehmend beliebt gezeigt.
+doc38	3	ZIEL: Eine Evaluierung der Wirksamkeit einer Spraylösung, welche durch Hitze-abgetötete Lactobacillus rhamnosus und l. reuteri beinhaltete, auf die klinischen Zeichen und die kutanen Mikrobiota der atopischen Hunde.
+doc38	4	Zehn private nicht-saisonal atopische Hunde , die nur mild betroffen waren.
+doc38	5	Der Spray wurde 28 Tage lang alle 24 h auf dem Ventrum aufgetragen.
+doc38	6	Klinische Werte, die Funktion der Hautbarriere und eine Beurteilung der BesitzerInnen wurde am Tag (D)0, D14, D28 und D42 evaluiert.
+doc38	7	Die kutanen Mikrobiota wurden am D0 und D28 analysiert.
+doc38	8	Eine Reduzierung des klinischen Gesamtwerts wurde zu jedem Zeitpunkt festgestellt (D14, P = 0,03; D28, P = 0,04; D42, P = 0,001).
+doc38	9	Eine Reduzierung der lokalen klinischen Werte konnte nach D28 (P = 0,01) und D42 (P = 0,003) festgestellt werden.
+doc38	10	Eine signifikante Verminderung der Juckreizwerte wurde am D42 (P = 0,01) festgestellt.
+doc38	11	Ein niedrigerer Wert wurde am D28 (P = 0,02) an den Ohren festgestellt.
+doc38	12	Die BesitzerInnen berichteten von einer guten bis ausgezeichneten Reaktion und einer leichte Methode der Anwendung.
+doc38	13	In den kutanen Mikrobiota bestanden nach 28 Tagen keine signifikanten Unterschiede.
+doc38	14	Nach Verwendung des Sprays gab es eine signifikante und rasche Abnahme der klinischen Zeichen der cAD.
+doc38	15	Es sind zukünftige, randomisierte, kontrollierte Studien nötig, um diese Ergebnisse zu bestätigen und die Auswirkungen auf die kutane Immunität und die Mikroflora atopischer Hunde zu bestätigen.
+doc39	1	ZIEL DIESER STUDIE: war die Untersuchung von epidemiologischen Aspekten mütterlicher Immunisierung gegen fetale Erythrozytenantigene(AB0, Rhesus, Lewis, Kell, Duffy und andere) und die Feststellung von häufigsten Ursachen der hämolytischen Erkrankung des Neugeborenen (MHN) in der Region der West-Herzegowina.
+doc39	2	20-jährige retrospektive epidemiologische Studie umfasste alle Schwangeren, die immunologische getestet sowie Neugeborene, die wegen MHN behandelt wurden.
+doc39	3	Durch den indirekten antiglobulin Test (IAT) wurden bei 545 (1,8%) Schwangeren Antikörper gegen Antigene nachgewiesen, von 29 663 Probanden, die an der Transfusionsanstalt UHC Mostar getestet wurden.
+doc39	4	Während der zwanzigjährigen Studie hatten 310 (1,0%) Neugeborene MHN.
+doc39	5	Unsere Ergebnisse zeigten, dass 42% (230/545) der Schwangeren die AB0-Immunisierung hatten.
+doc39	6	Die häufigste MHN bei dieser Forschung war die AB0 MHN 64% (199/310), während RhD MHN bei 19% (59/310) der Neugeborenen behandelt wurde.
+doc39	7	Die Blutaustauschtransfusion (ETR) erfolgte bei 29 (19%) Neugeborenen, 21 (72,4%) bei Neugeborenen mit AB0 MHNund 7 (26%) mit Rh D MHN.
+doc39	8	Obwohl es zu während dieser 20-jährigen Studie zu einem bedeutenden Fortschritt bei der Vorbeugung der Immunisierung und der proaktiven MHN-Behandlung kam, erfordert es weiterhin Vorsichtsmaßnahmen und die Aktivitäten der Gynäkologen und Neonatologen.
+doc39	9	Grund dafür ist das Nichtbestehen von Vorbeugungsmaßnahmen zur nicht-RhD Immunisierung (67% der Schwangeren hatten Nicht-RhD Antikörper), unregelmäßiges immunologisches Testen von RhD-positiven Schwangeren in den letzten Jahren im Untersuchungsgebiet.
+doc39	10	All dies eröffnet neue Fragen und Empfehlungen zur Erforschung und Beobachtung der Immunisierung sowie MHN-Behandlung auf der globalen immunologischen Szene.
+doc41	1	Die medizinisch-beruflich orientierte Rehabilitation ist ein multimodales interdisziplinär durchgeführtes Programm, das Diskrepanzen von arbeitsplatzbezogenen Fähigkeiten und Anforderungen zu verringern sucht, um berufliche Teilhabechancen von Personen mit ungünstiger Erwerbsprognose zu verbessern.
+doc41	2	Die Studie untersuchte die Teilhabeeffekte eines in der regulären Versorgung implementierten medizinisch-beruflich orientierten Rehabilitationsprogramms im Vergleich zur herkömmlichen medizinischen Rehabilitation bei Rehabilitanden mit Muskel-Skelett-Erkrankungen.
+doc41	3	Die Daten wurden 2014 und 2015 erhoben und anhand einer As-treated-Analyse ausgewertet.
+doc41	4	Mittels Propensity-Score-Matching wurden die Ergebnisse von Teilnehmenden einer medizinische-beruflich orientierten Rehabilitation (Interventionsgruppe, IG) mit denen von vergleichbaren Teilnehmenden einer herkömmlichen medizinischen Rehabilitation (Kontrollgruppe, KG) verglichen.
+doc41	5	Primäres Zielkriterium war die Rate sozialversicherungspflichtiger Beschäftigung ein Jahr nach Rehabilitationsende.
+doc41	6	Die Behandlungseffekte wurden mit logistischen Modellen überprüft und absolute Risikodifferenzen (ARR) berechnet.
+doc41	7	Ein Jahr nach Rehabilitationsende wurden die Daten von 312 Rehabilitanden analysiert (156 in der IG).
+doc41	8	Mittels Propensity-Score-Matching konnten Stichproben mit balancierten Stichprobenmerkmalen generiert werden.
+doc41	9	Der Anteil sozialversicherungspflichtig beschäftigter Rehabilitanden in der IG war um rund 11 Prozentpunkte höher als in der KG (ARR=0,11; 95% KI: 0,02–0,20; p=0,020).
+doc41	10	Die medizinisch-beruflich orientierte Rehabilitation führt im Vergleich zur herkömmlichen medizinischen Rehabilitation zu deutlich höheren Beschäftigungsraten nach einem Jahr.
+doc45	1	HINTERGRUND: Wir haben in einer Augenarztpraxis mit 8 Ärzten eine Videosprechstunde (VISP) während der Corona (COVID-19)-Pandemie eingeführt, um eine kontinuierliche ophthalmologische Versorgung zu gewährleisten, eine Infektionsprophylaxe sicherzustellen und eine geringere Anzahl von Patientenpräsentationen zu kompensieren.
+doc45	2	Evaluierung der häufigsten Gründe für die Patientenvorstellungen in der VISP, des Anteils an Wiedervorstellungen in der Praxis trotz VISP, der praktischen Herausforderungen bei der Einführung einer VISP sowie der Patientenzufriedenheit.
+doc45	3	Es wurden keinen Patienten mit neu aufgetretenen akuten Sehverschlechterungen und starken Augenschmerzen Termine in der VISP angeboten.
+doc45	4	Die Videokonsultation wurde von einem Facharzt durchgeführt.
+doc45	5	Um die VISP zu evaluieren, wurde ein Fragebogen (8 Fragen) im Anschluss an den VISP-Termin telefonisch abgefragt.
+doc45	6	Wir analysierten 29 (13 männlich, Ø 52,6 Jahre, 16 weiblich, Ø 64,7 Jahre) Patienten.
+doc45	7	Die VISP kam bei 68,97 % der Teilnehmer zustande, die Gesamterfahrung wurde mit der Durchschnittsnote 1,6 bewertet, und alle gaben an, dass sie die VISP weiterempfehlen würden;
+doc45	8	70 % der Vorstellungen in der VISP bezogen sich auf die Symptomatik des vorderen Augenabschnittes.
+doc45	9	In 70 % der Fälle erfolgte keine erneute Vorstellung in der Praxis.
+doc45	10	Wir beobachteten eine hohe praktische Anwendungsmöglichkeit der VISP zum Management nicht dringender Augenerkrankungen bei maximaler Infektionsprophylaxe.
+doc45	11	Die Einführung der VISP war stark durch technologisch- oder benutzerbedingte Problematik bei der Videoverbindungsherstellung limitiert.
+doc45	12	Die Patientenzufriedenheit mit der VISP war hoch bis sehr hoch.
+doc47	1	Sollten Notaufnahmepatienten mit bauchbezogenen Beschwerden einer fokussierten Sonografie zugeführt werden oder bietet eine vollständige Abdominalsonografie Vorteile?
+doc47	2	Retrospektive Analyse konsekutiver Notfallsonografien von 06/2012 bis 06/2013.
+doc47	3	Alle Patienten erhielten eine vollständige Abdominalsonografie.
+doc47	4	Die Befunde der vollständigen Sonografie wurden mit denjenigen verglichen, die eine auf die Beschwerden fokussierte Sonografie detektiert hätte, deren Untersuchungsgebiet von der jeweiligen Indikation abhing.
+doc47	5	Befunde wurden als relevant betrachtet, wenn sie zu diagnostischen oder therapeutischen Konsequenzen führten.
+doc47	6	Es wurden Sensitivität und negativ prädiktiver Wert der fokussierten Sonografie bezogen auf relevante Befunde und geklärte Fragestellungen im Vergleich zur Abdominalsonografie (= Standard) berechnet. 629 Patienten erhielten Notfallsonografien (53 % Frauen).
+doc47	7	Das durchschnittliche Alter betrug 59 Jahre (18–97).
+doc47	8	Die fokussierte Sonografie entdeckte bei 63 % der Patienten (396/629) relevante Befunde.
+doc47	9	Bei 17 % (106/629) führte die vollständige Abdominalsonografie zu zusätzlichen relevanten Befunden.
+doc47	10	Die number needed to scan (NNScan) betrug 6 für einen zusätzlichen relevanten Befund.
+doc47	11	Die Sensitivität der fokussierten Sonografie bezüglich relevanter Befunde betrug 76 %, der negativ prädiktive Wert lag bei 64 %. Die Fragestellung konnte durch die fokussierte Sonografie in 57 % geklärt werden.
+doc47	12	Vollständige Sonografien klärten die Fragestellung in 63 %. Die NNScan lag bei 18.Die Klärung der Fragestellung hing von der Indikation ab (90 % bei Ikterus und 45 % bei Schmerzen im linken oberen Quadranten) und nahm mit dem Alter der Patienten zu (37 % in der zweiten und 85 % in der zehnten Dekade).
+doc47	13	Vollständige Abdominalsonografien entdecken bei Notaufnahmepatienten mit bauchbezogenen Beschwerden mehr relevante Befunde und führen häufiger zu einer Klärung der Fragestellung als fokussierte Sonografien.
+doc48	1	In der Augenheilkunde und der Radiologie spielen Bilddaten eine entscheidende Rolle.
+doc48	2	Für die Auswertung dieser Datensätze stehen in der radiologischen Diagnostik und Forschung zunehmend „deep-learning“-basierte Algorithmen zur Verfügung.
+doc48	3	Anwendungsgebiete und die Bedeutung für die radiologische Bildgebung in der Ophthalmologie werden aufgezeigt.
+doc49	1	HINTERGRUND: Speicheldrüsenkarzinome („salivary gland carcinomas“, SGC) sind seltene Tumoren, die aufgrund ihrer histologischen Vielfalt und den in Abhängigkeit vom Subtyp unterschiedlichen Krankheitsverläufen eine Herausforderung für Diagnostik und Therapie darstellen.
+doc49	2	Über die Zusammensetzung des Tumormikromilieus (TME) bei SGC ist bislang wenig bekannt.
+doc49	3	Ein umfassenderes Verständnis der relevanten molekularen Veränderungen und immunologischen Prozesse des Tumors sowie des umgebenden Stromas könnte dazu beitragen, die therapeutische Effizienz – beispielsweise durch eine adjuvante Immunmodulation – zu verbessern.
+doc49	4	In diesem Manuskript wurden Ergebnisse aus Studien zusammengefasst, die sich mit der Zusammensetzung des TME bei SGC beschäftigen.
+doc49	5	Das Immunzellinfiltrat der verschiedenen Tumorentitäten ist unterschiedlich.
+doc49	6	Bei einem Drittel der SGC wurde eine Expression des Oberflächenzellrezeptors LAG3 („lymphocyte activation gene 3“) auf tumorinfiltrierenden Lymphozyten beobachtet.
+doc49	7	LAG3 inhibiert – ähnlich wie CTLA‑4 („cytotoxic T‑lymphocyte antigen 4“) und PD‑1 („programmed cell death 1 protein“) – die zelluläre Proliferation, Aktivierung und Homöostase von antitumoral wirksamen T‑Zellen.
+doc49	8	Höhere Expressionen sind dabei insbesondere bei den prognostisch ungünstigeren Entitäten wie den Speichelgangkarzinomen und Adenokarzinomen NOS („not otherwise specified“) zu beobachten.
+doc49	9	LAG3 ist insbesondere bei aggressiven Entitäten und fortgeschrittenen Tumoren nachzuweisen.
+doc49	10	Folglich könnte eine Therapie mit LAG3-Inhibitoren eine Therapie bei fortgeschrittenen und metastasierten SGC unterstützen.
+doc5	1	Die Primäre Ciliäre Dyskinesie (PCD, MIM 242650) ist eine seltene hereditäre Multisystemerkrankung mit klinisch heterogenem Phänotyp.
+doc5	2	Leitsymptom ist eine chronische Sekretretention der oberen und unteren Atemwege, welche durch die Dysfunktion motiler respiratorischer Zilien entsteht.
+doc5	3	In der Folge kommt es zur Ausbildung von Bronchiektasen, häufig zu einer Infektion durch Pseudomonas aeruginosa sowie einer abnehmenden Lungenfunktion bis hin zum Lungenversagen.
+doc5	4	Bislang gibt es kaum evidenzbasierte Therapieempfehlungen, da randomisierte Langzeitstudien zur Behandlung der PCD fehlten.
+doc5	5	In diesem Jahr wurden die Daten einer ersten placebokontrollierten Medikamentenstudie bei PCD veröffentlicht.
+doc5	6	Anlässlich dieses Meilensteins im Management der PCD wurde der vorliegende Übersichtsartikel als Konsens von Patientenvertretern sowie Klinikern, die langjährige Erfahrung in der Behandlung der PCD haben, verfasst.
+doc5	7	Diese Arbeit bietet eine Zusammenfassung aktuell eingesetzter Behandlungsverfahren, die überwiegend auf persönlichen Erfahrungen und Expertenmeinungen beruhen oder von anderen Atemwegserkrankungen wie der Cystischen Fibrose (CF), COPD oder Bronchiektasen-Erkrankung abgeleitet werden.
+doc5	8	Da es derzeit keine kurative Therapie für PCD gibt, stehen symptomatische Maßnahmen wie die regelmäßige Reinigung der Atemwege und die Behandlung von rezidivierenden Atemwegsinfektionen im Fokus.
+doc5	9	Nicht respiratorische Manifestationen werden organspezifisch behandelt.
+doc5	10	Um neben der ersten Medikamentenstudie mehr evidenzbasiertes Wissen zu generieren, werden weitere Projekte etabliert, u. a. ein internationales PCD-Register.
+doc5	11	Hierüber wird Patienten der Zugang zu klinischen und wissenschaftlichen Studien erleichtert und die Vernetzung behandelnder Zentren gefördert.
+doc5	12	Des Weiteren können Erkenntnisse über eine Genotyp-spezifische Erkrankungsschwere erlangt werden, um folglich die therapeutische Versorgung der Patienten zu verbessern und somit zu individualisieren.
+doc50	1	Seit Dezember 2019 hat sich das neuartige Coronavirus SARS-CoV‑2 („severe acute respiratory syndrome coronavirus 2“), das die Erkrankung COVID-19 („coronavirus disease 2019“) auslöst, mit rasanter Geschwindigkeit über die gesamte Welt ausgebreitet.
+doc50	2	Ausgehend von der chinesischen Provinz Hubei, wurden mittlerweile 29,4 Mio. Menschen weltweit infiziert, und es sind mehr als 930.000 an den Folgen der Erkrankung gestorben (Stand 15.09.2020).
+doc50	3	Das Virus verbreitet sich durch Tröpfcheninfektion sowie über Aerosole.
+doc50	4	Enger Körperkontakt stellt daher ein deutlich erhöhtes Risiko für eine Übertragung dar.
+doc50	5	Insbesondere bei Untersuchungen mit engem Körperkontakt sollten daher zum Schutz nicht nur der Patienten, sondern auch des medizinischen Personals Maßnahmen ergriffen werden.
+doc50	6	In diesem Artikel werden die aktuellen Empfehlungen von internationalen Fachgesellschaften zur Verwendung von persönlicher Schutzausrüstung sowie ihre lokale Implementierung dargestellt.
+doc51	1	Elektrische Unfälle und insbesondere daraus resultierende Kompartmentsyndrome sind herausfordernde Verletzungen in der klinischen Behandlung.
+doc51	2	Kreatinkinase (CK) und Myoglobin sind bekannte Laborparameter zur Bestimmung eines Kompartmentsyndroms.
+doc51	3	Wir haben Patienten mit elektrischen Verletzungen zwischen 2006 und 2016 in unserer Verbrennungsklinik untersucht.
+doc51	4	Wir wollten die Rolle von Myostatin als Marker für das Kompartmentsyndrom durch Serummessungen innerhalb von 24 h nach der Verletzung analysieren.
+doc51	5	Wir haben Daten von 24 Patienten erhoben, die mit einer elektrischen Hochspannungsverletzung stationär behandelt wurden.
+doc51	6	Von diesen 24 Patienten konnten wir bei 14 Patienten Myostatinkonzentrationen messen.
+doc51	7	Während CK-MB (Kreatinkinase Typ Muscle-Brain [MB]) keine signifikante Korrelation mit einem Kompartmentsyndrom zeigte, zeigten CK und Myostatin einen stark signifikanten Anstieg.
+doc51	8	Interessanterweise war Myostatin bei elektrischen Verletzungen signifikant erhöht, jedoch nicht bei Verbrennungen, während CK keinen signifikanten Unterschied zeigte.
+doc51	9	Neben CK kann Myostatin somit als zuverlässiger Frühmarker für das Kompartmentsyndrom bei elektrischen Verletzungen dienen.
+doc57	1	Der primäre Hyperaldosteronismus (PHA; Conn-Syndrom) ist der häufigste nachweisbare Grund für einen sekundären arteriellen Hypertonus.
+doc57	2	Primäre Ursachen hierfür sind das Aldosteron-produzierende Adenom (APA) oder eine bilaterale adrenale Hyperplasie (BAH) mit jeweils unterschiedlicher therapeutischer Konsequenz.
+doc57	3	Weder Screening- und Funktionstests noch die Schnittbildgebung können eine unilateral dominante Hormonproduktion nachweisen.
+doc57	4	Neben einer klinischen Übersicht über Ätiologie, Diagnostik und Therapie des PHA werden in diesem Übersichtsartikel die Indikation, die Technik und der Stellenwert der selektiven Nebennierenvenenblutentnahme (NNVBE) ausführlich dargestellt und im Kontext aktueller Literatur diskutiert.
+doc57	5	Die NNVBE kann mit hoher Erfolgsrate eine unilaterale Dominanz nachweisen oder ausschließen.
+doc57	6	Patienten mit PHA und unilateralem APA können kurativ durch eine Adrenalektomie behandelt werden.
+doc57	7	Die NNVBE ist eine etablierte Intervention zur Subtypisierung des PHA in eine unilaterale oder bilaterale Erkrankung der Nebenniere.
+doc57	8	· Die Nebennierenvenenblutentnahme (NNVBE) ist eine sichere, zuverlässige und minimalinvasive Methode zur Detektion einer unilateralen oder bilateralen Erkrankung der Nebenniere..
+doc57	9	· Der Nachweis einer Lateralisierung durch die NNVBE hat eine unmittelbare Relevanz für die kurative Therapie des primären Hyperaldosteronismus (PHA)..
+doc57	10	· Die NNVBE kann mit hoher Treffer- und Erfolgsrate ohne Kontrastmittelgabe und mit geringer Strahlenexposition in der Hand eines erfahrenen Untersuchers durchgeführt werden..
+doc57	11	· Loberg C, Antoch G, Stegbauer J et al.
+doc57	12	Update: Selective adrenal venous sampling (AVS) – Indication, technique, and significance.
+doc57	13	Fortschr Röntgenstr 2020;
+doc57	14	DOI: 10.1055/a-1299-1878.
+doc58	1	Im Fokus des außerordentlichen Symposium-Webinars der Arbeitsgruppe urologische Forschung (AuF) stand der Themenkomplex „Forschung im Kontext zwischen Universität und Pharma“.
+doc58	2	Die virtuelle Tagung widmete sich damit der bedeutenden und bisweilen weniger beachteten Herausforderung, die Brücke von der Laborbank in die Anwendung zu schlagen und Erfolg versprechende Ergebnisse aus universitären Forschungsprojekten gemeinsam mit der pharmazeutischen und medizintechnischen Industrie umzusetzen.
+doc58	3	Dabei wurden verschiedene relevante Fragen und Problemstellungen definiert und diese sowohl aus der Perspektive von Projektleitern aus Kliniken und Laboren als auch von Managern der pharmazeutischen Industrie und aus dem Bereich des Patentrechts mit einem ebenso interdisziplinären Teilnehmerkreis aus Urologie, Pathologie und Naturwissenschaften erörtert.
+doc59	1	Thoraxschmerzen sind ein häufiges Symptom, mit dem sich Patienten in der hausärztlichen Praxis vorstellen.
+doc59	2	Patienten mit akuten Brustschmerzen stellen eine diagnostische Herausforderung für den niedergelassenen Arzt dar, weil ein breites Spektrum von Diagnosen infrage kommt, vom lebensbedrohlichen akuten Myokardinfarkt und der Lungenarterienembolie bis hin zu wesentlich häufigeren Ursachen, wie einer harmlosen muskulären Verspannung aus der Gruppe der sogenannten Brustwandsyndrome oder gastrointestinalen Störungen, beispielsweise einer Refluxkrankheit.
+doc59	3	Die klinische Evaluation von Patienten mit akuten Brustschmerzen folgt unabhängig vom Ort der Untersuchung dem Prinzip einer gründlichen klinischen Einschätzung durch den Arzt mit körperlicher Untersuchung und Anamnese.
+doc59	4	Darauf folgen weitere technische Untersuchungen wie ein 12-Kanal-Elektrokardiogramm und eine gezielte Labordiagnostik mit Point-of-care-Tests (unter anderem Troponin und D‑Dimere).
+doc59	5	Diagnostische Pfade und Score-Systeme wie der Marburger Herz-Score wurden eigens dafür entwickelt, in der hausärztlichen Praxis eine Einschätzung zu ermöglichen und Orientierung zu geben.
+doc63	1	Im vorliegenden Artikel wird auf die Rolle von Alkohol in unserer Gesellschaft sowie auf dessen Bedeutung für Jugendliche eingegangen.
+doc63	2	Spezifika der Wechselwirkung von Alkohol und dem adoleszenten Gehirn werden erläutert und die epidemiologische Entwicklung des Alkoholkonsums bei österreichischen Minderjährigen beschrieben.
+doc63	3	Es werden darüber hinaus relevanteRisiken für problematische Konsummuster und mögliche Wege zur Prävention erörtert.
+doc64	1	Die thermische Ablation der Stammvarikose hat sich zu einem Standardverfahren in der Behandlung des Krampfaderleidens entwickelt.
+doc64	2	Der klinische Erfolg der endovenös-thermischen Verfahren ist vergleichbar mit der Stripping-Operation, ein signifikanter Unterschied zwischen diesen Gruppen konnte in Langzeitanalysen nicht nachgewiesen werden.
+doc64	3	Lediglich in der Genese der mit Duplexultraschall-detektierten Krossenrezidive gibt es einen Unterschied: Eine Neoangiogenese tritt nach Stripping-Operation auf, ein Rezidiv über eine belassene V. saphena accessoria anterior vorwiegend nach endovenöser Ablation der Stammvene.
+doc64	4	Kosteneinsparungen durch vermehrt ambulant durchgeführte endovenöse Verfahren im Vergleich zur Stripping-Operation, die immer noch (im Vergleich zu anderen Ländern) in Deutschland oft stationär durchgeführt wird, sind inzwischen nachgewiesen.
+doc64	5	Eine endovenöse Krossektomie sollte angestrebt werden.
+doc64	6	Nichtthermische endoluminale Katheterverfahren sind vorwiegend der Behandlung der V. saphena parva vorbehalten.
+doc7	1	Von den klinisch verfügbaren Biomarkern sind die natriuretischen Peptide (NP) die robustesten Prädiktoren für die Diagnose und Prognose bei Herzinsuffizienz (HI).
+doc7	2	Der prognostische Wert ist insbesondere bei serieller Bestimmung der NP hoch, sodass der klinische Einsatz in internationalen HI-Leitlinien mit höchster Evidenz und Empfehlung weiter in den Vordergrund gerückt ist.
+doc7	3	Das Konzept der sequenziellen NP-Messungen dient der Erfassung der Natrium- und Wasserüberladung zu klinisch definierten Zeitpunkten.
+doc7	4	Ziel eines NP-unterstützten Behandlungsplans ist, nicht nur die Dynamik des klinischen Therapieansprechens zu objektivieren, sondern den individuellen Therapieverlauf klinischen Szenarien zuzuordnen, die ihrerseits eine wesentliche Rolle für die Risikostratifizierung, Prognose und Notwendigkeiten von Therapieoptimierung in der stationären, aber auch ambulanten Versorgung spielen.
+doc70	1	HINTERGRUND: Die Versorgung von Patellafrakturen ist technisch anspruchsvoll.
+doc70	2	Auch wenn die radiologischen Ergebnisse zumeist zufriedenstellend sind, deckt sich dies häufig nicht mit der subjektiven Einschätzung der Patienten.
+doc70	3	Die klassische Versorgung mittels Drahtzuggurtung weist einige Komplikationen auf.
+doc70	4	Die winkelstabile Plattenosteosynthese hat sich in den letzten Jahren biomechanisch als vorteilhaft erwiesen.
+doc70	5	Von wem werden Patellafrakturen in Deutschland versorgt?
+doc70	6	Wie sieht der aktuelle Versorgungsstandard aus?
+doc70	7	Haben sich „moderne“ Osteosyntheseformen durchgesetzt?
+doc70	8	Was sind die häufigsten Komplikationen?
+doc70	9	Die Mitglieder der Deutschen Gesellschaft für Orthopädie und Unfallchirurgie sowie der Deutschen Kniegesellschaft wurden aufgefordert, an einer Onlinebefragung teilzunehmen.
+doc70	10	Insgesamt wurden 511 komplett ausgefüllte Fragebogen ausgewertet.
+doc70	11	Die Befragten sind zum größten Teil auf Unfallchirurgie spezialisiert
+doc70	12	(51,5 %) und verfügen über langjährige Berufserfahrung in Traumazentren.
+doc70	13	Die Hälfte der Operateure versorgt ≤5 Patellafrakturen jährlich.
+doc70	14	In knapp 40 % der Fälle wird die präoperative Bildgebung um eine Computertomographie ergänzt.
+doc70	15	Die klassische Zuggurtung ist noch die bevorzugte Osteosyntheseform bei allen Frakturtypen
+doc70	16	(Querfraktur 52 %, Mehrfragmentfrakturen 40 %). Bei Mehrfragmentfrakturen entscheiden sich 30 % der Operateure für eine winkelstabile Plattenosteosynthese.
+doc70	17	Bei Beteiligung des kaudalen Pols dient als zusätzliche Sicherung die McLaughlin-Schlinge
+doc70	18	(60 %). Der Versorgungsstandard von Patellafrakturen in Deutschland entspricht weitgehend der aktualisierten S2e-Leitlinie.
+doc70	19	Nach wie vor wird die klassische Zuggurtungsosteosynthese als Verfahren der Wahl genutzt.
+doc70	20	Weitere klinische (Langzeit‑)Studien werden benötigt, um die Vorteile der winkelstabilen Plattenosteosynthese zu verifizieren.
+doc71	1	Rückenschmerzen gehen mit erheblichen Beeinträchtigungen der Teilhabe einher, denen die medizinische Rehabilitation entgegenwirken soll.
+doc71	2	Es ist evident, dass das in Deutschland übliche Setting nicht für alle Zielgruppen effektiv ist.
+doc71	3	Neben einer Intensivierung für Risikogruppen könnte eine niedrigschwellige Form für Personen mit moderaten Beeinträchtigungen sinnvoll sein.
+doc71	4	Die Machbarkeit einer berufsbegleitenden Rehabilitation (BbR) wurde in einer Studie untersucht.
+doc71	5	Die BbR wurde als geschlossenes Gruppenprogramm mit einer Therapiedauer von 48 Stunden konzipiert (2 Termine pro Woche über 12 Wochen).
+doc71	6	Neben der Umsetzbarkeit standen die Analyse unterschiedlicher Zugangswege und die erreichten Ergebnisse im Fokus.
+doc71	7	In 3 ambulanten Reha-Zentren waren 12 Gruppen mit 6 bis 12 Teilnehmenden geplant.
+doc71	8	Neben dem Antragsverfahren wurden Versicherte über das Netzwerk der Reha-Einrichtungen sowie den Firmenservice der Deutschen Rentenversicherung rekrutiert.
+doc71	9	Zielgruppe waren arbeitsfähige, erwerbstätige Versicherte, die wegen Rückenschmerzen eine medizinische Rehabilitation benötigen.
+doc71	10	Die Evaluation war multiperspektivisch und multimethodisch angelegt.
+doc71	11	Neben einer Befragung der Teilnehmenden zu Beginn, während und nach der BbR wurden Gruppendiskussionen mit Vertreter/innen der Reha-Einrichtungen, der Reha-Träger sowie Arbeitgebern durchgeführt.
+doc71	12	Es wurden 7 Gruppen mit insgesamt 56 Teilnehmenden in 2 Einrichtungen realisiert.
+doc71	13	Der typische BbR-Teilnehmende war weiblich, verheiratet, ohne Kinder, 48 Jahre alt und in Vollzeit bei mittelgroßen Unternehmen ohne Schichtdienst tätig.
+doc71	14	Ein Großteil hatte im Jahr vorher keine bzw. geringfügige Fehlzeiten.
+doc71	15	59% der Teilnehmenden wurden über die Reha-Einrichtungen rekrutiert; nur Einzelfälle über das Antragsverfahren.
+doc71	16	2 Drittel hätten ohne das Angebot der BbR keine Rehabilitation beantragt.
+doc71	17	Insgesamt waren die Teilnehmenden sehr zufrieden mit der BbR. Allerdings wurde die Vereinbarkeit mit Arbeit und Alltag als Herausforderung wahrgenommen.
+doc71	18	Prä-Post-Vergleiche bei BbR-Teilnehmenden zeigten mittlere bis starke Unterschiede in der Bewertung der allgemeinen Gesundheit, der Schmerzen, der Funktionsfähigkeit und der Arbeitsfähigkeit.
+doc71	19	Die BbR hat angedeutet, welches Potenzial sie für Menschen mit moderaten Beeinträchtigungen hat.
+doc71	20	Vor einer Dissemination sollten die erkannten Herausforderungen bearbeitet werden.
+doc71	21	Dies betrifft insbesondere die Rekrutierung und die Vereinbarkeit der Rehabilitation mit Beruf und Alltag.
+doc72	1	Die Stimulation des Nervus hypoglossus (HNS) zur Behandlung der obstruktiven Schlafapnoe (OSA) hat seit der ersten Stellungnahme der Arbeitsgemeinschaft Schlafmedizin der Deutschen Gesellschaft für Hals-Nasen-Ohren-Heilkunde, Kopf- und Hals-Chirurgie (DGHNO) einen festen Stellenwert erhalten.
+doc72	2	Die vorhandenen 3 Systeme unterscheiden sich in der technischen Ausgestaltung des ähnlichen Grundprinzips.
+doc72	3	Für die unilaterale atmungsgesteuerte HNS existieren hier mehrere Vergleichsstudien, Registeranalysen mit 4-stelligen Patientenzahlen und mehrjährigen Nachsorgeergebnissen.
+doc72	4	Die kontinuierliche HNS verzichtet auf die Atmungserkennung, und im Gegensatz zum atmungsgesteuerten HNS ist eine Schlafendoskopie zur Indikationsstellung nicht notwendig.
+doc72	5	Die bilaterale kontinuierliche HNS ist als einziges Verfahren teilimplantierbar; hierzu liegen erste Machbarkeitsstudien vor.
+doc72	6	Wesentlich für die Indikation ist die mit schlafmedizinischer Expertise beurteilte Non-Adhärenz der Überdrucktherapie bei einer mindestens mittelgradigen OSA in individueller Abwägung von weiteren Therapieoptionen.
+doc72	7	Die implantierende Klinik steht im Mittelpunkt der interdisziplinären Therapieverantwortung und ist bei Therapieproblemen Hauptansprechpartner.
+doc72	8	Dies erklärt die strukturellen Anforderungen zur Sicherung der Ergebnisqualität und Minimierung von Komplikationen.
+doc72	9	Die Nachsorge der HNS-versorgten Patienten kann sehr gut sektoren- und fachdisziplinübergreifend erfolgen, wobei Mindestangaben zur Behandlungswirkung und Nutzung dokumentiert werden sollten.
+doc76	1	Rupturen der M.-pectoralis-major(PM)-Sehne sind seltene Verletzungen, jedoch hat ihre Zahl v. a. bei der Ausübung von Kraftsport in den letzten Jahren zugenommen.
+doc76	2	Als Pathomechanismus gilt eine exzentrische Belastung unter PM-Anspannung (Sturz auf den ausgestreckten Arm, Verletzung während des Bodenkampfes oder Boxens, aber v. a. während Abwärtsbewegungen beim Bankdrücken).
+doc76	3	Die Ruptursequenz startet am Ansatz, ausgehend von superior nach inferior, beginnend mit den inferiorsten Muskelsegmenten, gefolgt von Pars sternocostalis (PS) und Pars clavicularis.
+doc76	4	Die meisten Klassifikationen bauen auf Rupturlokalisation, -ausdehnung und Verletzungszeitpunkt auf.
+doc76	5	Neben klinischen Zeichen und Sonographie hat sich die MRT als diagnostischer Goldstandard etabliert.
+doc76	6	Die Indikation zur operativen Versorgung besteht bei fast allen lateralen PM-Sehnen-Rupturen mit relevantem Kraftdefizit.
+doc76	7	Eine Versorgung <3 Wochen ist primär anzustreben, jedoch ist eine operative Behandlung in chronischen Fällen möglich.
+doc76	8	Die konservative Therapie betrifft ausschließlich Patienten, die ursprungsnahe, muskuläre Verletzungen aufweisen, sowie kleinere Teilrisse.
+doc76	9	Ziel der operativen Therapie ist die anatomische Rekonstruktion der PM-Einheit mit Wiederherstellung der ursprünglichen Spannungsverhältnisse, um die optimale Kraftübertragung zu ermöglichen.
+doc76	10	Die operative Refixation bzw. Rekonstruktion (mit Auto‑/Allograft) von akuten und chronischen PM-Sehnen-Rupturen zeigt gute klinische Ergebnisse mit sehr hoher Patientenzufriedenheit.
+doc76	11	Latissimus-dorsi(LD)- und Teres-major(TM)-Sehnenrupturen sind selten, können aber bei Hochleistungssportlern zu deutlichen Beeinträchtigungen führen.
+doc76	12	Entgegen den PM-Sehnen-Rupturen werden LD- und TM-Verletzungen mit sehr zufriedenstellenden Ergebnissen primär konservativ behandelt.
+doc77	1	Die Anzahl der metastasierten LN-Stationen und die Anzahl der metastasierten LNs sind bessere prognostische Faktoren als die derzeit verwendete nodale Klassifikation in NSCLC.
+doc77	2	Zwischen 2010 und 2017 wurden 1038 resezierte Patienten für NSCLC analysiert.
+doc77	3	Wir haben 3 verschiedene Schichten für die LN-Zustandsbewertung durchgeführt: pN-Kategorie (pN0, pN1 und pN2); sN-Kategorie (sN0, sN1; 1. Station der Metastase, sN2; die 2. und 3. Station der Metastasen und sN3; ≥ 4. Station der Metastasen); die nN-Kategorie (nN0, nN1; 3 LNs Metastase, nN2; Metastasen in 4 – 6 LNs und nN3; Metastasen in ≥ 7 LNs).
+doc77	4	Die 5-Jahres-Überlebensrate betrug 70,1% für N0 in allen Klassifikationen.
+doc77	5	Sie lag bei 54,3% für pN1 und 26,4% für pN2 (p < 0,0001).
+doc77	6	Die 5-Jahres-Überlebensrate für die Kategorien N1, N2 und N3 betrug 54,1%, 42,4% und 16,1% nach sN und 51,4%, 36,1% und 7,9% nach nN (p < 0,0001).
+doc77	7	In der multivariaten Analyse waren sN und nN unabhängige Risikofaktoren wie pN (p < 0,0001).
+doc77	8	Die Gefahrenverhältnisse gegenüber N0 für N1, N2 und N3 waren für sN und nN signifikanter als für pN (1,597, 2,176 und 3,883 für sN; 1,645, 2,658 und 4,118 für nN bzw. 1,576, 3,222 für pN).
+doc77	9	Bei der Einteilung der Unterkategorien von sN und nN in den pN1- und pN2-Subgruppen verloren die anatomische Lage der LN-Beteiligung mit zunehmender Tumorbelastung und Tumorausbreitung an Bedeutung.
+doc77	10	Die Anzahl der metastasierten LN-Stationen und die Anzahl der metastasierten LNs sind bessere prognostische Faktoren als die derzeit verwendete nodale Klassifikation in NSCLC.
+doc8	1	Wir berichten über einen 36-jährigen Patienten, welcher nach einer beruflichen Konfrontation mit Darstellungen von Gewalt an Tieren, sexueller Gewalt sowie körperlicher Gewalt über digitale Medien in seiner Position als social media content moderator die klassischen Symptome einer PTBS entwickelte.
+doc8	2	Nach 10 monatiger Arbeitsunfähigkeit kam der Patient zur sozialmedizinischen Einschätzung zur Rehabilitation.
+doc8	3	Obwohl aufgrund der hohen Resilienz und Motivationslage des Patienten von einer Regeneration binnen der kommenden 6 Monate und einer Neuorientierung auf dem Allgemeinen Arbeitsmarkt ausgegangen wurde, wurde seine Leistungsfähigkeit hinsichtlich seiner letzten sozialversicherungspflichtigen Tätigkeit vollständig aufgehoben eingeschätzt.
+doc8	4	Diese sekundäre, digitale Art der Traumatisierung ist in der aktuell gültigen Version des ICD-10 nicht aufgeführt, wird aber bereits in den A4 Kriterien des DSM-5 beschrieben.
+doc8	5	Hier wird eine Exposition über elektronische Instrumente, Television, Filme oder Fotografien ausgeschlossen, es sei denn die Exposition ist beruflich bedingt.
+doc8	6	Anhand dieses Beispiels werden Risiken für die mentale Gesundheit durch digitale Faktoren während der Arbeit, sowie deren sozialmedizinischen und versicherungstechnischen Folgen dargestellt.
+doc82	1	ÜBERBEGRIFF MALIGNE BILIäRE TUMOREN:  Unter dem Begriff maligne biliäre Tumoren (engl. biliary tract cancer) werden weiterhin Karzinome der intra- und extrahepatischen Gallengänge und der Gallenblase zusammengefasst, deren auch molekularpathologische Unterschiede immer besser verstanden werden Patienten nach einer kurativ intendierten Resektion sollte eine adjuvante Chemotherapie mit Capecitabin über 6 Monate angeboten werden.
+doc82	2	Die Kombination aus Gemcitabin und Cisplatin bleibt etablierter Standard in der palliativen Erstlinientherapie.
+doc82	3	Patienten in einem guten Allgemeinzustand kann aufgrund der positiven Ergebnisse der randomisierten ABC-06-Studie eine Zweitlinientherapie empfohlen werden.
+doc82	4	Mehr als 50 % aller Patienten mit malignen biliären Tumoren weisen therapierbare genetische Alterationen auf.
+doc82	5	Erste prospektive Daten belegen den Nutzen einer zielgerichteten Therapie bei diesen Patienten.
+doc82	6	Deswegen sollte möglichst allen Patienten, die eine palliative Systemtherapie benötigen, frühzeitig ein molekulares Profiling angeboten werden.
+doc83	1	Bei COVID-19-Infektion liegt eine systemische virale Reaktion gefolgt von einer entzündlichen Krankheitsphase vor.
+doc83	2	Die erste Phase verläuft meist mild/asymptomatisch.
+doc83	3	Nur ein Teil der Patienten entwickelt die entzündliche Phase mit hoher Mortalität.
+doc83	4	Patienten mit vorbestehenden kardiovaskulären Erkrankungen und kardiovaskulären Risikofaktoren haben ein höheres Risiko, schwer an COVID-19 zu erkranken.
+doc83	5	COVID-19 betrifft nicht nur das Lungenparenchym durch die ACE2-Rezeptoren.
+doc83	6	COVID-19 betrifft nicht nur das Lungenparenchym durch die ACE2-Rezeptoren, sondern kann auch im Gesamtkörper eine generalisierte endotheliale Schädigung und Entzündung im Sinne einer sog.
+doc83	7	Endotheliitis zur Folge haben.
+doc83	8	Die Morphologie der Endotheliitis stellt eine Akkumulation von Lymphozyten, Plasmazellen und Makrophagen im und unterhalb der endothelialen Zellen dar.
+doc83	9	Eine Endotheliitis kann eine Vasokonstriktion mit konsekutiver Organischämie, Entzündung und Gewebeödem sowie thrombotische Mikrozirkulationsstörung zur Folge haben.
+doc83	10	Patienten mit vorbestehender kardiovaskulärer Dysfunktion (Hypertonus, Diabetes mellitus, Übergewicht und weitere kardiovaskuläre Erkrankungen, männliches Geschlecht) haben ein erhöhtes Risiko für schwere Verläufe einer COVID-19-Infektion.
+doc83	11	Insbesondere endothelstabilisierende Ansätze kommen aus diesen Gründen zum Einsatz.
+doc83	12	Die Erkenntnisse wurden seit dem Pandemieausbruch mehrheitlich von Autopsien gewonnen.
+doc84	1	Die nichtalkoholische Fettlebererkrankung (NAFLD) ist eine der häufigsten Lebererkrankungen.
+doc84	2	In Deutschland wird die Prävalenz in der adulten Bevölkerung auf 24 % geschätzt, und die Inzidenz ist ansteigend.
+doc84	3	Prognostisch ist die Unterscheidung früher und fortgeschrittener Erkrankungsstadien von Bedeutung.
+doc84	4	Insbesondere das Ausmaß der Vernarbung, die als Leberfibrose bezeichnet wird, beeinflusst Morbidität und Mortalität von Patienten mit NAFLD.
+doc84	5	Bei Vorliegen einer fortgeschrittener Fibrose und Zirrhose steigen die leberspezifische und die Gesamtmortalität an.
+doc84	6	Die Leberfibrose entsteht als Konsequenz einer anhaltenden Entzündung des Lebergewebes über die Zeit.
+doc84	7	Da Entzündung und Fibrose histologische Merkmale der Erkrankung sind, gilt heute als Referenzmethode in der Diagnostik der NAFLD noch die Leberbiopsie.
+doc84	8	Zunehmend werden nichtinvasive diagnostische Verfahren zum Staging (der Fibrose) und Grading (Aktivität) der Erkrankung entwickelt und validiert.
+doc84	9	Die aktuelle Übersicht fasst neue Entwicklungen der nichtinvasiven Leberdiagnostik zusammen.
+doc85	1	Die Rehabilitation von Menschen mit einem Schlaganfall ist ein langjähriger Prozess, in dem Betroffene, ihre Familien und Freunde auf soziale Unterstützung und Hilfe angewiesen sind.
+doc85	2	Daher stellt die individuelle Förderung der vorhandenen Ressourcen und der Selbstständigkeit der Betroffenen eine wichtige Aufgabe dar.
+doc85	3	Die Hochschule für Gesundheit Bochum und die Stiftung Deutsche Schlaganfall-Hilfe haben das ehrenamtsunterstützte Modell „Geschulte Schlaganfall-Helferinnen und Schlaganfall-Helfer – ein Partnerschaftliches Modell für die wohnortnahe Versorgung (GeSa)“ entwickelt, das Schlaganfall-Helfer*innen als Expert*innen für eine individuelle wohnortnahe Unterstützung von Schlaganfall-Patient*innen und ihre Angehörige schult.
+doc85	4	Die Schlaganfall-Helfer*innen bieten eine patient*innenorientierte Versorgung und individuelle Hilfestellung im Alltag an und leisten somit einen Beitrag zur Verbesserung der gesundheitsbezogenen Lebensqualität von Betroffenen und deren Familien.
+doc85	5	Es wurde ein Ausbildungscurriculum entwickelt, sowie in einer Schulung mit 21 Schlaganfall-Helferer*innen erfolgreich erprobt und evaluiert.
+doc85	6	Bis zum Sommer 2020 sind an 16 Standorten in 37 Schulungen über 480 Schlaganfall-Helfer*innen ausgebildet worden.
+doc85	7	Die bisherigen Erfahrungen mit dem Projekt sind durchgehend positiv, was durch 2 wissenschaftliche Arbeiten bestätigt wird.
+doc85	8	Als wichtigster Erfolgsfaktor für die Nachhaltigkeit des Projekts hat sich die bereits im Modellprojekt umgesetzte Einbindung von Kooperationspartner*innen für die Koordination der Ehrenamtlichen bewährt.
+doc85	9	Im Beitrag werden die Ergebnisse der Pilotstudie sowie der standardisierte Prozess zur Implementierung eines regionalen Helfer*innen-Projektes dargestellt und die Erfahrungen mit dem bisherigen Projektverlauf beschrieben.
+doc86	1	Ziel der prospektiven Untersuchung war es, bei der Behandlung von Wirbelkörperfrakturen mittels Ballonkyphoplastie die Schmerzreduktion im Hinblick auf das Frakturalter zu evaluieren.
+doc86	2	Insgesamt konnten in dieser Studie 106 Patienten (37 männlich und 69 weiblich) mit 128 Wirbelkörperfrakturen mit einem mittleren Alter von 67,5 Jahren (21 bis 92 Jahre) bei einem Bodymaßindex von 26,4 (16–40,4) erfasst werden.
+doc86	3	Alle Frakturen wurden radiologisch und klinisch ausgewertet.
+doc86	4	Es wurden die Schmerzintensität (visuelle Analogskala 0–10), der Analgetikaverbrauch (WHO-Stufenschema 1 bis 3), der Oswestryscore und operationsrelevante Daten erhoben (Operationsdauer, Zementverbrauch, Komplikationen).
+doc86	5	Es wurden 37 A 1.1-, 43 A 1.2-, 43 A 1.3-, 4 A 3.1- und 1 A 2.3-Klassifikationen erhoben.
+doc86	6	Das Frakturalter in Tagen betrug bei 75 Patienten weniger als 23 Tage, die mittlere Operationszeit betrug 43 Minuten.
+doc86	7	Der Analgetikaverbrauch konnte von präoperativ 1,8 ± 0,8 auf 1,0 ± 0,6 reduziert werden.
+doc86	8	Eine signifikante Verbesserung zeigte sich in der Schmerzintensität; diese sank signifikant von 8,2 ± 0,9 präoperativ auf 3,9 ± 0,8 postoperativ.
+doc86	9	Bezogen auf das Frakturalter und die Schmerzintensität konnte eine deutlich höhere Schmerzreduktion bei den frischen Frakturen zwischen 0 und 23 Tagen erzielt werden.
+doc86	10	Hier sank die Schmerzintensität auf 2,5 ± 0,5 postoperativ, bei den später versorgten Frakturen lag dieser Wert bei 4,5 ± 0,4.
+doc86	11	Zusammenfassend kann festgestellt werden, dass die Ballonkyphoplastie eine suffiziente Methode ist Wirbelkörperfrakturen aufzurichten, den Kyphosewinkel zu verbessern und eine Schmerzreduktion zu erreichen.
+doc87	1	Nicht nur regenerative Therapie wie zellassistierter Lipotransfer (cell assisted lipotransfer) sondern auch präklinische experimentelle Studien verwenden in der Plastischen Chirurgie Stammzellen aus Fettgewebe, sogenannte Adipose tissue-derived Stem Cells (ASCs).
+doc87	2	Hierbei haben allerdings vom jeweiligen Stammzellspender abhängige Faktoren einen entscheidenden Einfluss auf die Zellausbeute und das regenerative Potential von ASCs und der Stromal vascular Fraction (SVF).
+doc87	3	Ziel dieser Übersichtsarbeit war es daher, diese Einflussfaktoren des Stammzellspenders darzustellen und anhand des aktuellen Wissenstands zu beurteilen.
+doc87	4	Es erfolgte eine intensive Literaturrecherche in der der National Library of Medicine, mit Fokus auf Einflussfaktoren der Stammzellspender, die eine Beeinflussung der Zellausbeute und des regenerativen Potentials von humanen ASCs und SVF in vorherigen Studien gezeigt haben.
+doc87	5	Aktuell gibt es eine Vielzahl von Studien, welche sich mit den Einflussfaktoren des Stammzellspenders auseinandersetzen.
+doc87	6	Allerdings sind diese Faktoren sehr inhomogen und teilweise sogar widersprüchlich, so dass hier noch weiterer Forschungsbedarf besteht.
+doc87	7	Dennoch gibt es einige Faktoren, die gemäß der aktuellen Literatur gehäuft untersucht wurden: Alter, Geschlecht, Gewicht, Nebenerkrankungen (z. B. Diabetes, Lipödem) sowie spezielle Medikamente (Antidepressiva, Antihormontherapie) und Chemotherapie.
+doc87	8	Wir empfehlen, bei experimentellen und klinischen Arbeiten mit ASCs/SVF eine Charakterisierung des Patientenkollektivs zu veröffentlichen, so dass mögliche Beeinflussungen durch oben genannte Faktoren kommuniziert werden und eine bessere Vergleichbarkeit von Studien ermöglicht wird.
+doc87	9	Darüber hinaus kann aber auch mit einer präzisen Anamnese und körperlichen Untersuchung vorab ein möglichst homogenes Patientenkollektiv für die Sammlung von Proben für wissenschaftliche Arbeiten konstruiert werden.
+doc87	10	Auch könnten die Ergebnisse dazu beitragen, den Erfolg zukünftiger ASC-basierter Therapien einzuschätzen.
+doc88	1	Die intravaskuläre Applikation jodhaltiger Kontrastmittel kann, trotz kontinuierlicher Verbesserung ihrer pharmakologischen Eigenschaften, systemische bzw. hämodynamische Nebenwirkungen haben.
+doc88	2	Insbesondere Patienten mit eingeschränkter Nierenfunktion sind gefährdet.
+doc88	3	Ein akutes Nierenversagen im Nachgang einer intravaskulären Kontrastmittelgabe hat für betroffene Patienten im Langzeitverlauf ein erhöhtes Dialyse- und Mortalitätsrisiko.
+doc88	4	Weder ist der zugrunde liegende Pathomechanismus vollständig geklärt, noch ist die wirkliche Inzidenz eines akuten Nierenversagens im Rahmen einer kontrastmittelinduzierten Nephropathie bekannt.
+doc88	5	Diese Unsicherheiten spiegeln sich in vielen weiteren Aspekten wider: so fehlt beispielsweise eine allgemein verbindliche Definition und ist der Umgang in der klinischen Praxis uneinheitlich.
+doc88	6	Klinische Leitlinien zur Prävention einer kontrastmittelinduzierten Nierenschädigung empfehlen klassischerweise eine prophylaktische intravenöse Hydrierung von Hochrisikopatienten.
+doc88	7	In der vorliegenden Übersicht werden die gültigen Empfehlungen zur intravenösen Prophylaxe in diesem Kontext zusammengefasst und ein 2-stufiger Praxisleitfaden auf Basis der letzten Leitlinienempfehlungen vorgestellt.
+doc88	8	Jüngere Forschungsergebnisse haben zu einer weitreichenden Anpassung der klinischen Leitlinienempfehlungen geführt: 90 % der bis dato als Hochrisiko für kontrastmittelinduzierte Nephropathie eingestuften Patienten gehören nicht länger in diese Risikokategorie, eine diesbezügliche Prophylaxe vor Kontrastmittelgabe wird nicht mehr empfohlen.
+doc88	9	Für eine kleine Patientengruppe kann diese Prophylaxe sehr wohl hilfreich sein, unter sorgfältiger Abwägung im Rahmen einer Nutzen-Risiko-Analyse.
+doc88	10	Dies betrifft insbesondere Patienten mit chronischer Niereninsuffizienz im Stadium CKD 4 und 5.
+doc88	11	Intravenöse Hydratation kann einen positiven Effekt haben für Hochrisikopatienten gemäß der „neuen” Definition; eine Risikoabwägung bleibt notwendig.
+doc88	12	Ein 2-stufiger Screening-Ansatz bietet Hilfestellung für die praktische Implementierung in der Klinik.
+doc88	13	· Prophylaktische Prähydrierung ist ein wesentlicher Baustein, um eine kontrastmittelinduzierte Nephropathie zu vermeiden..
+doc88	14	· Jüngere Publikationen haben zu einer Anpassung der gegenwärtigen Leitlinienempfehlungen beigetragen..
+doc88	15	· Intravenöse Hydratation kann einen positiven Effekt haben für Hochrisikopatienten gemäß der „neuen” Definition; eine Risikoabwägung bleibt notwendig..
+doc88	16	· Ein 2-stufiger Screening-Ansatz bietet Hilfestellung für die praktische Implementierung in der Klinik..
+doc89	1	Aus der Hochrisikogruppe der Endokarditis-prädisponierenden Erkrankungen sticht die durchgemachte Endokarditis (Risiko 266-fach) hervor – Präventionsmaßnahmen wie gute Oral-/Zahnhygiene, Antibiotikaprophylaxe bei orodentalen Eingriffen und Aufklärung sind essenziell.
+doc89	2	Bei Patienten mit ambulant erworbener E. faecalis-Bakteriämie sollte eine transösophageale Echokardiografie durchgeführt werden – laut neueren Untersuchungen beträgt die Endokarditisprävalenz in dieser Patientengruppe > 20 %. Es verdichten sich die Hinweise, dass eine Assoziation zwischen E. faecalis-Endokarditis und kolorektalen Karzinomen bzw. Adenomen mit Dysplasiezeichen existiert.
+doc89	3	ORALE THERAPIE DER ENDOKARDITIS?:  Die Nichtunterlegenheit einer oralen Sequenztherapie bei Endokarditispatienten ist bislang nur für eine sehr ausgewählte Subgruppe (stabiler Verlauf, kleine Vegetation, keine paravalvulären Komplikationen) gezeigt.
+doc89	4	Eine frühe und unkritische Oralisierung der Antibiotika birgt die Gefahr schlechterer Behandlungsergebnisse.
+doc89	5	KUNSTHERZINFEKTIONEN/INFEKTIONEN LINKSVENTRIKULäRER ASSIST-DEVICES:  Kunstherzinfektionen/Infektionen linksventrikulärer Assist-Devices (LVAD) treten bei einem Drittel der Patienten im Laufe des ersten Jahres nach der Implantation auf.
+doc89	6	Neben einer suffizienten Antibiotikatherapie ist ggf. ein chirurgisches Débridement erforderlich.
+doc90	1	HINTERGRUND: Prognostische und prädiktive Biomarker sind für eine personalisierte Therapiesteuerung beim Plattenepithelkarzinom des Kopf- und Halsbereichs (HNSCC) von klinischem Interesse.
+doc90	2	Die DNA-Methylierung als epigenetischer Mechanismus der Genregulation könnte eine Quelle geeigneter prognostischer und prädiktiver Biomarker sein.
+doc90	3	PubMed-Literaturrecherche und eigene Arbeiten.
+doc90	4	Methylierung von Genen, wie PITX2, ist ein starker, Human Papillomvirus(HPV)-unabhängiger prognostischer Biomarker.
+doc90	5	Die Methylierung von im Plasma zirkulierender zellfreier DNA von SHOX2 und SEPT9 korreliert mit dem Tumorstadium und der Prognose.
+doc90	6	Die Methylierung verschiedener Immuncheckpoints, beispielsweise von PD‑1, PD-L1 und CTLA4, ist ebenfalls prognostisch und mit der Genexpression korreliert.
+doc90	7	Die DNA-Methylierung ist eine Quelle leistungsstarker prognostischer Plasma- und Gewebe-Biomarker, jedoch muss vor einem klinischen Einsatz noch in Studien gezeigt werden, dass eine anhand von Biomarkern gesteuerte Therapiewahl zu einem verbesserten Überleben oder einer Reduzierung der Nebenwirkungen führt.
+doc90	8	Eine Eignung der DNA-Methylierung als prädiktiver Biomarker für eine zielgerichtete medikamentöse Tumortherapie erscheint vielversprechend, ist jedoch noch nicht ausreichend belegt.
+doc91	1	Die pädiatrisch-onkologische Versorgungsstruktur nimmt in Deutschland eine Sonderrolle ein.
+doc91	2	An Krebs erkrankte Kinder und Jugendliche werden bundesweit einheitlich in Therapiestudien und Registern sektorenübergreifend an Zentren behandelt, die eine interdisziplinäre und multiprofessionelle Versorgung sicherstellen können.
+doc91	3	Für die Abrechnung der nicht-vollstationären Leistungen verwenden die Zentren heterogene Abrechnungsmodalitäten, die den erforderlichen Versorgungsaufwand monetär überwiegend nicht decken.
+doc91	4	Es wurde deutschlandweit eine Umfrage aller Zentren der Gesellschaft für Pädiatrische Hämatologie und Onkologie (GPOH) durchgeführt.
+doc91	5	In der Umfrage wurde standardisiert abgefragt, über welche Versorgungsarten der nicht-vollstationäre Bereich in der Kinderonkologie finanziert wird und ob eine Kostendeckung erreicht werden kann.
+doc91	6	Von 58 kinderonkologischen Zentren beteiligten sich insgesamt 18 (33%) an der Umfrage, darunter 8 (44%) Universitätsklinika.
+doc91	7	Die Inanspruchnahme verfügbarer Abrechnungsarten erwies sich als sehr heterogen.
+doc91	8	Im Mittel werden 3,33±1,49 Abrechnungsarten pro Zentrum angewandt.
+doc91	9	17 der 18 teilnehmenden Zentren gaben an, mit den Erlösen die Kosten für die nicht-vollstationäre Versorgung nicht decken zu können.
+doc91	10	Kinderonkologische Zentren in Deutschland können eine kostendeckende Versorgung im nicht-vollstationären Setting nicht erreichen.
+doc91	11	Für die nicht-vollstationäre Versorgung an Krebs erkrankter Kinder und Jugendlicher wird eine bundeseinheitliche und leistungsgerechte Versorgungsform dringend benötigt.
+doc91	12	Drei verschiedene Modelle, die einen adäquaten Handlungsrahmen bieten, wurden erarbeitet und vorgestellt.
+doc92	1	Unter metabolischer Chirurgie wird die nicht ausschließlich gewichtsabhängige chirurgische Therapie von Stoffwechselerkrankungen verstanden, deren Ziel unter anderem die Verbesserung der Hyperglykämie ist.
+doc92	2	Nach der seit 2018 gültigen S3-Leitlinie „Chirurgie der Adipositas und metabolischer Erkrankungen“ kann die Indikation zur metabolischen Chirurgie bei Menschen mit Typ-2-Diabetes und einem BMI ≥ 35 kg/m² gestellt werden, wenn diabetesspezifische individuelle Zielwerte nicht erreicht werden können.
+doc92	3	Ab einem BMI ≥ 40 kg/m² soll die metabolische Operation sogar als mögliche Therapieoption auch unabhängig von Parametern der glykämischen Kontrolle oder der medikamentösen Diabetestherapie empfohlen werden.
+doc92	4	In randomisierten kontrollierten Studien war die metabolische Chirurgie gegenüber der konservativen Diabetestherapie im Hinblick auf Verbesserungen der Blutzuckereinstellung und Gewichtsreduktion konsistent überlegen und konnte die Inzidenz an makro- und mikrovaskulären Diabeteskomplikationen senken.
+doc92	5	Zu den Risiken der metabolischen Chirurgie zählen akute Komplikationen bis hin zu einer perioperativen Mortalität von 0,1–0,5 % und längerfristige Komplikationen wie defiziente Mikronährstoffversorgung, Suchtentwicklung oder erhöhtes Risiko für Suizidalität.
+doc92	6	Für die meisten Menschen mit Typ-2-Diabetes wird die metabolische Chirurgie nicht die erste Wahl im eskalierenden Therapiekonzept sein.
+doc92	7	Dies begründet sich v. a. daraus, dass durch moderne Antidiabetika und modifizierte Insulintherapien eine sichere und langfristig wirksame Diabetestherapie bei guter Lebensqualität möglich ist.
+doc92	8	Gleichzeitig sollten aber Patienten mit Typ-2-Diabetes, die besonders von einer chirurgischen Therapie des Diabetes profitieren können, über diese Therapieoption aufgeklärt werden.
+doc92	9	Der Nutzen einer rechtzeitigen metabolischen Chirurgie sollte dabei immer gegenüber den Risiken abgewogen werden.
+doc93	1	Durchgeführt wurde eine retrospektive Analyse der klinischen Ergebnisse und Komplikationsraten aller oberschenkelamputierten Patienten eines Zentrums, die mit dem neuesten Implantatdesign der sogenannten Endo-Exo-Femur-Prothese (EEFP, dritte Generation) versorgt wurden.
+doc93	2	Ziel ist es, spezifische Informationen zu Langzeitkomplikationen dieser Amputationsversorgungsform zu gewinnen.
+doc93	3	Im Januar 2019 wurden Daten aller Oberschenkelamputierten, die von 2010 bis 2016 an einer Akutklinik aus Schleswig-Holstein mit TOPS versorgt wurden, retrospektiv analysiert.
+doc93	4	Dies geschah unter besonderer Berücksichtigung der postoperativen Komplikationen.
+doc93	5	Hierfür wurden alle Untersuchungsbefunde der klinischen Routine-Nachsorge-Untersuchungen herangezogen.
+doc93	6	Die Komplikationen wurden unterteilt in Stomaprobleme, orthopädie-technische Probleme, Frakturen und Explantationen.
+doc93	7	Alle EEFPs besaßen das gleiche Implantatdesign (dritte Generation).
+doc93	8	Dieses Implantat findet derzeit als einziges TOPS in Deutschland klinische Anwendung.
+doc93	9	Eine deskriptive Statistik des Patientenkollektivs, sowie Verhältnisangaben über aufgetretene Komplikationen wurden berechnet.
+doc93	10	Insgesamt wurden in diesem Zeitraum 68 Implantationen durchgeführt.
+doc93	11	Durchschnittliche Beobachtungszeit war 6,32 Jahre (±2,16 Jahre).
+doc93	12	Das mittlere Alter der Patienten betrug 51,84 Jahre±12,12 Jahre.
+doc93	13	Ursache der Amputation waren überwiegend Traumata (82,35%).
+doc93	14	Stoma-assoziierte Probleme zeigten mit 7% die höchste Inzidenz innerhalb aller beobachteten, patientenassoziierten Komplikationen und stellten die größten Herausforderungen während des Rehabilitationsprozesses dar.
+doc93	15	Betrachtet man nur die chirurgischen Komplikationen, so hatten 81% überhaupt keine Komplikationen.
+doc93	16	Insgesamt wiesen 15% orthopädie-technische Probleme auf, 6% eine peri-prothetische Fraktur, 7% Probleme am Stoma und 3% mussten aufgrund einer Infektion explantiert werden.
+doc93	17	Die erhobene Datenanalyse zeigt, dass TOPS (hier die EEFP der dritten Generation) eine erfolgreiche alternative Behandlungsmethode zur Schaftprothesenversorgung für Patienten mit Oberschenkelknochenverlust darstellen können.
+doc93	18	Die Indikation sollte erst nach dem Versagen einer Schaftversorgung erfolgen und Kontraindikationen müssen umfassend ausgeschlossen werden.
+doc93	19	Die größten Herausforderungen im Rehabilitationsprozess stellen die Vermeidung von Stomakomplikationen, Infektionen und orthopädie-technischen Problemen dar.
+doc93	20	Die Rehabilitation von Amputierten, die mit TOPS behandelt werden, erfordert daher ein interdisziplinäres, spezialisiertes Rehabilitations-Team und eine lebenslange rehabilitative Versorgung.
+doc94	1	Mukoviszidose (zystische Fibrose, „cystic fibrosis“ [CF]) ist die häufigste autosomal-rezessiv vererbte Multisystemerkrankung mit fatalem Verlauf.
+doc94	2	Sie wird durch Mutationen im Cystic-fibrosis-transmembrane-conductance-regulator-Gen (CFTR) verursacht, die zu einer unzureichenden Funktion des Chloridkanals CFTR führen.
+doc94	3	Infolge dessen kommt es durch unzureichende Hydratisierung des epithelialen Flüssigkeitsfilms zu einer Retention zähen Sekrets in etlichen lebenswichtigen Organen, vor allem in Lunge und Atemwegen, Pankreas, Leber und Gallengängen sowie dem Darm.
+doc94	4	Dadurch kommt es zu Inflammation und Infektion, Fibrose und progredienter Organdestruktion.
+doc94	5	Die Mortalität wird im Wesentlichen durch die respiratorische und ventilatorische Insuffizienz bedingt.
+doc94	6	In den gerade einmal 30 Jahren, die seit der molekularen Charakterisierung des CF-verursachenden CFTR-Basisdefekts vergangen sind, hat sich die Langzeitprognose der betroffenen Patienten enorm verbessert.
+doc94	7	Diese Prognoseverbesserung ist einerseits auf eine kooperative, sehr aktive und gut vernetzte internationale CF-Forschungsgemeinschaft zurückzuführen, andererseits auf eine standardisierte Behandlung durch ein interdisziplinäres und multiprofessionelles klinisches CF-Team, das die dadurch erfreulicherweise in zahlreichen Aspekten der CF-Therapie vorhandene Evidenz konsequent und gemeinsam mit dem Patienten in Behandlungsstandards umsetzt.
+doc94	8	Der vorliegende narrative Übersichtsbeitrag zeigt die Evidenz in ausgewählten Bereichen der CF-Therapie auf und würdigt hierbei insbesondere die jüngste Entwicklung der hocheffektiven CFTR-Modulator-Therapie, die in naher Zukunft voraussichtlich etwa 90 % der Betroffenen zur Verfügung stehen wird und die die CF durch ihren Einfluss auf die Pathophysiologie und den Langzeitverlauf in eine gut behandelbare chronische Erkrankung der Inneren Medizin transformieren wird.
+doc95	1	Einleitung: Der Hefepilz Malassezia pachydermatis gilt als Kommensale, ist aber gleichzeitig auch der am häufigsten isolierte Hefepilz bei caniner Otitis externa.
+doc95	2	Ätherische Öle könnten aufgrund ihrer antimikrobiellen Eigenschaften als alternative Therapie der Otitis verwendet werden.
+doc95	3	Zielsetzung: Ziel dieser Studie war die Untersuchung der antifungalen In-vitro-Wirksamkeit ätherischer Öle gegen M. pachydermatis-Isolate aus Hundeohren.
+doc95	4	Material und Methoden: Die In-vitro-Aktivität von 22 ätherischen Ölen wurde mittels Agar-Plättchen-Diffusionstest gegen 15 M. pachydermatis-Isolate untersucht.
+doc95	5	Zusätzlich wurden Verdünnungen der ätherischen Öle getestet und die volatile Wirkung mittels “vapour assay” analysiert.
+doc95	6	Ergebnisse: Die meisten ätherischen Öle zeigten in vitro eine Wirksamkeit gegen M. pachydermatis.
+doc95	7	Es konnte eine unterschiedliche Empfindlichkeit einzelner M. pachydermatis-Isolate gefunden werden.
+doc95	8	Lemongrasöl erwies sich als das potenteste ätherische Öl.
+doc95	9	Ebenfalls zeigten Zimtblätter-, Nelken-, Manuka-, indisches Melissen-, Oregano-, Palmarosa- und Bergbohnenkrautöl eine starke antifungale Wirksamkeit.
+doc95	10	Die volatile Wirkung konnte mittels “vapour assay” gezeigt werden.
+doc95	11	Schlussfolgerung: In vitro zeigen ätherische Öle eine Wirksamkeit gegen den Hefepilz M. pachydermatis.
+doc95	12	Diese Studie bietet eine wissenschaftliche Basis zur Anwendung ätherischer Öle in der Veterinärmedizin.
+doc95	13	Die unterschiedliche Empfindlichkeit der verschiedenen M. pachydermatis-Isolate gegenüber einzelner ätherischer Öle zeigt einmal mehr die Nützlichkeit eines Aromatogramms als Anhaltspunkt bei der Auswahl des geeigneten ätherischen Öls für die Therapie.
+doc96	1	Seit ungefähr einem Jahrzehnt erfährt die elektronische Zigarette (E-Zigarette) in Europa eine zunehmende Beliebtheit, sei es als Nikotinersatztherapie, als trendige Verführung für Jugendliche, oder für Gelegenheitsraucher mit oder ohne Nikotinzusatz.
+doc96	2	Neben dem noch weitgehend unbekannten pulmonalen Schadenspotenzial einer Langzeitexposition kann es zu einer Explosion von Akkumulatoren mit spezifischen Verletzungsmustern kommen.
+doc96	3	Die meisten Anwender sind sich der Gefahr in der Hosentasche nicht bewusst.
+doc96	4	Zwischen Februar und Juli 2019 wurden 4 Patienten mit Verbrennungen durch explodierte E-Zigaretten im Zentrum für Schwerbrandverletzte im Sana Klinikum Offenbach am Main behandelt.
+doc96	5	Die Ursache, das Ausmaß der Verletzung sowie deren Behandlung werden im Folgenden dargestellt.
+doc96	6	Das Durchschnittsalter der ausschließlich männlichen Patienten betrug 37 (25–50) Jahre.
+doc96	7	Die Ursache war bei allen Patienten ein sog.
+doc96	8	„thermal runaway“ (sehr rasche Entladung des Akkumulators).
+doc96	9	Die Verbrennungstiefe reichte von Grad I bis tief Grad IIb.
+doc96	10	Die verbrannte Körperoberfläche betrug durchschnittlich 3 (0,5–4,5) % vKOF und betraf die Körperregionen, die bei den Benutzern typischerweise in unmittelbarem Kontakt mit der E-Zigarette sind: Oberschenkel, Genital und Hände.
+doc96	11	Eine konservative Therapie war in 1 Fall und eine chirurgische Therapie in 2 Fällen erfolgreich (2 alloplastische Deckungen, 1 Spalthauttransplantation).
+doc96	12	Ein Patient entließ sich nach Erstversorgung gegen ärztlichen Rat.
+doc96	13	Die durchschnittliche Hospitalisationsdauer von 3 Patienten lag bei 15,6 Tagen (6–17).
+doc96	14	Verbrennungen durch eine explodierende E-Zigarette stellen eine neue seltenere Entität dar.
+doc96	15	Durch die Wucht der Explosion eines Batteriekörpers kommt es zu Verletzungsmustern, die eine Behandlung in spezialisierten Zentren mit dem gesamten Spektrum der Verbrennungsmedizin erfordern.
+doc96	16	Es entstehen Mischverletzungen an den Prädilektionsstellen mit tiefen Verbrennungen durch thermische Einwirkung, Kolliquationsnekrosen durch austretende Elektrolytflüssigkeit und eine Kontamination durch Fremdkörper (metallisches Lithium, Splitter des zerstörten Gehäuses), die besondere Erstmaßnahmen erfordern.
+doc96	17	Auch die Löschung von Bränden durch E-Zigaretten erfordert spezielle Maßnahmen.
+doc96	18	Ein sachgemäßer Umgang mit CE-zertifizierten Geräten ist essenziell.
+doc96	19	Eine Manipulation des Gerätes bei defekten Funktionen bzw. defekten Akkus ist höchst gefährdend und sollte strengstens untersagt werden.
+doc96	20	Allgemeine Sicherheitsvorgaben müssen beachtet werden.
+doc97	1	Bei aggressiver posteriorer Frühgeborenenretinopathie (APROP) können Rezidive nach intravitrealer Injektion von Bevacizumab (IVB) trotz erfolgreicher Aktivitätskontrolle des Akutstadiums auftreten und erfordern daher langfristige Kontrolluntersuchungen bei Extremfrühgeborenen.
+doc97	2	Als Rezidiv wird das Wiederauftreten von Pluszeichen und Leckage (mit oder ohne Proliferation) posterior, an und anterior der Vaskularisationsgrenze definiert.
+doc97	3	RetCam-Weitwinkelfotografien und Fluoreszenzangiografien erfolgten bei Therapiebeginn mit IVB (Bevacizumab 0,312 mg in 0,025 ml pro Auge), vor jeder weiteren Therapie (IVB, Laser- oder Kryokoagulation, Pars-plana-Vitrektomie) sowie am Therapieende.
+doc97	4	Es wurde das Bildmaterial von 18 Augen/9 Extremfrühgeborenen mit APROP die zwischen 08/2008 und 12/2017 behandelt wurden (GA 21 – 27 Wochen, GG 430 – 890 g) ausgewertet.
+doc97	5	Mit einer einmaligen Injektion konnte nur bei 4 Augen/2 Kindern (22%) ein langfristiger Therapieerfolg erreicht werden.
+doc97	6	In 2 Augen/2 Kindern (11%) wurde bei nicht ausreichendem Therapieeffekt eine 2. und 3.
+doc97	7	Injektion innerhalb von 2 Wochen durchgeführt.
+doc97	8	Bis zu 3 Injektionen zusammen mit einer Laserkoagulation waren in 12 Augen/6 Kindern (67%) erforderlich, um eine vollständige Rückbildung der ROP-Aktivität zu erreichen.
+doc97	9	In 6 Augen/3 Kindern (33%) konnte erst mit der Laserkoagulation eine Rückbildung der Leckage an der ursprünglichen Vaskularisationsgrenze erreicht werden.
+doc97	10	In einem einzigen Auge kam es trotz allem zu einer Netzhautverziehung mit konsekutiver frustraner Netzhautchirurgie.
+doc97	11	Vor IVB war die Leckage in ⅔ auf Proliferationen zurückzuführen (12 Augen/6 Kinder).
+doc97	12	Bei Rezidiven nach IVB zeigte sich eine Verschiebung des Leckageortes nach posterior (14 Augen/4 Kinder), während nach Laserkoagulation Leckagen durch Proliferationen auch anterior der Vaskularisationsgrenze beobachtet wurden (5 Augen/3 Kinder).
+doc97	13	Eine Therapieindikation bei fehlenden Pluszeichen und nicht erkennbaren Proliferationen in der Weitwinkelfotografie ergab sich bei 14 Augen/4 Kindern aufgrund von angiografischen Aktivitätszeichen.
+doc97	14	Die intravitreale Injektion von 0,312 mg Bevacizumab zeigte sich als effektive Behandlungsmethode des APROP-Akutstadiums.
+doc97	15	Der langfristige Therapieerfolg erforderte die konsequente Erfassung und Behandlung von APROP-Rezidiven.
+doc97	16	Besonders hilfreich war dabei die Fluoreszenzangiografie in der Diagnostik von nicht erkennbaren Rezidiven in der Weitwinkelfotografie.
+doc98	1	Das Fach der Urologie war seit jeher eng mit dem technologischen Fortschritt verbunden und besonders die letzten Jahrzehnte führten zu einem vermehrten Einsatz verschiedenster Technologien und Innovationen in den einzelnen Teilbereichen der Urologie.
+doc98	2	Während die konventionelle Laparoskopie zunehmen durch roboterunterstützte Verfahren ersetzt wird und hier v. a. die Einführung neuer robotischer Systeme verschiedener Hersteller erfolgt und erfolgen wird, finden die meisten Eingriffe in der Endourologie noch vielfach ohne diese Assistenzsysteme statt.
+doc98	3	Auch hier setzten sich jedoch neue Systeme wie z.
+doc98	4	B. die autonome robotergesteuerte hydraulische Ablation (Aquablation) der Prostata immer mehr durch und zahlreiche Entwicklungsprojekte werden auch hier in den kommenden Jahren die klinische Versorgung maßgeblich verändern.
+doc98	5	Hinzu kommt, dass eine fortschreitende Kombination der robotischen Unterstützung mit intraoperativer Navigation durch die Integration von Bildgebung und AR- und VR-Technologie zu erwarten ist.
+doc98	6	Erfolgreich eingesetzt wird diese Kombination aus Navigation und robotischer Technologie bereits im Bereich der Fusionsbiopsie der Prostata.
+doc99	1	Die Gebührenordnung für Ärzte (GOÄ) ist die Grundlage für die Abrechnung privatärztlicher Leistungen.
+doc99	2	Die letzte Teilnovellierung für Leistungen im operativen Bereich erfolgte 1996.
+doc99	3	Dies führt dazu, dass die Fortschritte in den operativen Fächern völlig unzureichend abgebildet sind, neue Operationen überhaupt nicht vorkommen und viele der aufgeführten Verfahren heute gar nicht mehr durchgeführt werden.
+doc99	4	Auch mikrochirurgische Operationsverfahren finden sich nicht in der GOÄ.
+doc99	5	Daraus resultieren bei der privatärztlichen Abrechnung permanente Konflikte mit den privaten Krankenversicherern, die eine adäquate Abrechnung dieser komplexen Operationsverfahren mit Hinweisen auf bestehende Leistungsziffern teilweise veralteter Verfahren und einer selbst zuerkannten Interpretationshoheit der GOÄ zu verhindern suchen.
+doc99	6	Zu dieser Problematik hat der BGH 2007 eine Entscheidung gefällt, in der ausgeführt wird, dass Verfahren, die nicht in der GOÄ abgebildet sind, durch Ziffern vergleichbaren Schwierigkeitsgrades und Zeitaufwands abgerechnet werden können.
+doc99	7	Aber auch dieses Urteil hat nicht zu einer Klärung bei der Abrechnung beigetragen, sondern wird von den PKVen regelmäßig negiert.
+doc99	8	Der folgende Artikel soll einen Beitrag zur Lösung dieses Dilemmas leisten, indem er die immer wieder strittigen Leistungsziffern diskutiert und ihre Anwendungen mit rechtskräftigen Urteilen unterlegt.

@@ -305,7 +305,7 @@ class Manager:
                 if word in self.dict:
                     if word_pmi >= pmi_threshold:
                         headword = word
-                elif lemma in self.dict and 'lemmatize' in self.config and self.config['lemmatize']:
+                elif lemma in self.dict:
                     src_lemmas = self.tokenizer.tokenize(lemma).split()  # ! BOTTLENECK
                     lemma_pmi = 0.0
                     for i in range(1, len(src_lemmas)):

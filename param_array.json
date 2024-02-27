@@ -1,8 +1,4 @@
 {
-    "lemmatize": [
-        1,
-        0
-    ],
     "pmi-threshold": [
         0,
         5,

@@ -127,52 +127,77 @@ def main():
     os.system(f'wc -l {test_path}.src')
 
     print('\n[8/11] Extracting Biomedical Set...')
+    med_data = []
     med_path = f'{data_dir}/medline'
     os.system(f'mkdir -p {med_path}')
-    ref_to_id = {}
-    with open(f'{med_path}/{src_lang}2{tgt_lang}_mapping.txt') as med_f:
-        for line in med_f.readlines():
-            doc_ref, doc_id = line.split('\t')
-            ref_to_id[doc_ref] = doc_id.strip()
-    src_data = {}
-    with open(f'{med_path}/medline_{src_lang}2{tgt_lang}_{src_lang}.txt') as med_f:
-        for line in med_f.readlines():
-            doc_id, sent_id, sentence = line.split('\t')
-            if doc_id not in src_data:
-                src_data[doc_id] = {}
-            src_data[doc_id][sent_id] = sentence.rstrip()
-    tgt_data = {}
-    with open(f'{med_path}/medline_{src_lang}2{tgt_lang}_{tgt_lang}.txt') as med_f:
-        for line in med_f.readlines():
-            doc_id, sent_id, sentence = line.split('\t')
-            if doc_id not in tgt_data:
-                tgt_data[doc_id] = {}
-            tgt_data[doc_id][sent_id] = sentence.rstrip()
-    with open(f'{med_path}/{src_lang}2{tgt_lang}_align_validation.tsv') as med_f:
-        med_path += '/medline'
-        with open(f'{med_path}.{src_lang}', 'w') as outfile:
+    for year in range(20, 23):
+        wmt_path = f'{med_path}/wmt{year}'
+        os.system(f'mkdir -p {wmt_path}')
+        ref_to_id = {}
+        with open(f'{wmt_path}/{src_lang}2{tgt_lang}_mapping.txt') as med_f:
             for line in med_f.readlines():
-                status, doc_ref, src_sent_id, _ = line.split('\t')
-                if status != 'OK':
-                    continue
-                if ',' in src_sent_id:
-                    for sent_id in src_sent_id.split(','):
-                        outfile.write(src_data[ref_to_id[doc_ref]][sent_id] + ' ')
-                else:
-                    outfile.write(src_data[ref_to_id[doc_ref]][src_sent_id])
-                outfile.write('\n')
-        med_f.seek(0)
-        with open(f'{med_path}.{tgt_lang}', 'w') as outfile:
+                doc_ref, doc_id = line.split('\t')
+                ref_to_id[doc_ref] = doc_id.strip()
+        src_data = {}
+        with open(f'{wmt_path}/medline_{src_lang}2{tgt_lang}_{src_lang}.txt') as med_f:
             for line in med_f.readlines():
-                status, doc_ref, _, tgt_sent_id = line.split('\t')
-                if status != 'OK':
-                    continue
-                if ',' in tgt_sent_id:
-                    for sent_id in tgt_sent_id.split(','):
-                        outfile.write(tgt_data[ref_to_id[doc_ref]][sent_id.rstrip()] + ' ')
-                else:
-                    outfile.write(tgt_data[ref_to_id[doc_ref]][tgt_sent_id.rstrip()])
-                outfile.write('\n')
+                doc_id, sent_id, sentence = line.split('\t')
+                if doc_id not in src_data:
+                    src_data[doc_id] = {}
+                src_data[doc_id][sent_id] = sentence.rstrip()
+        tgt_data = {}
+        with open(f'{wmt_path}/medline_{src_lang}2{tgt_lang}_{tgt_lang}.txt') as med_f:
+            for line in med_f.readlines():
+                doc_id, sent_id, sentence = line.split('\t')
+                if doc_id not in tgt_data:
+                    tgt_data[doc_id] = {}
+                tgt_data[doc_id][sent_id] = sentence.rstrip()
+        with open(f'{wmt_path}/{src_lang}2{tgt_lang}_align_validation.tsv') as med_f:
+            wmt_path += '/medline'
+            with open(f'{wmt_path}.src', 'w') as outfile:
+                for line in med_f.readlines():
+                    status, doc_ref, src_sent_id, _ = line.split('\t')
+                    if status != 'OK':
+                        continue
+                    try:
+                        if ',' in src_sent_id:
+                            for sent_id in src_sent_id.split(','):
+                                outfile.write(src_data[ref_to_id[doc_ref]][sent_id] + ' ')
+                        else:
+                            outfile.write(src_data[ref_to_id[doc_ref]][src_sent_id])
+                        outfile.write('\n')
+                    except KeyError:
+                        pass
+            med_f.seek(0)
+            with open(f'{wmt_path}.ref', 'w') as outfile:
+                for line in med_f.readlines():
+                    status, doc_ref, _, tgt_sent_id = line.split('\t')
+                    if status != 'OK':
+                        continue
+                    try:
+                        if ',' in tgt_sent_id:
+                            for sent_id in tgt_sent_id.split(','):
+                                outfile.write(tgt_data[ref_to_id[doc_ref]][sent_id.rstrip()] + ' ')
+                        else:
+                            outfile.write(tgt_data[ref_to_id[doc_ref]][tgt_sent_id.rstrip()])
+                        outfile.write('\n')
+                    except KeyError:
+                        pass
+        with open(f'{data_dir}/medline/wmt{year}/medline.src') as src_f, open(
+            f'{data_dir}/medline/wmt{year}/medline.ref'
+        ) as ref_f:
+            for src_line, ref_line in zip(src_f.readlines(), ref_f.readlines()):
+                if not src_line.strip().isupper() or not ref_line.strip().isupper():
+                    med_data.append(f'{src_line}\t{ref_line}')
+    med_data = list(dict.fromkeys(med_data))
+    med_path += '/medline'
+    with open(f'{data_dir}/medline/medline.src', 'w') as src_f, open(
+        f'{data_dir}/medline/medline.ref', 'w'
+    ) as ref_f:
+        for line in med_data:
+            src_line, ref_line = line.split('\t')
+            src_f.write(src_line)
+            ref_f.write(ref_line)
     os.system(f'wc -l "{med_path}.{src_lang}"')
 
     print('\n[9/11] Learning and Applying BPE...')

@@ -99,17 +99,19 @@ def train_model(train_data: list[Batch], val_data: list[Batch], manager: Manager
             patience += 1
 
         if optimizer.param_groups[0]['lr'] < manager.min_lr:
-            print('Reached Minimum Learning Rate.')
+            logger.info('Reached Minimum Learning Rate.')
             break
         if patience >= manager.max_patience:
-            print('Reached Maximum Patience.')
+            logger.info('Reached Maximum Patience.')
             break
         epoch += 1
     else:
-        print('Maximum Number of Epochs Reached.')
+        logger.info('Maximum Number of Epochs Reached.')
 
 
 def main():
+    import argparse
+
     parser = argparse.ArgumentParser()
     parser.add_argument('--lang-pair', required=True, help='source-target language pair')
     parser.add_argument(
@@ -173,6 +175,4 @@ def main():
 
 
 if __name__ == '__main__':
-    import argparse
-
     main()

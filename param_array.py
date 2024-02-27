@@ -19,8 +19,6 @@ def main():
     parser.add_argument(
         '--val-data', metavar='FILE_PATH', required=True, help='parallel validation'
     )
-    parser.add_argument('--test-data', metavar='FILE_PATH', required=True, help='detokenized test')
-    parser.add_argument('--test-set', required=True, help='test set (sacrebleu)')
     parser.add_argument('--lem-train', metavar='FILE_PATH', help='lemmatized training')
     parser.add_argument('--lem-val', metavar='FILE_PATH', help='lemmatized validation')
     parser.add_argument('--dict', metavar='FILE_PATH', help='bilingual dictionary')
@@ -29,9 +27,13 @@ def main():
     parser.add_argument('--codes', metavar='FILE_PATH', required=True, help='subword-nmt codes')
     parser.add_argument('--model', required=True, help='translation model')
     parser.add_argument('--seed', type=int, help='random seed')
-    parser.add_argument('--start', metavar='INDEX', type=int, default=1, help='start index')
     parser.add_argument('--conda', metavar='ENV', required=True, help='conda environment')
+    parser.add_argument('--start', metavar='INDEX', type=int, default=1, help='starting index')
     parser.add_argument('--email', required=True, help='email address')
+    parser.add_argument(
+        '--test-data', nargs='+', metavar='FILE_PATH', required=True, help='detokenized test'
+    )
+    parser.add_argument('--metric', nargs='+', required=True, help='evaluation metric')
     args = parser.parse_args()
 
     param_array = []
@@ -48,11 +50,13 @@ def main():
             job_file.write('#!/bin/bash\n\n')
             job_file.write(f'touch {args.model}/{job_name}.log\n')
             job_file.write(f'fsync -d 30 {args.model}/{job_name}.log &\n')
-            job_file.write('export PYTHONPATH="${PYTHONPATH}:${pwd}"\n\n')
 
-            job_file.write(f'conda activate {args.conda}\n')
-            job_file.write('python translation/main.py  \\\n')
-            job_file.write(f"  --lang-pair {args.lang_pair} \\\n")
+            job_file.write(f'\nconda activate {args.conda}\n')
+            job_file.write('export PYTHONPATH="${PYTHONPATH}:${pwd}"\n')
+            job_file.write('export SACREBLEU_FORMAT=text\n')
+
+            job_file.write('\npython translation/main.py  \\\n')
+            job_file.write(f'  --lang-pair {args.lang_pair} \\\n')
             job_file.write(f'  --train-data {args.train_data} \\\n')
             job_file.write(f'  --val-data {args.val_data} \\\n')
             if args.lem_train:
@@ -72,19 +76,22 @@ def main():
             for option, value in params:
                 job_file.write(f'  --{option} {value} \\\n')
 
-            job_file.write('python translation/translate.py  \\\n')
-            if args.dict:
-                job_file.write(f'  --dict {args.dict} \\\n')
-            if args.freq:
-                job_file.write(f'  --freq {args.freq} \\\n')
-            job_file.write(f'  --model {args.model}/{job_name}.pt \\\n')
-            job_file.write(f'  --input {args.test_data} \\\n')
-            job_file.write(f'  > {args.model}/{args.test_set}.hyp \\\n')
+            for test_data in args.test_data:
+                test_set = test_data.split('/')[-1]
+                job_file.write('\npython translation/translate.py  \\\n')
+                if args.dict:
+                    job_file.write(f'  --dict {args.dict} \\\n')
+                if args.freq:
+                    job_file.write(f'  --freq {args.freq} \\\n')
+                job_file.write(f'  --model {args.model}/{job_name}.pt \\\n')
+                job_file.write(f'  --input {test_data}.src \\\n')
+                job_file.write(f'  > {args.model}/{job_name}.{test_set}.hyp \n')
 
-            job_file.write(
-                f'sacrebleu -t {args.test_set} -l {args.lang_pair} -i {args.model}/{args.test_set}.hyp  \\\n'
-            )
-            job_file.write(f'  >> {args.model}/{job_name}.log \\\n\n')
+                job_file.write(f'\necho "\\n{test_data}\\n" >> {args.model}/{job_name}.log \n')
+                job_file.write(f'sacrebleu {test_data}.ref -w 4 \\\n')
+                job_file.write(f'  -i {args.model}/{job_name}.{test_set}.hyp \\\n')
+                job_file.write(f"  -m {' '.join(args.metric)} \\\n")
+                job_file.write(f'  >> {args.model}/{job_name}.log')
 
         os.system(
             f"{qf_submit} --name {job_name} --deferred -- {email} -l gpu_card=1 {args.model}/{job_name}.sh"
@@ -92,7 +99,7 @@ def main():
     os.system('qf check')
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     import argparse
 
     main()
