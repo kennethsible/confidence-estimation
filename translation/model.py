@@ -125,14 +125,14 @@ class Model(nn.Module):
         src_mask: Tensor | None = None,
         dict_mask: Tensor | None = None,
         dict_data=None,
-    ) -> Tensor:
+    ) -> tuple[Tensor, Tensor]:
         src_embs = self.src_embed(src_nums)
         if dict_data is not None:
             for i, (lemmas, senses) in enumerate(dict_data):
                 for (a, b), sense_spans in zip(lemmas, senses):
                     for c, d in sense_spans:
                         src_embs[i, c:d] = src_embs[i, a] + self.dpe_embed(src_nums[i, c:d])
-        return self.encoder(src_embs, src_mask, dict_mask)
+        return self.encoder(src_embs, src_mask, dict_mask), src_embs
 
     def decode(
         self,
@@ -153,6 +153,6 @@ class Model(nn.Module):
         dict_mask: Tensor | None = None,
         dict_data=None,
     ) -> Tensor:
-        src_encs = self.encode(src_nums, src_mask, dict_mask, dict_data)
+        src_encs, _ = self.encode(src_nums, src_mask, dict_mask, dict_data)
         tgt_encs = self.decode(src_encs, tgt_nums, src_mask, tgt_mask)
         return self.out_embed(tgt_encs, inverse=True)

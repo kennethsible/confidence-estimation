@@ -12,19 +12,24 @@ def triu_mask(size: int, device: str | None = None) -> Tensor:
     return torch.triu(mask, diagonal=1) == 0
 
 
-def greedy_search(manager: 'Manager', src_encs: Tensor, max_length: int = 512) -> Tensor:
+def greedy_search(
+    manager: 'Manager', src_encs: Tensor, max_length: int = 512
+) -> tuple[Tensor, Tensor]:
     model, vocab, device = manager.model, manager.vocab, manager.device
     tgt_mask = triu_mask(max_length, device=device)
     path = torch.full((1, max_length), vocab.BOS, device=device)
+    prob = torch.tensor(0.0, device=device)
 
     for i in range(1, max_length):
-        tgt_encs = model.decode(src_encs.unsqueeze(0), path[:, :i], tgt_mask=tgt_mask[:, :i, :i])
+        tgt_encs = model.decode(src_encs, path[:, :i], tgt_mask=tgt_mask[:, :i, :i])
         logits = model.out_embed(tgt_encs[:, -1], inverse=True)
-        path[0, i] = logits.log_softmax(dim=-1).argmax(dim=-1)
+        output = logits.log_softmax(dim=-1).max(dim=-1)
+        path[0, i] = output.indices
+        prob += output.values.squeeze(0)
         if path[0, i] == vocab.EOS:
             break
 
-    return path.squeeze(0)
+    return path.squeeze(0), prob
 
 
 def beam_search(

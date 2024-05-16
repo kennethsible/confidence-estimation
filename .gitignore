@@ -2,6 +2,7 @@ __pycache__/
 .mypy_cache/
 .vscode/
 .venv/
+.env
 *.pyc
 *.ipynb
 data_de-en/*
