@@ -1,26 +1,11 @@
+import json
 import math
 
-import faiss
 import torch
+from tqdm import tqdm
 
 from translation.decoder import greedy_search
 from translation.manager import Batch, Manager
-
-
-class ExactIndex:
-
-    def __init__(self, vectors, labels):
-        self.dimension = vectors.shape[1]
-        self.vectors = vectors.astype('float32')
-        self.labels = labels
-
-    def build(self):
-        self.index = faiss.IndexFlatL2(self.dimension)
-        self.index.add(self.vectors)
-
-    def query(self, vectors, k=10):
-        _, indices = self.index.search(vectors, k)
-        return [self.labels[i] for i in indices[0]]
 
 
 def millify(x: int) -> str:
@@ -29,7 +14,7 @@ def millify(x: int) -> str:
     return '{:.0f}{}'.format(y / 10 ** (3 * index), abbrs[index])
 
 
-def translate(string: str, manager: Manager, *, conf: bool = False):
+def translate(string: str, manager: Manager, *, conf: bool = False) -> tuple[str, list] | str:
     model, vocab, device = manager.model, manager.vocab, manager.device
     tokenizer, lemmatizer = manager.tokenizer, manager.lemmatizer
     src_words = ['<BOS>'] + tokenizer.tokenize(string).split() + ['<EOS>']
@@ -54,12 +39,11 @@ def translate(string: str, manager: Manager, *, conf: bool = False):
         src_nums = torch.tensor(vocab.numberize(src_words), device=device)
         src_encs, src_embs = model.encode(src_nums.unsqueeze(0))
     out_nums, out_prob = greedy_search(manager, src_encs, max_length=manager.max_length * 2)
-    if not conf:
-        print(tokenizer.detokenize(vocab.denumberize(out_nums.tolist())))
-    else:
-        print('HYP:', tokenizer.detokenize(vocab.denumberize(out_nums.tolist())), '\n')
-        print('Conf.\tFreq.\tWord')
-        print('=====\t=====\t=====')
+    if conf:
+        conf_list = []
+        # print('HYP:', tokenizer.detokenize(vocab.denumberize(out_nums.tolist())), '\n')
+        # print('Conf.\tFreq.\tWord')
+        # print('=====\t=====\t=====')
         word, score = '', 0.0
         for subword, gradient in zip(
             src_words, torch.autograd.grad(out_prob, src_embs)[0].squeeze(0).abs().sum(dim=1)
@@ -67,10 +51,12 @@ def translate(string: str, manager: Manager, *, conf: bool = False):
             word += subword.rstrip('@')
             score += gradient.item()  # TODO average? maximum?
             if not subword.endswith('@@'):
-                frequency = manager.freq[word] if word in manager.freq else 0
-                print(f'{score:0.2f}\t{millify(frequency).ljust(4)}\t{word}')
+                # frequency = manager.freq[word] if word in manager.freq else 0
+                # print(f'{score:0.2f}\t{millify(frequency).ljust(4)}\t{word}')
+                conf_list.append((word, score))
                 word, score = '', 0.0
-        print()
+        return tokenizer.detokenize(vocab.denumberize(out_nums.tolist())), conf_list
+    return tokenizer.detokenize(vocab.denumberize(out_nums.tolist()))
 
 
 def main():
@@ -80,7 +66,7 @@ def main():
     parser.add_argument('--dict', metavar='FILE_PATH', help='bilingual dictionary')
     parser.add_argument('--freq', metavar='FILE_PATH', help='frequency statistics')
     parser.add_argument('--model', metavar='FILE_PATH', required=True, help='translation model')
-    parser.add_argument('--conf', action='store_true', help='estimate confidence')
+    parser.add_argument('--conf', metavar='FILE_PATH', help='confidence output')
     parser.add_argument('--input', metavar='FILE_PATH', help='detokenized input')
     args, unknown = parser.parse_known_args()
 
@@ -114,13 +100,21 @@ def main():
     if device == 'cuda' and torch.cuda.get_device_capability()[0] >= 8:
         torch.set_float32_matmul_precision('high')
 
-    with open(args.input) as data_f:
-        for string in data_f.readlines():
-            if not args.conf:
+    if args.conf:
+        json_list = []
+        with open(args.input) as data_f:
+            for string in tqdm(data_f.readlines()):  # [1992:]
+                output, conf_list = translate(string, manager, conf=True)
+                json_list.append(conf_list)
+                print(output)
+                # torch.cuda.empty_cache()
+        with open(args.conf, 'w') as json_f:
+            json.dump(json_list, json_f, indent=4)
+    else:
+        with open(args.input) as data_f:
+            for string in tqdm(data_f.readlines()):
                 with torch.no_grad():
-                    translate(string, manager, conf=args.conf)
-            else:
-                translate(string, manager, conf=args.conf)
+                    print(translate(string, manager))
 
 
 if __name__ == '__main__':

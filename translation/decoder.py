@@ -19,6 +19,7 @@ def greedy_search(
     tgt_mask = triu_mask(max_length, device=device)
     path = torch.full((1, max_length), vocab.BOS, device=device)
     prob = torch.tensor(0.0, device=device)
+    # ! memory error w/ computation graph and decoding
 
     for i in range(1, max_length):
         tgt_encs = model.decode(src_encs, path[:, :i], tgt_mask=tgt_mask[:, :i, :i])
