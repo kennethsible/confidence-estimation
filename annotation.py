@@ -19,6 +19,7 @@ def main():
     score = subparsers.add_parser('score')
     score.add_argument('infile', nargs=2, type=argparse.FileType('r'), default=sys.stdin)
     score.add_argument('--threshold', type=int, required=True, help='confidence threshold')
+    score.add_argument('--frequency', action='store_true', help='frequency-based confidence')
     args = parser.parse_args()
 
     client = OpenAI()
@@ -46,7 +47,12 @@ def main():
             # words = [x for y in line1.split(', ') for x in y.split()]
             for word, score in line2:
                 # high confidence
-                if score < args.threshold:
+                if (
+                    args.frequency
+                    and score > args.threshold
+                    or not args.frequency
+                    and score < args.threshold
+                ):
                     if word in words:
                         # mistranslation
                         false_positive += 1
