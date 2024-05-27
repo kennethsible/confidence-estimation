@@ -1,18 +1,30 @@
+import argparse
 import json
+import sys
 
-with open('freq.tsv') as freq_f:
-    freq_dict: dict[str, int] = {}
-    for line in freq_f.readlines():
-        word, freq = line.split()
-        freq_dict[word] = int(freq)
 
-with open('data_annotation/news-test2008.json') as json_f:
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('infile', nargs='?', type=argparse.FileType('r'), default=sys.stdin)
+    parser.add_argument('outfile', nargs='?', type=argparse.FileType('w'), default=sys.stdout)
+    args = parser.parse_args()
+
+    with open('freq.tsv') as freq_f:
+        freq_dict = {}
+        for line in freq_f.readlines():
+            word, freq = line.split()
+            freq_dict[word] = int(freq)
+
     json_list = []
-    for conf_list in json.load(json_f):
+    for conf_list in json.load(args.infile):
         freq_list = []
         for word, _ in conf_list:
             frequency = freq_dict[word] if word in freq_dict else 0
             freq_list.append([word, frequency])
         json_list.append(freq_list)
-with open('data_annotation/news-test2008.freq.json', 'w') as json_f:
-    json.dump(json_list, json_f, indent=4)
+
+    json.dump(json_list, args.outfile, indent=4)
+
+
+if __name__ == '__main__':
+    main()

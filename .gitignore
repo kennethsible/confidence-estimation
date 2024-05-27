@@ -7,4 +7,5 @@ __pycache__/
 *.ipynb
 *.tsv
 *.pt
-data_de-en/*
+data_de-en/
+output/conf*.sh

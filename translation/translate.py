@@ -44,17 +44,26 @@ def translate(string: str, manager: Manager, *, conf: bool = False) -> tuple[str
         # print('HYP:', tokenizer.detokenize(vocab.denumberize(out_nums.tolist())), '\n')
         # print('Conf.\tFreq.\tWord')
         # print('=====\t=====\t=====')
-        word, score = '', 0.0
+        word, scores = '', []
+        # order = 1  # 2, float('inf')
+        # acc = 'sum'  # avg, max
+        order, acc = manager.config['order'], manager.config['acc']
         for subword, gradient in zip(
-            src_words, torch.autograd.grad(out_prob, src_embs)[0].squeeze(0).abs().sum(dim=1)
+            src_words, torch.autograd.grad(out_prob, src_embs)[0].squeeze(0).norm(p=order, dim=1)
         ):
             word += subword.rstrip('@')
-            score += gradient.item()  # TODO average? maximum?
+            scores.append(gradient.item())
             if not subword.endswith('@@'):
                 # frequency = manager.freq[word] if word in manager.freq else 0
                 # print(f'{score:0.2f}\t{millify(frequency).ljust(4)}\t{word}')
+                if acc == 'sum':
+                    score = sum(scores)
+                elif acc == 'avg':
+                    score = sum(scores) / len(scores)
+                elif acc == 'max':
+                    score = max(scores)
                 conf_list.append((word, score))
-                word, score = '', 0.0
+                word, scores = '', []
         return tokenizer.detokenize(vocab.denumberize(out_nums.tolist())), conf_list
     return tokenizer.detokenize(vocab.denumberize(out_nums.tolist()))
 
@@ -67,6 +76,8 @@ def main():
     parser.add_argument('--freq', metavar='FILE_PATH', help='frequency statistics')
     parser.add_argument('--model', metavar='FILE_PATH', required=True, help='translation model')
     parser.add_argument('--conf', metavar='FILE_PATH', help='confidence output')
+    parser.add_argument('--order', default='1', help='norm order (embed_dim)')
+    parser.add_argument('--acc', default='sum', help='acc mode (subwords)')
     parser.add_argument('--input', metavar='FILE_PATH', help='detokenized input')
     args, unknown = parser.parse_known_args()
 
@@ -81,6 +92,10 @@ def main():
                 config[option] = (int if value.isdigit() else float)(value)
             except ValueError:
                 config[option] = value
+    if args.order:
+        config['order'] = float(args.order)
+    if args.acc:
+        config['acc'] = args.acc
 
     manager = Manager(
         config,
