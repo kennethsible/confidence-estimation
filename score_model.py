@@ -3,6 +3,7 @@ import math
 from itertools import chain
 
 from matplotlib import pyplot as plt
+from numpy import linspace
 from scipy import integrate
 from tqdm import tqdm
 
@@ -14,16 +15,16 @@ def format_auc(x: float, y: float):
     x_base, y_base = float(x_bstr), float(y_bstr)
     if int(x_exp) < int(y_exp):
         y_base *= (int(y_exp) - int(x_exp)) * 10
-        return f'{x_base:.2f}E{x_exp}', f'{y_base:.2f}E{x_exp}'
+        return f'{x_base:.0f}E{x_exp}', f'{y_base:.0f}E{x_exp}'
     elif int(x_exp) > int(y_exp):
         x_base *= (int(x_exp) - int(y_exp)) * 10
-        return f'{x_base:.2f}E{y_exp}', f'{y_base:.2f}E{y_exp}'
+        return f'{x_base:.0f}E{y_exp}', f'{y_base:.0f}E{y_exp}'
     return x_str, y_str
 
 
 def score_model(
     gpt_file, conf_file, threshold: int, rescale: bool = False, frequency: bool = False
-) -> tuple[tuple[float, float, float], tuple[int, int]]:
+) -> tuple[tuple[float | None, float | None, float | None], tuple[int, int]]:
     false_positive = false_negative = true_positive = true_negative = 0
     for line1, line2 in zip(gpt_file.readlines(), json.load(conf_file)):
         words = line1.split(', ')  # [x for y in line1.split(', ') for x in y.split()]
@@ -44,9 +45,13 @@ def score_model(
     # F1 ->       imbalanced, positive class is more important
     # ROC AUC ->  heavily imbalanced, every class is equally important
     # PR AUC ->   heavily imbalanced, positive class is more important
-    precision = true_positive / (true_positive + false_positive)
-    recall = true_positive / (true_positive + false_negative)
-    F1 = 2 * (precision * recall) / (precision + recall)
+    precision = recall = F1 = None
+    if true_positive > 0 or false_positive > 0:
+        precision = true_positive / (true_positive + false_positive)
+    if true_positive > 0 or false_negative > 0:
+        recall = true_positive / (true_positive + false_negative)
+    if precision and recall:
+        F1 = 2 * (precision * recall) / (precision + recall)
     return (precision, recall, F1), (true_positive, false_positive)
 
 
@@ -63,35 +68,30 @@ def pr_curve(data_dir: str, output_dir: str):
             N = max(math.floor(conf) for sent in json.load(conf_f) for _, conf in sent)
             rescale = False
         conf_f.seek(0)
-        for threshold in tqdm(range(1, N + 1)):
-            try:
-                (precision, recall, _), _ = score_model(
-                    gpt_f, conf_f, threshold=threshold, rescale=rescale
-                )
-            except ZeroDivisionError:
-                gpt_f.seek(0)
-                conf_f.seek(0)
-                continue
-            conf_precision.append(precision)
-            conf_recall.append(recall)
+        for threshold in tqdm(linspace(0, N + 1, 1000)):
+            (precision, recall, _), _ = score_model(
+                gpt_f, conf_f, threshold=threshold, rescale=rescale
+            )
+            if precision and recall:
+                conf_precision.append(precision)
+                conf_recall.append(recall)
             gpt_f.seek(0)
             conf_f.seek(0)
-    conf_precision.append(0.0)
-    conf_recall.append(0.0)
 
-    freq_precision = [0.0]
-    freq_recall = [0.0]
+    freq_precision = []
+    freq_recall = []
     with open(f'{data_dir}/mistranslated.txt') as gpt_f, open(
         f'{output_dir}/news-test2008.freq.json'
     ) as freq_f:
-        N = max(math.floor(freq) for sent in json.load(freq_f) for _, freq in sent)
+        N = max(freq for sent in json.load(freq_f) for _, freq in sent)
         freq_f.seek(0)
-        for threshold in tqdm(list(chain(range(1, 200), range(200, N + 1, (N + 1 - 200) // 1000)))):
+        for threshold in tqdm(list(chain(range(9000), linspace(9000, N + 1, 1000)))):
             (precision, recall, _), _ = score_model(
                 gpt_f, freq_f, threshold=threshold, frequency=True
             )
-            freq_precision.append(precision)
-            freq_recall.append(recall)
+            if precision and recall:
+                freq_precision.append(precision)
+                freq_recall.append(recall)
             gpt_f.seek(0)
             freq_f.seek(0)
 
@@ -100,7 +100,7 @@ def pr_curve(data_dir: str, output_dir: str):
     freq_auc = abs(integrate.trapezoid(freq_recall, freq_precision))
     conf_label, freq_label = format_auc(conf_auc, freq_auc)
     plt.plot(conf_recall, conf_precision, label=f'Gradient, AUC = {conf_label}')
-    plt.plot(freq_recall, freq_precision, label=f'Frequency, AUC = {freq_label}')
+    plt.plot(freq_recall, freq_precision, 'r', label=f'Frequency, AUC = {freq_label}')
     plt.title('PR Curve')
     plt.xlabel('Recall')
     plt.ylabel('Precision')
@@ -121,30 +121,23 @@ def roc_curve(data_dir: str, output_dir: str):
             N = max(math.floor(conf) for sent in json.load(conf_f) for _, conf in sent)
             rescale = False
         conf_f.seek(0)
-        for threshold in tqdm(range(1, N + 1)):
-            try:
-                _, (true_positive, false_positive) = score_model(
-                    gpt_f, conf_f, threshold=threshold, rescale=rescale
-                )
-            except ZeroDivisionError:
-                gpt_f.seek(0)
-                conf_f.seek(0)
-                continue
+        for threshold in tqdm(linspace(0, N + 1, 1000)):
+            _, (true_positive, false_positive) = score_model(
+                gpt_f, conf_f, threshold=threshold, rescale=rescale
+            )
             conf_tp.append(true_positive)
             conf_fp.append(false_positive)
             gpt_f.seek(0)
             conf_f.seek(0)
-    conf_tp.append(0)
-    conf_fp.append(0)
 
-    freq_tp = [0]
-    freq_fp = [0]
+    freq_tp = []
+    freq_fp = []
     with open(f'{data_dir}/mistranslated.txt') as gpt_f, open(
         f'{output_dir}/news-test2008.freq.json'
     ) as freq_f:
-        N = max(math.floor(freq) for sent in json.load(freq_f) for _, freq in sent)
+        N = max(freq for sent in json.load(freq_f) for _, freq in sent)
         freq_f.seek(0)
-        for threshold in tqdm(list(chain(range(1, 200), range(200, N + 1, (N + 1 - 200) // 1000)))):
+        for threshold in tqdm(list(chain(range(9000), linspace(9000, N + 1, 1000)))):
             _, (true_positive, false_positive) = score_model(
                 gpt_f, freq_f, threshold=threshold, frequency=True
             )
@@ -158,7 +151,7 @@ def roc_curve(data_dir: str, output_dir: str):
     freq_auc = abs(integrate.trapezoid(freq_tp, freq_fp))
     conf_label, freq_label = format_auc(conf_auc, freq_auc)
     plt.plot(conf_fp, conf_tp, label=f'Gradient, AUC = {conf_label}')
-    plt.plot(freq_fp, freq_tp, label=f'Frequency, AUC = {freq_label}')
+    plt.plot(freq_fp, freq_tp, 'r', label=f'Frequency, AUC = {freq_label}')
     plt.title('ROC Curve')
     plt.xlabel('False Positive')
     plt.ylabel('True Positive')
@@ -167,10 +160,10 @@ def roc_curve(data_dir: str, output_dir: str):
 
 
 def pr_F1(data_dir: str, output_dir: str):
-    conf_precision = [0.0]
-    conf_recall = [0.0]
-    conf_F1 = [0.0]
-    conf_x = [0]
+    conf_precision = []
+    conf_recall = []
+    conf_F1 = []
+    conf_x = []
     with open(f'{data_dir}/mistranslated.txt') as gpt_f, open(
         f'{output_dir}/news-test2008.json'
     ) as conf_f:
@@ -182,16 +175,11 @@ def pr_F1(data_dir: str, output_dir: str):
             rescale = False
         conf_f.seek(0)
         max_F1 = (0.0, 0)
-        for threshold in tqdm(range(1, N + 1)):
-            try:
-                (precision, recall, F1), _ = score_model(
-                    gpt_f, conf_f, threshold=threshold, rescale=rescale
-                )
-            except ZeroDivisionError:
-                gpt_f.seek(0)
-                conf_f.seek(0)
-                continue
-            if F1 > max_F1[0]:
+        for threshold in tqdm(linspace(0, N + 1, 1000)):
+            (precision, recall, F1), _ = score_model(
+                gpt_f, conf_f, threshold=threshold, rescale=rescale
+            )
+            if F1 and F1 > max_F1[0]:
                 max_F1 = (F1, threshold)
             conf_x.append(threshold)
             conf_precision.append(precision)
@@ -206,14 +194,16 @@ def pr_F1(data_dir: str, output_dir: str):
         # print(f'F1:        {F1:0.2f}')
         # return
 
-    freq_precision = [0.0]
-    freq_recall = [0.0]
-    freq_F1 = [0.0]
-    freq_x = [0]
+    freq_precision = []
+    freq_recall = []
+    freq_F1 = []
+    freq_x = []
     with open(f'{data_dir}/mistranslated.txt') as gpt_f, open(
         f'{output_dir}/news-test2008.freq.json'
     ) as freq_f:
-        for threshold in tqdm(list(range(1, conf_x[-1] + 1))):
+        N = max(freq for sent in json.load(freq_f) for _, freq in sent)
+        freq_f.seek(0)
+        for threshold in tqdm(linspace(0, N + 1, 10000)):
             (precision, recall, F1), _ = score_model(
                 gpt_f, freq_f, threshold=threshold, frequency=True
             )
@@ -224,31 +214,22 @@ def pr_F1(data_dir: str, output_dir: str):
             gpt_f.seek(0)
             freq_f.seek(0)
 
-    fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(10, 5))
+    fig, axs = plt.subplots(3, 2, figsize=(10, 10))
 
-    # plt.figure()
-    ax1.set_xlabel('Threshold')
-    ax1.set_title('Precision')
-    ax1.plot(conf_x, conf_precision, label='Gradient')
-    ax1.plot(freq_x, freq_precision, '--', label='Frequency')
-    ax1.legend()
-    # plt.savefig(f'{output_dir}/precision.png', dpi=300)
-
-    # plt.figure()
-    ax2.set_xlabel('Threshold')
-    ax2.set_title('Recall')
-    ax2.plot(conf_x, conf_recall, label='Gradient')
-    ax2.plot(freq_x, freq_recall, '--', label='Frequency')
-    ax2.legend()
-    # plt.savefig(f'{output_dir}/recall.png', dpi=300)
-
-    # plt.figure()
-    ax3.set_xlabel('Threshold')
-    ax3.set_title('F1')
-    ax3.plot(conf_x, conf_F1, label='Gradient')
-    ax3.plot(freq_x, freq_F1, '--', label='Frequency')
-    ax3.legend()
-    # plt.savefig(f'{output_dir}/F1.png', dpi=300)
+    axs[0, 0].set_title('Gradient')
+    axs[0, 0].set_ylabel('Precision')
+    axs[0, 0].plot(conf_x, conf_precision)
+    axs[0, 1].set_title('Frequency')
+    axs[0, 1].plot(freq_x, freq_precision, 'r')
+    axs[1, 0].set_ylabel('Recall')
+    axs[1, 0].plot(conf_x, conf_recall)
+    axs[1, 1].set_xlabel('Threshold')
+    axs[1, 1].plot(freq_x, freq_recall, 'r')
+    axs[2, 0].set_ylabel('F1')
+    axs[2, 0].set_xlabel('Threshold')
+    axs[2, 0].plot(conf_x, conf_F1)
+    axs[2, 1].set_xlabel('Threshold')
+    axs[2, 1].plot(freq_x, freq_F1, 'r')
 
     fig.savefig(f'{output_dir}/pr_F1.png', dpi=300)
 
