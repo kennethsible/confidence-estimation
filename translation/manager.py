@@ -1,10 +1,9 @@
 import json
 import math
 import re
-from collections import Counter
-from io import StringIO
+from typing import Any
 
-import nltk
+import sentencepiece as spm
 import spacy
 import torch
 import torch.nn as nn
@@ -16,9 +15,12 @@ from tqdm import tqdm
 from translation.decoder import triu_mask
 from translation.model import Model
 
+Optimizer = torch.optim.Optimizer
+LRScheduler = torch.optim.lr_scheduler.LRScheduler
+
 
 class Vocab:
-    def __init__(self, words: list[str] | None = None):
+    def __init__(self):
         self.num_to_word = ['<UNK>', '<BOS>', '<EOS>', '<PAD>']
         self.word_to_num = {x: i for i, x in enumerate(self.num_to_word)}
 
@@ -26,10 +28,6 @@ class Vocab:
         self.BOS = self.word_to_num['<BOS>']
         self.EOS = self.word_to_num['<EOS>']
         self.PAD = self.word_to_num['<PAD>']
-
-        if words is not None:
-            for line in words:
-                self.add(line.split()[0])
 
     def add(self, word: str):
         if word not in self.word_to_num:
@@ -56,7 +54,12 @@ class Vocab:
 
 class Batch:
     def __init__(
-        self, src_nums: Tensor, tgt_nums: Tensor, ignore_index: int, device: str, dict_data=None
+        self,
+        src_nums: Tensor,
+        tgt_nums: Tensor,
+        ignore_index: int,
+        device: str = 'cpu',
+        dict_data: list | None = None,
     ):
         self._src_nums = src_nums
         self._tgt_nums = tgt_nums
@@ -81,18 +84,17 @@ class Batch:
         return triu_mask(self.tgt_nums[:, :-1].size(-1), device=self.device)
 
     @staticmethod
-    def dict_mask_from_data(dict_data, mask_size, device):
+    def dict_mask_from_data(dict_data: list, mask_size: torch.Size, device: str):
         dict_mask = torch.zeros(mask_size, device=device).repeat((2, 1, mask_size[-1], 1))
         for i, (src_spans, tgt_spans) in enumerate(dict_data):
             for (a, b), spans in zip(src_spans, tgt_spans):
                 for c, d in spans:
-                    # only headwords can attend to their definitions
+                    # headwords attend to their definitions
                     dict_mask[0, i, :, c:d] = 1.0
                     dict_mask[0, i, a:b, c:d] = 0.0
                     dict_mask[0, i, c:d, c:d] = 0.0
-                    # definitions can only attend to themselves
+                    # definitions attend to themselves
                     dict_mask[1, i, c:d, :] = 1.0
-                    dict_mask[1, i, c:d, a:b] = 0.0
                     dict_mask[1, i, c:d, c:d] = 0.0
         return dict_mask
 
@@ -111,43 +113,63 @@ class Batch:
 
 
 class Tokenizer:
-    def __init__(self, codes: BPE, src_lang: str, tgt_lang: str | None = None):
-        self.codes = codes
+    def __init__(self, src_lang: str, tgt_lang: str | None = None, sw_model: Any | None = None):
         self.src_lang = src_lang
         self.tgt_lang = tgt_lang
         self.normalizer = MosesPunctNormalizer(src_lang)
         self.tokenizer = MosesTokenizer(src_lang)
         lang = tgt_lang if tgt_lang else src_lang
         self.detokenizer = MosesDetokenizer(lang)
+        self.sw_model = sw_model
 
-    def tokenize(self, text: str, dropout: int = 0) -> str:
+    def tokenize(self, text: str) -> list[str]:
         text = self.normalizer.normalize(text)
         tokens = self.tokenizer.tokenize(text, escape=False)
-        return self.codes.process_line(' '.join(tokens), dropout)
+        if self.sw_model is None:
+            return tokens
+        if isinstance(self.sw_model, BPE):
+            return self.sw_model.process_line(' '.join(tokens)).split()
+        return self.sw_model.encode_as_pieces(' '.join(tokens))
 
     def detokenize(self, tokens: list[str]) -> str:
-        text = self.detokenizer.detokenize(tokens)
-        return re.sub('(@@ )|(@@ ?$)', '', text)
+        if self.sw_model:
+            if isinstance(self.sw_model, BPE):
+                text = re.sub('(@@ )|(@@ ?$)', '', ' '.join(tokens))
+            else:
+                # text = ''.join(tokens).replace('▁', ' ').strip()
+                text = self.sw_model.decode(tokens)
+        return self.detokenizer.detokenize(text.split())
 
 
 class Lemmatizer:
-    def __init__(self, model: str):
+    def __init__(self, model: str, sw_model: Any):
         self.nlp = spacy.load(model, enable=['tok2vec', 'tagger', 'lemmatizer'])
+        self.sw_model = sw_model
 
     @staticmethod
-    def subword_mapping(texts):
+    def subword_mapping(texts: list[list[str]], sw_model: Any):
         for text in texts:
             words, spans = '', []
             for j, subword in enumerate(text):
-                if subword.endswith('@@'):
-                    words += subword.replace('@@', '')
+                if isinstance(sw_model, BPE):
+                    if subword.endswith('@@'):
+                        words += subword.rstrip('@')
+                    else:
+                        words += subword + ' '
+                        spans.append(j + 2)
                 else:
-                    words += subword + ' '
-                    spans.append(j + 2)
-            yield words.rstrip(), spans
+                    if subword.startswith('▁'):
+                        words += ' ' + subword.lstrip('▁')
+                        if j > 0:
+                            spans.append(j + 1)
+                    else:
+                        words += subword
+            if not isinstance(sw_model, BPE):
+                spans.append(j + 2)
+            yield words.strip(), spans
 
-    def lemmatize(self, texts):
-        _texts = list(self.subword_mapping(texts))
+    def lemmatize(self, texts: list[list[str]]):
+        _texts = list(self.subword_mapping(texts, self.sw_model))
         docs = self.nlp.pipe(_texts, as_tuples=True)
         for (words, spans), (doc, _) in zip(_texts, docs):
             if words.split() == [token.text for token in doc]:
@@ -172,11 +194,10 @@ class Manager:
     clip_grad: float
     batch_size: int
     max_length: int
-    len_ratio: int
     beam_size: int
     threshold: int
     max_append: int
-    dpe_embed: int
+    dpe_embed: bool
 
     def __init__(
         self,
@@ -185,35 +206,32 @@ class Manager:
         src_lang: str,
         tgt_lang: str,
         model_file: str,
-        vocab_file: str | list[str],
-        codes_file: str | list[str],
+        sw_vocab_file: str,
+        sw_model_file: str,
         dict_file: str | None = None,
         freq_file: str | None = None,
-        samples_file: str | Counter[str] | None = None,
-        bigrams_file: str | Counter[str] | None = None,
     ):
         self.config = config
         self.device = device
         self.src_lang = src_lang
         self.tgt_lang = tgt_lang
         self._model_name = model_file
-        self._vocab_list = vocab_file
-        self._codes_list = codes_file
-        self._samples_counter = samples_file
-        self._bigrams_counter = bigrams_file
 
         for option, value in config.items():
             self.__setattr__(option, value)
+        self.dpe_embed = bool(config['dpe_embed']) if 'dpe_embed' in config else False
 
-        if isinstance(self._vocab_list, str):
-            with open(self._vocab_list) as vocab_f:
-                self._vocab_list = list(vocab_f.readlines())
-        self.vocab = Vocab(self._vocab_list)
-
-        if isinstance(self._codes_list, str):
-            with open(self._codes_list) as codes_f:
-                self._codes_list = list(codes_f.readlines())
-        self.codes = BPE(StringIO(''.join(self._codes_list)))
+        with open(sw_vocab_file) as sw_vocab_f:
+            self.vocab = Vocab()
+            for line in sw_vocab_f.readlines():
+                self.vocab.add(line.split()[0])
+        with open(sw_model_file) as sw_model_f:
+            header = sw_model_f.readline()
+        if header.startswith('#version'):
+            with open(sw_model_file) as sw_model_f:
+                sw_model = BPE(sw_model_f)
+        else:
+            sw_model = spm.SentencePieceProcessor(sw_model_file)
 
         self.model = Model(
             self.vocab.size(),
@@ -242,162 +260,67 @@ class Manager:
                     word, freq = line.split()
                     self.freq[word] = int(freq)
 
-        if isinstance(self._samples_counter, str):
-            with open(self._samples_counter) as samples_f:
-                samples = [
-                    sample
-                    for samples in samples_f.readlines()
-                    for sample in samples.split('\t')[0].split()
-                ]
-                self._samples_counter = Counter(samples)
-                self._bigrams_counter = Counter(nltk.bigrams(samples))
-        self.unigram = nltk.FreqDist(self._samples_counter)
-        self.bigram = nltk.FreqDist(self._bigrams_counter)
+        self.tokenizer = Tokenizer(src_lang, tgt_lang, sw_model)
+        self.lemmatizer = Lemmatizer(f'{src_lang}_core_news_sm', sw_model)
 
-        self.tokenizer = Tokenizer(self.codes, src_lang, tgt_lang)
-        self.lemmatizer = Lemmatizer('de_core_news_sm')
-
-    def save_model(self):
+    def save_model(
+        self, train_state: tuple[int, float], optimizer: Optimizer, scheduler: LRScheduler
+    ):  # train_state: (Final Epoch, Best Loss)
         torch.save(
             {
                 'config': self.config,
                 'src_lang': self.src_lang,
                 'tgt_lang': self.tgt_lang,
-                'vocab_list': self._vocab_list,
-                'codes_list': self._codes_list,
-                'samples_counter': self._samples_counter,
-                'bigrams_counter': self._bigrams_counter,
+                'optimizer': optimizer.state_dict,
+                'scheduler': scheduler.state_dict,
                 'state_dict': self.model.state_dict(),
+                'train_state': train_state,
             },
             self._model_name,
         )
 
-    def append_defs(self, src_words: list[str], lem_data):
+    def append_defs(self, src_words: list[str], lem_data: list):
         src_spans, tgt_spans = [], []
+        delimiter = '@' if isinstance(self.tokenizer.sw_model, BPE) else '▁'
 
-        headwords = []
         src_start = 1
-        # src_start, total_shift = 1, 0
         for lemma, src_end in zip(*lem_data):
-            # src_end += total_shift
-
             headword = ''
-            if 'pmi_threshold' in self.config:
-                pmi_threshold: int = self.config['pmi_threshold']
+            word = src_words[0].strip(delimiter)
+            for i in range(src_start + 1, src_end):
+                word += src_words[i].strip(delimiter)
 
-                word = src_words[src_start].replace('@@', '')
-                word_pmi = 0.0
-                for i in range(src_start + 1, src_end):
-                    word += src_words[i].replace('@@', '')
-                    try:
-                        word_pmi += (
-                            math.log(self.bigram.freq((src_words[i - 1], src_words[i])))
-                            - math.log(self.unigram.freq(src_words[i - 1]))
-                            - math.log(self.unigram.freq(src_words[i]))
-                        )
-                    except ValueError:
-                        pass
-                if src_start + 1 == src_end:
-                    try:
-                        word_pmi = math.log(self.unigram.freq(word))
-                    except ValueError:
-                        pass
-                if word in self.dict:
-                    if word_pmi >= pmi_threshold:
-                        headword = word
-                elif lemma in self.dict:
-                    src_lemmas = self.tokenizer.tokenize(lemma).split()  # ! BOTTLENECK
-                    lemma_pmi = 0.0
-                    for i in range(1, len(src_lemmas)):
-                        try:
-                            lemma_pmi += (
-                                math.log(self.bigram.freq((src_lemmas[i - 1], src_lemmas[i])))
-                                - math.log(self.unigram.freq(src_lemmas[i - 1]))
-                                - math.log(self.unigram.freq(src_lemmas[i]))
-                            )
-                        except ValueError:
-                            pass
-                    if len(src_lemmas) == 1:
-                        try:
-                            lemma_pmi = math.log(self.unigram.freq(lemma))
-                        except ValueError:
-                            pass
-                    if lemma_pmi >= pmi_threshold:
-                        headword = lemma
+            if word in self.dict:
+                if word not in self.freq or self.freq[word] <= self.threshold:
+                    headword = word
+            elif lemma in self.dict:
+                if lemma not in self.freq or self.freq[lemma] <= self.threshold:
+                    headword = lemma
 
-                #     headword = (
-                #         word
-                #         if word in self.dict and word_pmi >= pmi_threshold
-                #         else lemma if lemma in self.dict and lemma_pmi >= pmi_threshold else ''
-                #     )
-                # else:
-                #     headword = word if word in self.dict and word_pmi >= pmi_threshold else ''
-
-                # print(
-                #     (
-                #         ' '.join([src_words[i] for i in range(src_start, src_end)]),
-                #         word,
-                #         int(word_pmi),
-                #     ),
-                #     '\t',
-                #     (lemma, int(lemma_pmi)),
-                # )  # ! DEBUG
-            else:
-                word = ''
-                for i in range(src_start, src_end):
-                    word += src_words[i].rstrip('@')
-
-                # headword = (
-                #     word
-                #     if word in self.dict
-                #     and (word not in self.freq or self.freq[word] <= self.threshold)
-                #     else (
-                #         lemma
-                #         if lemma in self.dict
-                #         and (lemma not in self.freq or self.freq[lemma] <= self.threshold)
-                #         else ''
-                #     )
-                # )
-
-                if word in self.dict:
-                    if word not in self.freq or self.freq[word] <= self.threshold:
-                        headword = word
-                elif lemma in self.dict:
-                    if lemma not in self.freq or self.freq[lemma] <= self.threshold:
-                        headword = lemma
-
-            if len(headword) > 0:
-                # subwords = self.tokenizer.tokenize(word).split()
-                # shift = len(subwords) - (src_end - src_start)
-                # if len(src_words) + shift > self.max_length:
-                #     src_start = src_end
-                #     continue
-                headwords.append(headword)
-                # total_shift += shift
-                # src_words[src_start:src_end] = subwords
-                # src_end = src_start + len(subwords)
+            if headword:
+                definitions = self.dict[headword][: self.max_append]
+                tgt_start, spans = len(src_words), []
+                for definition in definitions:
+                    tgt_end = tgt_start + len(definition.split())
+                    spans.append((tgt_start, tgt_end))
+                    tgt_start = tgt_end
+                if tgt_end > self.max_length:
+                    break
                 src_spans.append((src_start, src_end))
+                tgt_spans.append(spans)
+                for definition in definitions:
+                    src_words.extend(definition.split())
 
             src_start = src_end
 
-        for i, headword in enumerate(headwords):
-            definitions = self.dict[headword][: self.max_append]
-            tgt_start, spans = len(src_words), []
-            for definition in definitions:
-                tgt_end = tgt_start + len(definition.split())
-                spans.append((tgt_start, tgt_end))
-                tgt_start = tgt_end
-            if tgt_end > self.max_length:
-                src_spans = src_spans[:i]
-                break
-            for definition in definitions:
-                src_words.extend(definition.split())
-            tgt_spans.append(spans)
+        # for (a, b), spans in zip(src_spans, tgt_spans):
+        #     print(' '.join(src_words[a:b]))
+        #     for c, d in spans:
+        #         print('  ', ' '.join(src_words[c:d]))
 
-        # exit()  # ! DEBUG
         return src_spans, tgt_spans
 
-    def batch_data(self, data) -> list[Batch]:
+    def batch_data(self, data: list) -> list[Batch]:
         batched_data = []
 
         data.sort(key=lambda x: (len(x[0]), len(x[1])), reverse=True)
@@ -446,9 +369,7 @@ class Manager:
 
         return batched_data
 
-    def load_data(
-        self, data_file: str, lem_file: str | None = None, dict_file: str | None = None
-    ) -> list[Batch]:
+    def load_data(self, data_file: str, lem_file: str | None = None) -> list[Batch]:
         lem_data = []
         if lem_file:
             with open(lem_file) as lem_f:
@@ -471,22 +392,5 @@ class Manager:
                 data.append((src_words, tgt_words, src_spans, tgt_spans))
                 # total += 1
             # print(f'{(count / total * 100):.2f}')
-            # exit()  # ! DEBUG
-
-        if dict_file:
-            with open(dict_file) as dict_f:
-                for headword, definitions in json.load(dict_f).items():
-                    src_words = self.tokenizer.tokenize(''.join(headword)).split()
-                    src_words = ['<BOS>'] + src_words + ['<EOS>']
-                    for definition in definitions[: self.max_append]:
-                        src_words += definition.split()
-                        tgt_words = ['<BOS>'] + definition.split() + ['<EOS>']
-                        if (
-                            1 <= len(src_words) <= self.max_length
-                            and 1 <= len(tgt_words) <= self.max_length
-                            and len(src_words) / len(tgt_words) <= self.len_ratio
-                            and len(tgt_words) / len(src_words) <= self.len_ratio
-                        ):
-                            data.append((src_words, tgt_words, [], []))
 
         return self.batch_data(data)

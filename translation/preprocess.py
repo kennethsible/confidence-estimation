@@ -1,241 +1,231 @@
+import argparse
 import os
+import re
 
-import tomllib
+import sentencepiece as spm
+from subword_nmt.apply_bpe import BPE
 from tqdm import tqdm
 
 from translation.manager import Lemmatizer
 
-lemmatizer = Lemmatizer('de_core_news_sm')
+
+def normalize(file_path: str, src_lang: str, tgt_lang: str) -> str:
+    os.system(
+        f'sacremoses -l {src_lang} -j 4 normalize < {file_path}.{src_lang} > {file_path}.norm.{src_lang}'
+    )
+    os.system(
+        f'sacremoses -l {tgt_lang} -j 4 normalize < {file_path}.{tgt_lang} > {file_path}.norm.{tgt_lang}'
+    )
+    return file_path + '.norm'
 
 
-def lemmatize(src_file: str, lem_file: str):
-    src_words = []
-    with open(src_file) as src_f:
-        for line in src_f.readlines():
-            src_line = line.split('\t')[0]
-            src_words.append(src_line.split())
-
-    data = lemmatizer.lemmatize(src_words)
-    with open(lem_file, 'w') as lem_f:
-        for words, spans in tqdm(data, total=len(src_words)):
-            lem_f.write(f"{' '.join(words)}\t{' '.join(map(str, spans))}\n")
+def tokenize(file_path: str, src_lang: str, tgt_lang: str, escape_xml: bool = False) -> str:
+    os.system(
+        f'sacremoses -l {src_lang} -j 4 tokenize {"-x" if escape_xml else ""} < {file_path}.{src_lang} > {file_path}.tok.{src_lang}'
+    )
+    os.system(
+        f'sacremoses -l {tgt_lang} -j 4 tokenize {"-x" if escape_xml else ""} < {file_path}.{tgt_lang} > {file_path}.tok.{tgt_lang}'
+    )
+    return file_path + '.tok'
 
 
-def apply_filter(data_file: str, max_length: int, len_ratio: int):
+def learn_bpe(file_path: str, data_dir: str, src_lang: str, tgt_lang: str, merge_ops: int):
+    os.system(
+        f'cat {file_path}.{src_lang} {file_path}.{tgt_lang} | subword-nmt learn-bpe -s {merge_ops} -o {data_dir}/{src_lang}-{tgt_lang}.model'
+    )
+
+
+def apply_bpe(
+    file_path: str, data_dir: str, src_lang: str, tgt_lang: str, dropout: float = 0.0, seed: int = 0
+) -> str:
+    args = []
+    if dropout > 0:
+        args.append(f'--dropout {dropout}')
+        if seed > 0:
+            args.append(f'--seed {seed}')
+    os.system(
+        f'subword-nmt apply-bpe {" ".join(args)} -c {data_dir}/{src_lang}-{tgt_lang}.model < {file_path}.{src_lang} > {file_path}.bpe.{src_lang}'
+    )
+    os.system(
+        f'subword-nmt apply-bpe {" ".join(args)} -c {data_dir}/{src_lang}-{tgt_lang}.model < {file_path}.{tgt_lang} > {file_path}.bpe.{tgt_lang}'
+    )
+    os.system(
+        f'paste {file_path}.bpe.{src_lang} {file_path}.bpe.{tgt_lang} > {file_path}.bpe.{src_lang}-{tgt_lang}'
+    )
+    if 'train' in file_path.split('/'):
+        os.system(
+            f'cat {file_path}.bpe.{src_lang} {file_path}.bpe.{tgt_lang} | subword-nmt get-vocab > {data_dir}/{src_lang}-{tgt_lang}.vocab'
+        )
+    return file_path + '.bpe'
+
+
+def learn_spm(file_path: str, src_lang: str, tgt_lang: str, vocab_size: int, model_type: str):
+    os.system(
+        f'cat {file_path}.{src_lang} {file_path}.{tgt_lang} > {file_path}.{src_lang}-{tgt_lang}'
+    )
+    spm.SentencePieceTrainer.train(
+        input=f'{file_path}.{src_lang}-{tgt_lang}',
+        model_prefix=f'{src_lang}-{tgt_lang}',
+        vocab_size=vocab_size,
+        model_type=model_type,
+    )
+
+
+def apply_spm(file_path: str, src_lang: str, tgt_lang: str) -> str:
+    sp = spm.SentencePieceProcessor(model_file=f'{src_lang}-{tgt_lang}.model')
+    with open(f'{file_path}.{src_lang}') as in_f, open(f'{file_path}.spm.{src_lang}', 'w') as out_f:
+        out_f.writelines(
+            [' '.join(words) + '\n' for words in sp.encode_as_pieces(in_f.readlines())]
+        )
+    with open(f'{file_path}.{tgt_lang}') as in_f, open(f'{file_path}.spm.{tgt_lang}', 'w') as out_f:
+        out_f.writelines(
+            [' '.join(words) + '\n' for words in sp.encode_as_pieces(in_f.readlines())]
+        )
+    os.system(
+        f'paste {file_path}.spm.{src_lang} {file_path}.spm.{tgt_lang} > {file_path}.spm.{src_lang}-{tgt_lang}'
+    )
+    return file_path + '.spm'
+
+
+def apply_initial_filter(file_path: str, src_lang: str, tgt_lang: str):
+    lines = []
+    with open(f'{file_path}.{src_lang}') as src_f, open(f'{file_path}.{tgt_lang}') as tgt_f:
+        for src_line, tgt_line in tqdm(list(zip(src_f.readlines(), tgt_f.readlines()))):
+            src_line, tgt_line = src_line.rstrip(), tgt_line.rstrip()
+            if len(src_line) > 0 and len(tgt_line) > 0 and src_line != tgt_line:
+                src_line = re.sub(r'\s+', ' ', src_line)
+                tgt_line = re.sub(r'\s+', ' ', tgt_line)
+                lines.append(f'{src_line}\t{tgt_line}')
+    with open(f'{file_path}.{src_lang}', 'w') as src_f, open(
+        f'{file_path}.{tgt_lang}', 'w'
+    ) as tgt_f:
+        for unique_lines in list(dict.fromkeys(lines)):
+            src_line, tgt_line = unique_lines.split('\t')
+            src_f.write(src_line + '\n')
+            tgt_f.write(tgt_line + '\n')
+
+
+def apply_final_filter(file_path: str, max_length: int, len_ratio: int):
     data = []
-    with open(data_file) as data_f:
+    with open(file_path) as data_f:
         for line in tqdm(data_f.readlines()):
             src_line, tgt_line = line.split('\t')
             src_words, tgt_words = src_line.split(), tgt_line.split()
             if (
-                1 <= len(src_words) <= max_length
-                and 1 <= len(tgt_words) <= max_length
+                len(src_words) <= max_length
+                and len(tgt_words) <= max_length
                 and len(src_words) / len(tgt_words) <= len_ratio
                 and len(tgt_words) / len(src_words) <= len_ratio
             ):
                 data.append(src_line + '\t' + tgt_line)
-    with open(data_file, 'w') as data_f:
+    with open(file_path, 'w') as data_f:
         data_f.writelines(data)
 
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--lang-pair', required=True, help='source-target language pair')
-    parser.add_argument('--merge-ops', required=True, help='merge operations (subword-nmt)')
-    parser.add_argument('--val-set', required=True, help='validation set (sacrebleu)')
-    parser.add_argument('--test-set', required=True, help='test set (sacrebleu)')
-    parser.add_argument('--data-dir', required=True, help='output directory')
+    parser.add_argument('--lang-pair', required=True, help='language pair')
+    parser.add_argument('--data-dir', required=True, help='data directory')
+    parser.add_argument('--lem-model', help='lemmatizer model')  # {src_lang}_core_news_sm
+    parser.add_argument('--max-length', type=int, required=True, help='maximum length')
+    parser.add_argument('--len-ratio', type=float, required=True, help='length ratio')
+    subparsers = parser.add_subparsers(dest='cmd', help='BPE or SentencePiece')
+    bpe_parser = subparsers.add_parser('bpe')
+    bpe_parser.add_argument('--merge-ops', required=True, help='merge operations')
+    bpe_parser.add_argument('--dropout', type=float, help='subword dropout')
+    bpe_parser.add_argument('--seed', type=int, help='random seed')
+    sp_parser = subparsers.add_parser('spm')
+    sp_parser.add_argument('--vocab-size', required=True, help='vocab size')
+    sp_parser.add_argument('--model-type', required=True, help='model type')
     args = parser.parse_args()
 
     src_lang, tgt_lang = args.lang_pair.split('-')
     data_dir = args.data_dir
     os.system(f'mkdir -p {data_dir}')
 
-    with open('translation/config.toml', 'rb') as config_f:
-        config = tomllib.load(config_f)
-    max_length, len_ratio = config['max_length'], config['len_ratio']
-
-    print('\n[1/11] Downloading Training Corpus...')
-    train_path = f'{data_dir}/europarl-v10'
+    print('\n[1/10] Fetching Training Data...')
+    train_path = f'{data_dir}/train'
     os.system(f'mkdir -p {train_path}')
-    train_path += '/europarl-v10'
-    if not os.path.isfile(f'{train_path}.{src_lang}-{tgt_lang}.tsv'):
-        url = f'https://www.statmt.org/europarl/v10/training/europarl-v10.{src_lang}-{tgt_lang}.tsv.gz'
-        os.system(f'wget -q -P {data_dir}/europarl-v10 {url} --show-progress')
-        os.system(f'gzip -d {train_path}.{src_lang}-{tgt_lang}.tsv.gz')
-        with open(f'{train_path}.src', 'w') as src_f, open(f'{train_path}.ref', 'w') as tgt_f:
-            with open(f'{train_path}.{src_lang}-{tgt_lang}.tsv') as tsv_f:
-                for line in tsv_f.readlines():
-                    src_line, tgt_line, *_ = line.split('\t')
-                    if len(src_line) > 0 and len(tgt_line) > 0:
-                        src_f.write(src_line + '\n')
-                        tgt_f.write(tgt_line + '\n')
-    os.system(f'wc -l {train_path}.src')
+    train_path += '/train'
+    if not os.path.isfile(f'{train_path}.{src_lang}'):
+        raise FileNotFoundError(f'{train_path}.{src_lang}')
+    os.system(f'wc -l {train_path}.{src_lang}')
+    if not os.path.isfile(f'{train_path}.{tgt_lang}'):
+        raise FileNotFoundError(f'{train_path}.{tgt_lang}')
+    os.system(f'wc -l {train_path}.{tgt_lang}')
 
-    print('\n[2/11] Normalizing Training Corpus...')
-    os.system(f'sacremoses -l {src_lang} -j 4 normalize < {train_path}.src > {train_path}.norm.src')
-    os.system(f'sacremoses -l {tgt_lang} -j 4 normalize < {train_path}.ref > {train_path}.norm.ref')
-    root_path = 'norm'
+    print('\n[2/10] Pre-Filtering Training Data...')
+    apply_initial_filter(train_path, src_lang, tgt_lang)
+    os.system(f'wc -l {train_path}.{src_lang}')
+    os.system(f'wc -l {train_path}.{tgt_lang}')
 
-    print('\n[3/11] Tokenizing Training Corpus...')
-    os.system(
-        f'sacremoses -l {src_lang} -j 4 tokenize -x < {train_path}.{root_path}.src > {train_path}.{root_path}.tok.src'
-    )
-    os.system(
-        f'sacremoses -l {tgt_lang} -j 4 tokenize -x < {train_path}.{root_path}.ref > {train_path}.{root_path}.tok.ref'
-    )
-    os.system(
-        f'cat {train_path}.{root_path}.tok.src | subword-nmt get-vocab > {data_dir}/{src_lang}-freq.tsv'
-    )
-    root_path += '.tok'
+    print('\n[3/10] Normalizing Training Data...')
+    train_path = normalize(train_path, src_lang, tgt_lang)
 
-    print('\n[4/11] Downloading Validation Set...')
-    val_path = f'{data_dir}/{args.val_set}'
+    print('\n[4/10] Tokenizing Training Data...')
+    train_path = tokenize(train_path, src_lang, tgt_lang, escape_xml=True)
+
+    print('\n[5/10] Fetching Validation Set')
+    val_path = f'{data_dir}/val'
     os.system(f'mkdir -p {val_path}')
-    os.system(f'sacrebleu --language-pair {src_lang}-{tgt_lang} --download {args.val_set}')
-    val_path += f'/{args.val_set}'
-    os.system(
-        f'cp ~/.sacrebleu/{args.val_set}/{args.val_set}.{src_lang}-{tgt_lang}.src {val_path}.src'
-    )
-    os.system(
-        f'cp ~/.sacrebleu/{args.val_set}/{args.val_set}.{src_lang}-{tgt_lang}.ref {val_path}.ref'
-    )
-    os.system(f'wc -l {val_path}.src')
+    val_path += '/val'
+    if not os.path.isfile(f'{val_path}.{src_lang}'):
+        raise FileNotFoundError(f'{val_path}.{src_lang}')
+    os.system(f'wc -l {val_path}.{src_lang}')
+    if not os.path.isfile(f'{val_path}.{tgt_lang}'):
+        raise FileNotFoundError(f'{val_path}.{tgt_lang}')
+    os.system(f'wc -l {val_path}.{tgt_lang}')
 
-    print('\n[5/11] Normalizing Validation Set...')
-    os.system(f'sacremoses -l {src_lang} -j 4 normalize < {val_path}.src > {val_path}.norm.src')
-    os.system(f'sacremoses -l {tgt_lang} -j 4 normalize < {val_path}.ref > {val_path}.norm.ref')
-    root_path = 'norm'
+    print('\n[6/10] Normalizing Validation Set...')
+    val_path = normalize(val_path, src_lang, tgt_lang)
 
-    print('\n[6/11] Tokenizing Validation Set...')
-    os.system(
-        f'sacremoses -l {src_lang} -j 4 tokenize -x < {val_path}.{root_path}.src > {val_path}.{root_path}.tok.src'
-    )
-    os.system(
-        f'sacremoses -l {tgt_lang} -j 4 tokenize -x < {val_path}.{root_path}.ref > {val_path}.{root_path}.tok.ref'
-    )
-    root_path += '.tok'
+    print('\n[7/10] Tokenizing Validation Set...')
+    val_path = tokenize(val_path, src_lang, tgt_lang, escape_xml=True)
 
-    print('\n[7/11] Downloading Test Set...')
-    test_path = f'{data_dir}/{args.test_set}'
+    print('\n[8/10] Fetching Test Set...')
+    test_path = f'{data_dir}/test'
     os.system(f'mkdir -p {test_path}')
-    os.system(f'sacrebleu --language-pair {src_lang}-{tgt_lang} --download {args.test_set}')
-    test_path += f'/{args.test_set}'
-    os.system(
-        f'cp ~/.sacrebleu/{args.test_set}/{args.test_set}.{src_lang}-{tgt_lang}.src {test_path}.src'
-    )
-    os.system(f'wc -l {test_path}.src')
+    test_path += '/test'
+    if not os.path.isfile(f'{test_path}.{src_lang}'):
+        raise FileNotFoundError(f'{test_path}.{src_lang}')
+    os.system(f'wc -l {test_path}.{src_lang}')
 
-    print('\n[8/11] Extracting Biomedical Set...')
-    med_data = []
-    med_path = f'{data_dir}/medline'
-    os.system(f'mkdir -p {med_path}')
-    for year in range(20, 23):
-        wmt_path = f'{med_path}/wmt{year}'
-        os.system(f'mkdir -p {wmt_path}')
-        ref_to_id = {}
-        with open(f'{wmt_path}/{src_lang}2{tgt_lang}_mapping.txt') as med_f:
-            for line in med_f.readlines():
-                doc_ref, doc_id = line.split('\t')
-                ref_to_id[doc_ref] = doc_id.strip()
-        src_data = {}
-        with open(f'{wmt_path}/medline_{src_lang}2{tgt_lang}_{src_lang}.txt') as med_f:
-            for line in med_f.readlines():
-                doc_id, sent_id, sentence = line.split('\t')
-                if doc_id not in src_data:
-                    src_data[doc_id] = {}
-                src_data[doc_id][sent_id] = sentence.rstrip()
-        tgt_data = {}
-        with open(f'{wmt_path}/medline_{src_lang}2{tgt_lang}_{tgt_lang}.txt') as med_f:
-            for line in med_f.readlines():
-                doc_id, sent_id, sentence = line.split('\t')
-                if doc_id not in tgt_data:
-                    tgt_data[doc_id] = {}
-                tgt_data[doc_id][sent_id] = sentence.rstrip()
-        with open(f'{wmt_path}/{src_lang}2{tgt_lang}_align_validation.tsv') as med_f:
-            wmt_path += '/medline'
-            with open(f'{wmt_path}.src', 'w') as outfile:
-                for line in med_f.readlines():
-                    status, doc_ref, src_sent_id, _ = line.split('\t')
-                    if status != 'OK':
-                        continue
-                    try:
-                        if ',' in src_sent_id:
-                            for sent_id in src_sent_id.split(','):
-                                outfile.write(src_data[ref_to_id[doc_ref]][sent_id] + ' ')
-                        else:
-                            outfile.write(src_data[ref_to_id[doc_ref]][src_sent_id])
-                        outfile.write('\n')
-                    except KeyError:
-                        pass
-            med_f.seek(0)
-            with open(f'{wmt_path}.ref', 'w') as outfile:
-                for line in med_f.readlines():
-                    status, doc_ref, _, tgt_sent_id = line.split('\t')
-                    if status != 'OK':
-                        continue
-                    try:
-                        if ',' in tgt_sent_id:
-                            for sent_id in tgt_sent_id.split(','):
-                                outfile.write(tgt_data[ref_to_id[doc_ref]][sent_id.rstrip()] + ' ')
-                        else:
-                            outfile.write(tgt_data[ref_to_id[doc_ref]][tgt_sent_id.rstrip()])
-                        outfile.write('\n')
-                    except KeyError:
-                        pass
-        with open(f'{data_dir}/medline/wmt{year}/medline.src') as src_f, open(
-            f'{data_dir}/medline/wmt{year}/medline.ref'
-        ) as ref_f:
-            for src_line, ref_line in zip(src_f.readlines(), ref_f.readlines()):
-                if not src_line.strip().isupper() or not ref_line.strip().isupper():
-                    med_data.append(f'{src_line}\t{ref_line}')
-    med_data = list(dict.fromkeys(med_data))
-    med_path += '/medline'
-    with open(f'{data_dir}/medline/medline.src', 'w') as src_f, open(
-        f'{data_dir}/medline/medline.ref', 'w'
-    ) as ref_f:
-        for line in med_data:
-            src_line, ref_line = line.split('\t')
-            src_f.write(src_line)
-            ref_f.write(ref_line)
-    os.system(f'wc -l "{med_path}.{src_lang}"')
+    if args.cmd == 'bpe':
+        print('\n[9/10] Learning and Applying BPE...')
+        learn_bpe(train_path, data_dir, src_lang, tgt_lang, args.merge_ops)
+        train_path = apply_bpe(train_path, data_dir, src_lang, tgt_lang, args.dropout, args.seed)
+        val_path = apply_bpe(val_path, data_dir, src_lang, tgt_lang)
+        os.system(f'wc -l {data_dir}/{src_lang}-{tgt_lang}.vocab')
+        with open(f'{data_dir}/{src_lang}-{tgt_lang}.model') as model_f:
+            sw_model = BPE(model_f)
+    else:
+        print('\n[11/10] Learning and Applying SentencePiece...')
+        learn_spm(train_path, src_lang, tgt_lang, args.vocab_size, args.model_type)
+        apply_spm(train_path, src_lang, tgt_lang)
+        apply_spm(val_path, src_lang, tgt_lang)
+        os.system(f'mv {src_lang}-{tgt_lang}.model {src_lang}-{tgt_lang}.vocab {data_dir}')
+        os.system(f'wc -l {data_dir}/{src_lang}-{tgt_lang}.vocab')
+        sw_model = spm.SentencePieceProcessor(f'{src_lang}-{tgt_lang}.model')
 
-    print('\n[9/11] Learning and Applying BPE...')
-    os.system(
-        f'cat {train_path}.{root_path}.src {train_path}.{root_path}.ref | subword-nmt learn-bpe -s {args.merge_ops} -o {data_dir}/codes.tsv'
-    )
-    for path in (train_path, val_path):
-        os.system(
-            f'subword-nmt apply-bpe -c {data_dir}/codes.tsv < {path}.{root_path}.src > {path}.{root_path}.bpe.src'
-        )
-        os.system(
-            f'subword-nmt apply-bpe -c {data_dir}/codes.tsv < {path}.{root_path}.ref > {path}.{root_path}.bpe.ref'
-        )
-    os.system(
-        f'subword-nmt apply-bpe -c {data_dir}/codes.tsv < {test_path}.{root_path}.src > {test_path}.{root_path}.bpe.src'
-    )
-    root_path += '.bpe'
-    os.system(
-        f'cat {train_path}.{root_path}.src {train_path}.{root_path}.ref | subword-nmt get-vocab > {data_dir}/vocab.tsv'
-    )
-    for path in (train_path, val_path):
-        os.system(
-            f'paste {path}.{root_path}.src {path}.{root_path}.ref > {path}.{root_path}.src-ref'
-        )
-    os.system(f'wc -l {data_dir}/vocab.tsv')
+    print('\n[10/10] Post-Filtering Training Data...')
+    apply_final_filter(f'{train_path}.{src_lang}-{tgt_lang}', args.max_length, args.len_ratio)
+    os.system(f'wc -l {train_path}.{src_lang}-{tgt_lang}')
 
-    print('\n[10/11] Filtering Training Data...')
-    apply_filter(f'{train_path}.{root_path}.src-ref', max_length, len_ratio)
-    os.system(f'wc -l {train_path}.{root_path}.src-ref')
-
-    print('\n[11/11] Lemmatizing Source Data...')
-    for path in (train_path, val_path):
-        lemmatize(f'{path}.{root_path}.src-ref', f'{path}.lem.src')
+    if args.lem_model:
+        print('\n[-/10] Lemmatizing Source Data...')
+        lemmatizer = Lemmatizer(args.lem_model, sw_model)
+        for file_path in (train_path, val_path):
+            src_words = []
+            with open(f'{file_path}.{src_lang}-{tgt_lang}') as src_f:
+                for line in src_f.readlines():
+                    src_line = line.split('\t')[0]
+                    src_words.append(src_line.split())
+            with open(f'{file_path.split(".")[0]}.lem.{src_lang}', 'w') as lem_f:
+                for words, spans in tqdm(lemmatizer.lemmatize(src_words), total=len(src_words)):
+                    lem_f.write(f"{' '.join(words)}\t{' '.join(map(str, spans))}\n")
 
     print('\nDone.')
 
 
 if __name__ == '__main__':
-    import argparse
-
     main()

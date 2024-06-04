@@ -5,15 +5,10 @@ from translation.decoder import beam_search
 from translation.manager import Batch, Manager
 
 
-def translate_batch():
-    # TODO batch pre-encode and batch pre-lemmatize
-    pass
-
-
 def translate(string: str, manager: Manager) -> str:
     model, vocab, device = manager.model, manager.vocab, manager.device
     tokenizer, lemmatizer = manager.tokenizer, manager.lemmatizer
-    src_words = ['<BOS>'] + tokenizer.tokenize(string).split() + ['<EOS>']
+    src_words = ['<BOS>'] + tokenizer.tokenize(string) + ['<EOS>']
 
     model.eval()
     with torch.no_grad():
@@ -45,6 +40,8 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--dict', metavar='FILE_PATH', help='bilingual dictionary')
     parser.add_argument('--freq', metavar='FILE_PATH', help='frequency statistics')
+    parser.add_argument('--sw-vocab', metavar='FILE_PATH', required=True, help='subword vocab')
+    parser.add_argument('--sw-model', metavar='FILE_PATH', required=True, help='subword model')
     parser.add_argument('--model', metavar='FILE_PATH', required=True, help='translation model')
     parser.add_argument('--input', metavar='FILE_PATH', help='detokenized input')
     args, unknown = parser.parse_known_args()
@@ -67,12 +64,10 @@ def main():
         model_state['src_lang'],
         model_state['tgt_lang'],
         args.model,
-        model_state['vocab_list'],
-        model_state['codes_list'],
+        args.sw_vocab,
+        args.sw_model,
         args.dict,
         args.freq,
-        model_state['samples_counter'],
-        model_state['bigrams_counter'],
     )
     manager.model.load_state_dict(model_state['state_dict'])
 
