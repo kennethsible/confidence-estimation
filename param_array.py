@@ -100,7 +100,7 @@ def main():
 
                 if wmt_set:
                     job_file.write(f'\necho "\\n{test_data}\\n" >> {args.model}/{job_name}.log \n')
-                    job_file.write(f'sacrebleu -t {wmt_set} -w 4 \\\n')
+                    job_file.write(f'sacrebleu -t {wmt_set} -l {args.lang_pair} -w 4 \\\n')
                     job_file.write(f'  -i {args.model}/{job_name}.{test_set}.hyp \\\n')
                     job_file.write(f"  -m {' '.join(args.metric)} \\\n")
                     job_file.write(f'  >> {args.model}/{job_name}.log \n')

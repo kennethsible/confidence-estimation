@@ -93,8 +93,8 @@ def main():
             for words, defns in zip(de.split('|'), en.split('|')):
                 for headword in words.split(';'):
                     headword = headword.strip()
-                    if not headword.replace('-', '').isalpha():
-                        continue
+                    # if not headword.replace('-', '').isalpha():
+                    #     continue
                     headword = re.sub(r'^sich ', '', headword)
                     for definition in defns.split(';'):
                         definition = definition.strip()

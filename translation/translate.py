@@ -14,7 +14,7 @@ def translate(string: str, manager: Manager) -> str:
     with torch.no_grad():
         if manager.dict and manager.freq:
             lem_data = next(lemmatizer.lemmatize([src_words[1:-1]]))
-            src_spans, tgt_spans = manager.append_defs(src_words, lem_data)
+            src_spans, tgt_spans = manager.append_defs(src_words, list(zip(*lem_data)))
             src_nums = torch.tensor(vocab.numberize(src_words), device=device)
             dict_data = list(zip([src_spans], [tgt_spans]))
             if manager.dpe_embed:
