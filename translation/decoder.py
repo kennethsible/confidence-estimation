@@ -35,7 +35,7 @@ def greedy_search(
 
 def beam_search(
     manager: 'Manager', src_encs: Tensor, beam_size: int = 4, max_length: int = 512
-) -> Tensor:
+) -> tuple[Tensor, Tensor]:
     model, vocab, device = manager.model, manager.vocab, manager.device
     tgt_mask = triu_mask(max_length, device=device)
     active = torch.ones(beam_size, dtype=torch.bool, device=device)
@@ -54,7 +54,9 @@ def beam_search(
 
         topv, topi = torch.topk(scores.flatten(), beam_size)
         if beam_size < init_size:
-            active[~active] |= probs[~active] < topv.max() / i
+            active_clone = active.clone()
+            active_clone[~active] |= probs[~active] < topv.max() / i
+            active = active_clone
             active_count = int(active.count_nonzero())
             if active_count > beam_size:
                 beam_size = active_count
@@ -66,8 +68,8 @@ def beam_search(
         probs[active] = topv
 
         terminated = paths[:, i] == vocab.EOS
-        probs[terminated] /= i
-        active &= ~terminated
+        probs[terminated] = probs[terminated] / i
+        active = active & ~terminated
         beam_size = int(active.count_nonzero())
 
-    return paths[probs.argmax()]
+    return paths[probs.argmax()], probs.max()
