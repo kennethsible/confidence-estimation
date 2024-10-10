@@ -4,7 +4,7 @@ import math
 import torch
 from tqdm import tqdm
 
-from translation.decoder import greedy_search
+from translation.decoder import beam_search
 from translation.manager import Batch, Manager
 
 
@@ -38,7 +38,7 @@ def translate(string: str, manager: Manager, *, conf: bool = False) -> tuple[str
     else:
         src_nums = torch.tensor(vocab.numberize(src_words), device=device)
         src_encs, src_embs = model.encode(src_nums.unsqueeze(0))
-    out_nums, out_prob = greedy_search(manager, src_encs, max_length=manager.max_length * 2)
+    out_nums, out_prob = beam_search(manager, src_encs, max_length=manager.max_length * 2)
     if conf:
         conf_list = []
         # print('HYP:', tokenizer.detokenize(vocab.denumberize(out_nums.tolist())), '\n')
@@ -65,6 +65,7 @@ def translate(string: str, manager: Manager, *, conf: bool = False) -> tuple[str
                 conf_list.append((word, score))
                 word, scores = '', []
         return tokenizer.detokenize(vocab.denumberize(out_nums.tolist())), conf_list
+    out_nums, _ = beam_search(manager, src_encs, max_length=manager.max_length * 2)
     return tokenizer.detokenize(vocab.denumberize(out_nums.tolist()))
 
 
@@ -118,11 +119,10 @@ def main():
     if args.conf:
         json_list = []
         with open(args.input) as data_f:
-            for string in tqdm(data_f.readlines()):  # [1992:]
+            for string in tqdm(data_f.readlines()):
                 output, conf_list = translate(string, manager, conf=True)
                 json_list.append(conf_list)
                 print(output)
-                # torch.cuda.empty_cache()
         with open(args.conf, 'w') as json_f:
             json.dump(json_list, json_f, indent=4)
     else:
