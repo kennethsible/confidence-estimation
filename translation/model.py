@@ -1,3 +1,4 @@
+import math
 from typing import Callable
 
 import torch.nn as nn
@@ -114,7 +115,7 @@ class Model(nn.Module):
         super(Model, self).__init__()
         self.encoder = Encoder(embed_dim, ff_dim, num_heads, dropout, num_layers)
         self.decoder = Decoder(embed_dim, ff_dim, num_heads, dropout, num_layers)
-        self.out_embed = Embedding(embed_dim, vocab_dim)
+        self.out_embed = Embedding(embed_dim, math.ceil(vocab_dim / 8) * 8)
         self.src_embed = nn.Sequential(self.out_embed, PositionalEncoding(embed_dim, dropout))
         self.tgt_embed = nn.Sequential(self.out_embed, PositionalEncoding(embed_dim, dropout))
         self.dpe_embed = nn.Sequential(self.out_embed, DictionaryEncoding(embed_dim))
@@ -129,7 +130,7 @@ class Model(nn.Module):
         src_embs = self.src_embed(src_nums)
         if dict_data is not None:
             for i, (lemmas, senses) in enumerate(dict_data):
-                for (a, b), sense_spans in zip(lemmas, senses):
+                for (a, _), sense_spans in zip(lemmas, senses):
                     for c, d in sense_spans:
                         src_embs[i, c:d] = src_embs[i, a] + self.dpe_embed(src_nums[i, c:d])
         return self.encoder(src_embs, src_mask, dict_mask)

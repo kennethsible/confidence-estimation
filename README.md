@@ -1,6 +1,8 @@
 # Dictionary-Augmented Machine Translation
 **Ken Sible | [NLP Group](https://nlp.nd.edu)** | **University of Notre Dame**
 
+> *Accepted at [AMTA 2024](https://amtaweb.org/amta-2024/), Available on [ACL Anthology](https://aclanthology.org/2024.amta-research.19/)*
+
 Note, any option in `config.toml` can also be passed as a command line argument,
 ```
 $ python translation/translate.py --model de-en.pt --beam-size 10 "Guten Tag!"
@@ -91,4 +93,24 @@ max_length          = 256   # maximum sentence length (during training)
 beam_size           = 4     # size of decoding beam (during inference)
 threshold           = 10    # frequency threshold, append definitions
 max_append          = 10    # maximum number of definitions/headword
+```
+
+## BibTeX Citation
+```
+@inproceedings{sible-chiang-2024-improving,
+    title = "Improving Rare Word Translation With Dictionaries and Attention Masking",
+    author = "Sible, Kenneth J  and
+      Chiang, David",
+    editor = "Knowles, Rebecca  and
+      Eriguchi, Akiko  and
+      Goel, Shivali",
+    booktitle = "Proceedings of the 16th Conference of the Association for Machine Translation in the Americas (Volume 1: Research Track)",
+    month = sep,
+    year = "2024",
+    address = "Chicago, USA",
+    publisher = "Association for Machine Translation in the Americas",
+    url = "https://aclanthology.org/2024.amta-research.19",
+    pages = "225--235",
+    abstract = "In machine translation, rare words continue to be a problem for the dominant encoder-decoder architecture, especially in low-resource and out-of-domain translation settings. Human translators solve this problem with monolingual or bilingual dictionaries. In this paper, we propose appending definitions from a bilingual dictionary to source sentences and using attention masking to link together rare words with their definitions. We find that including definitions for rare words improves performance by up to 1.0 BLEU and 1.6 MacroF1.",
+}
 ```

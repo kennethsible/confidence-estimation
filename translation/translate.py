@@ -2,17 +2,18 @@ import torch
 from tqdm import tqdm
 
 from translation.decoder import beam_search
-from translation.manager import Batch, Manager
+from translation.manager import Batch, Lemmatizer, Manager, Tokenizer
 
 
 def translate(string: str, manager: Manager) -> str:
     model, vocab, device = manager.model, manager.vocab, manager.device
-    tokenizer, lemmatizer = manager.tokenizer, manager.lemmatizer
+    tokenizer = Tokenizer(manager.src_lang, manager.tgt_lang, manager.sw_model)
     src_words = ['<BOS>'] + tokenizer.tokenize(string) + ['<EOS>']
 
     model.eval()
     with torch.no_grad():
         if manager.dict and manager.freq:
+            lemmatizer = Lemmatizer(f'{manager.src_lang}_core_news_sm', manager.sw_model)
             lem_data = next(lemmatizer.lemmatize([src_words[1:-1]]))
             src_spans, tgt_spans = manager.append_defs(src_words, list(zip(*lem_data)))
             src_nums = torch.tensor(vocab.numberize(src_words), device=device)

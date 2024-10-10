@@ -10,7 +10,6 @@ import torch.nn as nn
 from sacremoses import MosesDetokenizer, MosesPunctNormalizer, MosesTokenizer
 from subword_nmt.apply_bpe import BPE
 from torch import Tensor
-from tqdm import tqdm
 
 from translation.decoder import triu_mask
 from translation.model import Model
@@ -81,7 +80,7 @@ class Batch:
 
     @property
     def tgt_mask(self) -> Tensor:
-        return triu_mask(self.tgt_nums[:, :-1].size(-1), device=self.device)
+        return triu_mask(self.tgt_nums.size(-1), device=self.device)
 
     @staticmethod
     def dict_mask_from_data(dict_data: list, mask_size: torch.Size, device: str):
@@ -229,9 +228,9 @@ class Manager:
             header = sw_model_f.readline()
         if header.startswith('#version'):
             with open(sw_model_file) as sw_model_f:
-                sw_model = BPE(sw_model_f)
+                self.sw_model = BPE(sw_model_f)
         else:
-            sw_model = spm.SentencePieceProcessor(sw_model_file)
+            self.sw_model = spm.SentencePieceProcessor(sw_model_file)
 
         self.model = Model(
             self.vocab.size(),
@@ -260,9 +259,6 @@ class Manager:
                     word, freq = line.split()
                     self.freq[word] = int(freq)
 
-        self.tokenizer = Tokenizer(src_lang, tgt_lang, sw_model)
-        self.lemmatizer = Lemmatizer(f'{src_lang}_core_news_sm', sw_model)
-
     def save_model(
         self, train_state: tuple[int, float], optimizer: Optimizer, scheduler: LRScheduler
     ):  # train_state: (Final Epoch, Best Loss)
@@ -281,7 +277,7 @@ class Manager:
 
     def append_defs(self, src_words: list[str], lem_data: list[tuple[str, int]]):
         src_spans, tgt_spans = [], []
-        delimiter = '@' if isinstance(self.tokenizer.sw_model, BPE) else '▁'
+        delimiter = '@' if isinstance(self.sw_model, BPE) else '▁'
 
         i, src_start = 0, 1
         while i < len(lem_data):
@@ -338,28 +334,26 @@ class Manager:
 
         i = batch_size = 0
         while (i := i + batch_size) < len(data):
-            src_len = len(data[i][0])
-            tgt_len = len(data[i][1])
+            src_len, tgt_len = len(data[i][0]), len(data[i][1])
 
             while True:
-                batch_size = min(self.batch_size // (max(src_len, tgt_len) * 8) * 8, 1000)
-                src_batch, tgt_batch, src_spans, tgt_spans = zip(*data[i : (i + batch_size)])
-                max_src_len = max(len(src_words) for src_words in src_batch)
-                max_tgt_len = max(len(tgt_words) for tgt_words in tgt_batch)
+                seq_len = math.ceil(max(src_len, tgt_len) / 8) * 8
+                batch_size = max(self.batch_size // (seq_len * 8) * 8, 1)
 
-                if src_len >= max_src_len and tgt_len >= max_tgt_len:
+                src_batch, tgt_batch, src_spans, tgt_spans = zip(*data[i : (i + batch_size)])
+                src_len = math.ceil(max(len(src_words) for src_words in src_batch) / 8) * 8
+                tgt_len = math.ceil(max(len(tgt_words) for tgt_words in tgt_batch) / 8) * 8
+
+                if batch_size * max(src_len, tgt_len) <= self.batch_size:
                     dict_data = list(zip(src_spans, tgt_spans))
                     break
-                src_len, tgt_len = max_src_len, max_tgt_len
-
-            max_src_len = math.ceil(max_src_len / 8) * 8
-            max_tgt_len = math.ceil(max_tgt_len / 8) * 8
+            assert batch_size > 0
 
             src_nums = torch.stack(
                 [
                     nn.functional.pad(
                         torch.tensor(self.vocab.numberize(src_words)),
-                        (0, max_src_len - len(src_words)),
+                        (0, src_len - len(src_words)),
                         value=self.vocab.PAD,
                     )
                     for src_words in src_batch
@@ -369,7 +363,7 @@ class Manager:
                 [
                     nn.functional.pad(
                         torch.tensor(self.vocab.numberize(tgt_words)),
-                        (0, max_tgt_len - len(tgt_words)),
+                        (0, tgt_len - len(tgt_words)),
                         value=self.vocab.PAD,
                     )
                     for tgt_words in tgt_batch
@@ -391,7 +385,7 @@ class Manager:
         data = []
         # count = total = 0
         with open(data_file) as data_f:
-            for i, line in enumerate(tqdm(data_f.readlines())):
+            for i, line in enumerate(data_f.readlines()):
                 src_line, tgt_line = line.split('\t')
                 src_words = ['<BOS>'] + src_line.split() + ['<EOS>']
                 tgt_words = ['<BOS>'] + tgt_line.split() + ['<EOS>']

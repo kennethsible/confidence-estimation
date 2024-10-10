@@ -126,9 +126,9 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--lang-pair', required=True, help='language pair')
     parser.add_argument('--data-dir', required=True, help='data directory')
-    parser.add_argument('--lem-model', help='lemmatizer model')  # {src_lang}_core_news_sm
     parser.add_argument('--max-length', type=int, required=True, help='maximum length')
     parser.add_argument('--len-ratio', type=float, required=True, help='length ratio')
+    parser.add_argument('--lemmatize', action='store_true', help='lemmatize source')
     subparsers = parser.add_subparsers(dest='cmd', help='BPE or SentencePiece')
     bpe_parser = subparsers.add_parser('bpe')
     bpe_parser.add_argument('--merge-ops', required=True, help='merge operations')
@@ -211,9 +211,9 @@ def main():
     apply_final_filter(f'{train_path}.{src_lang}-{tgt_lang}', args.max_length, args.len_ratio)
     os.system(f'wc -l {train_path}.{src_lang}-{tgt_lang}')
 
-    if args.lem_model:
+    if args.lemmatize:
         print('\n[-/10] Lemmatizing Source Data...')
-        lemmatizer = Lemmatizer(args.lem_model, sw_model)
+        lemmatizer = Lemmatizer(f'{src_lang}_core_news_sm', sw_model)
         for file_path in (train_path, val_path):
             src_words = []
             with open(f'{file_path}.{src_lang}-{tgt_lang}') as src_f:
