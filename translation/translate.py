@@ -1,20 +1,12 @@
 import json
-import math
 
 import torch
-from tqdm import tqdm
 
 from translation.decoder import beam_search
 from translation.manager import Batch, Manager
 
 
-def millify(x: int) -> str:
-    y, abbrs = float(x), ['', 'K', 'M', 'B', 'T']
-    index = max(0, min(len(abbrs) - 1, int(math.floor(0 if y == 0 else math.log10(abs(y)) / 3))))
-    return '{:.0f}{}'.format(y / 10 ** (3 * index), abbrs[index])
-
-
-def translate(string: str, manager: Manager, *, conf: bool = False) -> tuple[str, list] | str:
+def translate(string: str, manager: Manager, *, confidence: bool = False) -> str | tuple[str, list]:
     model, vocab, device = manager.model, manager.vocab, manager.device
     tokenizer, lemmatizer = manager.tokenizer, manager.lemmatizer
     src_words = ['<BOS>'] + tokenizer.tokenize(string).split() + ['<EOS>']
@@ -39,32 +31,31 @@ def translate(string: str, manager: Manager, *, conf: bool = False) -> tuple[str
         src_nums = torch.tensor(vocab.numberize(src_words), device=device)
         src_encs, src_embs = model.encode(src_nums.unsqueeze(0))
     out_nums, out_prob = beam_search(manager, src_encs, max_length=manager.max_length * 2)
-    if conf:
-        conf_list = []
-        # print('HYP:', tokenizer.detokenize(vocab.denumberize(out_nums.tolist())), '\n')
-        # print('Conf.\tFreq.\tWord')
-        # print('=====\t=====\t=====')
-        word, scores = '', []
-        # order = 1  # 2, float('inf')
-        # acc = 'sum'  # avg, max
-        order, acc = manager.config['order'], manager.config['acc']
-        for subword, gradient in zip(
-            src_words, torch.autograd.grad(out_prob, src_embs)[0].squeeze(0).norm(p=order, dim=1)
-        ):
+
+    if confidence:
+        order, accum = 1, 'sum'
+        if 'order' in manager.config:
+            order = manager.config['order']
+        if 'accum' in manager.config:
+            accum = manager.config['accum']
+        gradient = torch.autograd.grad(out_prob, src_embs)[0]
+        partials = gradient.squeeze(0).norm(p=order, dim=1)
+        word, scores, conf_list = '', [], []
+        for subword, partial in zip(src_words, partials):
             word += subword.rstrip('@')
-            scores.append(gradient.item())
+            scores.append(partial.item())
             if not subword.endswith('@@'):
-                # frequency = manager.freq[word] if word in manager.freq else 0
-                # print(f'{score:0.2f}\t{millify(frequency).ljust(4)}\t{word}')
-                if acc == 'sum':
-                    score = sum(scores)
-                elif acc == 'avg':
-                    score = sum(scores) / len(scores)
-                elif acc == 'max':
-                    score = max(scores)
+                match accum:
+                    case 'sum':
+                        score = sum(scores)
+                    case 'avg':
+                        score = sum(scores) / len(scores)
+                    case 'max':
+                        score = max(scores)
                 conf_list.append((word, score))
                 word, scores = '', []
         return tokenizer.detokenize(vocab.denumberize(out_nums.tolist())), conf_list
+
     out_nums, _ = beam_search(manager, src_encs, max_length=manager.max_length * 2)
     return tokenizer.detokenize(vocab.denumberize(out_nums.tolist()))
 
@@ -75,10 +66,8 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--dict', metavar='FILE_PATH', help='bilingual dictionary')
     parser.add_argument('--freq', metavar='FILE_PATH', help='frequency statistics')
+    parser.add_argument('--conf', metavar='FILE_PATH', help='confidence scores')
     parser.add_argument('--model', metavar='FILE_PATH', required=True, help='translation model')
-    parser.add_argument('--conf', metavar='FILE_PATH', help='confidence output')
-    parser.add_argument('--order', default='1', help='norm order (embed_dim)')
-    parser.add_argument('--acc', default='sum', help='acc mode (subwords)')
     parser.add_argument('--input', metavar='FILE_PATH', help='detokenized input')
     args, unknown = parser.parse_known_args()
 
@@ -93,10 +82,6 @@ def main():
                 config[option] = (int if value.isdigit() else float)(value)
             except ValueError:
                 config[option] = value
-    if args.order:
-        config['order'] = float(args.order)
-    if args.acc:
-        config['acc'] = args.acc
 
     manager = Manager(
         config,
@@ -119,15 +104,15 @@ def main():
     if args.conf:
         json_list = []
         with open(args.input) as data_f:
-            for string in tqdm(data_f.readlines()):
-                output, conf_list = translate(string, manager, conf=True)
+            for string in data_f.readlines():
+                output, conf_list = translate(string, manager, confidence=True)
                 json_list.append(conf_list)
                 print(output)
         with open(args.conf, 'w') as json_f:
             json.dump(json_list, json_f, indent=4)
     else:
         with open(args.input) as data_f:
-            for string in tqdm(data_f.readlines()):
+            for string in data_f.readlines():
                 with torch.no_grad():
                     print(translate(string, manager))
 

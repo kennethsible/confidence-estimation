@@ -1,3 +1,4 @@
+import argparse
 import json
 import math
 from itertools import chain
@@ -250,6 +251,4 @@ def main():
 
 
 if __name__ == '__main__':
-    import argparse
-
     main()

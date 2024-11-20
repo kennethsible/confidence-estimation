@@ -5,7 +5,5 @@ __pycache__/
 .env
 *.pyc
 *.ipynb
-*.tsv
-*.pt
 data_de-en/
-output/conf*.sh
+experiments/conf*.sh
