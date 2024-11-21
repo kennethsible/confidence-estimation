@@ -83,6 +83,7 @@ class MultiHeadAttention(nn.Module):
         self.dropout = nn.Dropout(dropout)
         self.head_dim = embed_dim // num_heads
         self.num_heads = num_heads
+        self.scores: Tensor | None = None
 
     def attention(
         self,
@@ -97,7 +98,8 @@ class MultiHeadAttention(nn.Module):
             scores.masked_fill_(mask.unsqueeze(1) == 0, -torch.inf)
         if dict_mask is not None:
             scores -= torch.nan_to_num(dict_mask.transpose(0, 1))
-        return self.dropout(scores.softmax(dim=-1)) @ value
+        self.scores = scores.softmax(dim=-1)
+        return self.dropout(self.scores) @ value
 
     def _reshape_from(self, x: Tensor) -> Tensor:
         return x.reshape(*x.size()[:2], self.num_heads, self.head_dim)

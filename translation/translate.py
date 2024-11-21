@@ -1,12 +1,87 @@
 import json
 
 import torch
+from torch import Tensor
 
 from translation.decoder import beam_search
 from translation.manager import Batch, Manager
 
 
-def translate(string: str, manager: Manager, *, confidence: bool = False) -> str | tuple[str, list]:
+def conf_gradient(
+    manager: Manager, src_words: list[str], out_prob: Tensor, src_embs: Tensor
+) -> list:
+    order, accum = 1, 'sum'
+    if 'order' in manager.config:
+        order = manager.config['order']
+    if 'accum' in manager.config:
+        accum = manager.config['accum']
+
+    gradient = torch.autograd.grad(out_prob, src_embs)[0]
+    partials = gradient.squeeze(0).norm(p=order, dim=1)
+
+    word, scores, conf_list = '', [], []
+    for subword, partial in zip(src_words, partials):
+        word += subword.rstrip('@')
+        scores.append(partial.item())
+        if not subword.endswith('@@'):
+            match accum:
+                case 'sum':
+                    score = sum(scores)
+                case 'avg':
+                    score = sum(scores) / len(scores)
+                case 'max':
+                    score = max(scores)
+            conf_list.append((word, score))
+            word, scores = '', []
+
+    return conf_list
+
+
+def conf_attention(manager: Manager, src_words: list[str], out_probs: Tensor) -> list:
+    accum = 'sum'
+    if 'accum' in manager.config:
+        accum = manager.config['accum']
+
+    # posteriors = torch.zeros(len(src_words), device=manager.device)
+    # for layer in manager.model.decoder.layers:
+    #     scores = layer.crss_attn.scores
+    #     for k in range(manager.num_heads):
+    #         posteriors += out_probs[1:-1].abs() @ scores[0, k, 1:]
+    layers = manager.model.decoder.layers
+    scores = sum(layer.crss_attn.scores.sum(dim=1)[0] for layer in layers)
+    posteriors = out_probs[1:-1].abs() @ scores[1:]
+
+    # out_words = manager.vocab.denumberize(out_nums.tolist())
+    # alignment: dict[str, list[str]] = {}
+    # posteriors = torch.zeros(len(src_words), device=manager.device)
+    # for i, (subword, out_prob) in enumerate(zip(out_words, out_probs[1:-1])):
+    #     index = alpha[i, 1:].argmax().item() + 1
+    #     src_word_aligned = src_words[index]
+    #     if src_word_aligned not in alignment:
+    #         alignment[src_word_aligned] = []
+    #     posteriors[index] += abs(out_prob.item())
+    #     alignment[src_word_aligned].append(subword)
+    # print(alignment)
+
+    word, scores, conf_list = '', [], []
+    for subword, posterior in zip(src_words, posteriors):
+        word += subword.rstrip('@')
+        scores.append(posterior.item())
+        if not subword.endswith('@@'):
+            match accum:
+                case 'sum':
+                    score = sum(scores)
+                case 'avg':
+                    score = sum(scores) / len(scores)
+                case 'max':
+                    score = max(scores)
+            conf_list.append((word, score))
+            word, scores = '', []
+
+    return conf_list
+
+
+def translate(string: str, manager: Manager, *, confidence: str | None = None) -> tuple[str, list]:
     model, vocab, device = manager.model, manager.vocab, manager.device
     tokenizer, lemmatizer = manager.tokenizer, manager.lemmatizer
     src_words = ['<BOS>'] + tokenizer.tokenize(string).split() + ['<EOS>']
@@ -30,34 +105,19 @@ def translate(string: str, manager: Manager, *, confidence: bool = False) -> str
     else:
         src_nums = torch.tensor(vocab.numberize(src_words), device=device)
         src_encs, src_embs = model.encode(src_nums.unsqueeze(0))
-    out_nums, out_prob = beam_search(manager, src_encs, max_length=manager.max_length * 2)
 
-    if confidence:
-        order, accum = 1, 'sum'
-        if 'order' in manager.config:
-            order = manager.config['order']
-        if 'accum' in manager.config:
-            accum = manager.config['accum']
-        gradient = torch.autograd.grad(out_prob, src_embs)[0]
-        partials = gradient.squeeze(0).norm(p=order, dim=1)
-        word, scores, conf_list = '', [], []
-        for subword, partial in zip(src_words, partials):
-            word += subword.rstrip('@')
-            scores.append(partial.item())
-            if not subword.endswith('@@'):
-                match accum:
-                    case 'sum':
-                        score = sum(scores)
-                    case 'avg':
-                        score = sum(scores) / len(scores)
-                    case 'max':
-                        score = max(scores)
-                conf_list.append((word, score))
-                word, scores = '', []
-        return tokenizer.detokenize(vocab.denumberize(out_nums.tolist())), conf_list
+    out_nums, out_probs = beam_search(manager, src_encs, max_length=manager.max_length * 2)
 
-    out_nums, _ = beam_search(manager, src_encs, max_length=manager.max_length * 2)
-    return tokenizer.detokenize(vocab.denumberize(out_nums.tolist()))
+    conf_list = []
+    match confidence:
+        case 'gradient':
+            conf_list = conf_gradient(manager, src_words, out_probs[-1], src_embs)
+        case 'attention':
+            conf_list = conf_attention(manager, src_words, out_probs)
+        case 'giza':
+            raise NotImplementedError()
+
+    return tokenizer.detokenize(vocab.denumberize(out_nums.tolist())), conf_list
 
 
 def main():
@@ -66,7 +126,9 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--dict', metavar='FILE_PATH', help='bilingual dictionary')
     parser.add_argument('--freq', metavar='FILE_PATH', help='frequency statistics')
-    parser.add_argument('--conf', metavar='FILE_PATH', help='confidence scores')
+    parser.add_argument(
+        '--conf', nargs=2, metavar=('CONF_TYPE', 'FILE_PATH'), help='confidence scores'
+    )
     parser.add_argument('--model', metavar='FILE_PATH', required=True, help='translation model')
     parser.add_argument('--input', metavar='FILE_PATH', help='detokenized input')
     args, unknown = parser.parse_known_args()
@@ -105,16 +167,17 @@ def main():
         json_list = []
         with open(args.input) as data_f:
             for string in data_f.readlines():
-                output, conf_list = translate(string, manager, confidence=True)
+                output, conf_list = translate(string, manager, confidence=args.conf[0])
                 json_list.append(conf_list)
                 print(output)
-        with open(args.conf, 'w') as json_f:
+        with open(args.conf[1], 'w') as json_f:
             json.dump(json_list, json_f, indent=4)
     else:
         with open(args.input) as data_f:
             for string in data_f.readlines():
                 with torch.no_grad():
-                    print(translate(string, manager))
+                    output, _ = translate(string, manager)
+                    print(output)
 
 
 if __name__ == '__main__':

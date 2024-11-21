@@ -54,15 +54,16 @@ options:
 
 ## Model Inference
 ```
-usage: translate.py [-h] [--dict FILE_PATH] [--freq FILE_PATH] [--conf FILE_PATH] --model FILE_PATH [--input FILE_PATH]
+usage: translate.py [-h] [--dict FILE_PATH] [--freq FILE_PATH] [--conf CONF_TYPE FILE_PATH] --model FILE_PATH [--input FILE_PATH]
 
 options:
-  -h, --help         show this help message and exit
-  --dict FILE_PATH   bilingual dictionary
-  --freq FILE_PATH   frequency statistics
-  --conf FILE_PATH   confidence scores
-  --model FILE_PATH  translation model
-  --input FILE_PATH  detokenized input
+  -h, --help            show this help message and exit
+  --dict FILE_PATH      bilingual dictionary
+  --freq FILE_PATH      frequency statistics
+  --conf CONF_TYPE FILE_PATH
+                        confidence scores
+  --model FILE_PATH     translation model
+  --input FILE_PATH     detokenized input
 ```
 
 ## Model Configuration (Default)

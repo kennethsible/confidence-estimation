@@ -18,19 +18,17 @@ def greedy_search(
     model, vocab, device = manager.model, manager.vocab, manager.device
     tgt_mask = triu_mask(max_length, device=device)
     path = torch.full((1, max_length), vocab.BOS, device=device)
-    prob = torch.tensor(0.0, device=device)
-    # ! memory error w/ computation graph and decoding
+    prob = torch.zeros((1, max_length), device=device)
 
     for i in range(1, max_length):
         tgt_encs = model.decode(src_encs, path[:, :i], tgt_mask=tgt_mask[:, :i, :i])
         logits = model.out_embed(tgt_encs[:, -1], inverse=True)
-        output = logits.log_softmax(dim=-1).max(dim=-1)
-        path[0, i] = output.indices
-        prob += output.values.squeeze(0)
+        scores = logits.log_softmax(dim=-1).max(dim=-1)
+        prob[0, i], path[0, i] = scores
         if path[0, i] == vocab.EOS:
-            break
+            return path[0, : i + 1], prob[0, : i + 1]
 
-    return path.squeeze(0), prob
+    return path[0], prob
 
 
 def beam_search(
@@ -41,6 +39,8 @@ def beam_search(
     active = torch.ones(beam_size, dtype=torch.bool, device=device)
     paths = torch.full((beam_size, max_length), vocab.BOS, device=device)
     probs = torch.zeros(beam_size, device=device)
+
+    probs_ = torch.zeros((beam_size, max_length), device=device)
 
     i, init_size = 0, beam_size
     while (i := i + 1) < max_length and beam_size > 0:
@@ -67,9 +67,13 @@ def beam_search(
         paths[active, i] = topi % vocab.size()
         probs[active] = topv
 
+        probs_[active] = probs_[active][reorder]
+        probs_[active, i] = logits.log_softmax(dim=-1).flatten()[topi]
+
         terminated = paths[:, i] == vocab.EOS
         probs[terminated] = probs[terminated] / i
         active = active & ~terminated
         beam_size = int(active.count_nonzero())
 
-    return paths[probs.argmax()], probs.max()
+    argmax = probs.argmax()
+    return paths[argmax, :i], probs_[argmax, :i]
