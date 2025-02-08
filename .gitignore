@@ -5,5 +5,14 @@ __pycache__/
 .env
 *.pyc
 *.ipynb
-data_de-en/
+medline.*
+biom.*
+data_de-en_large/*
+!data_de-en_large/biom/
+!data_de-en_large/*.dict
+!data_de-en_large/*.py
+data_de-en_small/*
+!data_de-en_small/biom/
+!data_de-en_small/*.dict
+!data_de-en_small/*.py
 experiments/conf*.sh

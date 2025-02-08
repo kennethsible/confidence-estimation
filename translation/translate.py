@@ -4,7 +4,7 @@ import torch
 from torch import Tensor
 
 from translation.decoder import beam_search
-from translation.manager import Batch, Manager
+from translation.manager import Batch, Lemmatizer, Manager, Tokenizer
 
 
 def conf_gradient(
@@ -83,25 +83,22 @@ def conf_attention(manager: Manager, src_words: list[str], out_probs: Tensor) ->
 
 def translate(string: str, manager: Manager, *, confidence: str | None = None) -> tuple[str, list]:
     model, vocab, device = manager.model, manager.vocab, manager.device
-    tokenizer, lemmatizer = manager.tokenizer, manager.lemmatizer
-    src_words = ['<BOS>'] + tokenizer.tokenize(string).split() + ['<EOS>']
+    tokenizer = Tokenizer(manager.src_lang, manager.tgt_lang, manager.sw_model)
+    src_words = ['<BOS>'] + tokenizer.tokenize(string) + ['<EOS>']
 
     model.eval()
     if manager.dict and manager.freq:
+        lemmatizer = Lemmatizer(f'{manager.src_lang}_core_news_sm', manager.sw_model)
         lem_data = next(lemmatizer.lemmatize([src_words[1:-1]]))
-        src_spans, tgt_spans = manager.append_defs(src_words, lem_data)
+        src_spans, tgt_spans = manager.append_defs(src_words, list(zip(*lem_data)))
         src_nums = torch.tensor(vocab.numberize(src_words), device=device)
         dict_data = list(zip([src_spans], [tgt_spans]))
         if manager.dpe_embed:
-            src_encs, src_embs = model.encode(
-                src_nums.unsqueeze(0), dict_mask=None, dict_data=dict_data
-            )
+            src_encs = model.encode(src_nums.unsqueeze(0), dict_mask=None, dict_data=dict_data)
         else:
             mask_size = src_nums.unsqueeze(-2).size()
             dict_mask = Batch.dict_mask_from_data(dict_data, mask_size, device)
-            src_encs, src_embs = model.encode(
-                src_nums.unsqueeze(0), dict_mask=dict_mask, dict_data=None
-            )
+            src_encs = model.encode(src_nums.unsqueeze(0), dict_mask=dict_mask, dict_data=None)
     else:
         src_nums = torch.tensor(vocab.numberize(src_words), device=device)
         src_encs, src_embs = model.encode(src_nums.unsqueeze(0))
@@ -129,6 +126,8 @@ def main():
     parser.add_argument(
         '--conf', nargs=2, metavar=('CONF_TYPE', 'FILE_PATH'), help='confidence scores'
     )
+    parser.add_argument('--sw-vocab', metavar='FILE_PATH', required=True, help='subword vocab')
+    parser.add_argument('--sw-model', metavar='FILE_PATH', required=True, help='subword model')
     parser.add_argument('--model', metavar='FILE_PATH', required=True, help='translation model')
     parser.add_argument('--input', metavar='FILE_PATH', help='detokenized input')
     args, unknown = parser.parse_known_args()
@@ -151,13 +150,12 @@ def main():
         model_state['src_lang'],
         model_state['tgt_lang'],
         args.model,
-        model_state['vocab_list'],
-        model_state['codes_list'],
+        args.sw_vocab,
+        args.sw_model,
         args.dict,
         args.freq,
-        model_state['samples_counter'],
-        model_state['bigrams_counter'],
     )
+    exit()
     manager.model.load_state_dict(model_state['state_dict'])
 
     if device == 'cuda' and torch.cuda.get_device_capability()[0] >= 8:

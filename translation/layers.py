@@ -74,6 +74,19 @@ class ScaleNorm(nn.Module):
         return self.scale * nn.functional.normalize(x, dim=-1, eps=eps)
 
 
+class LayerNorm(nn.Module):
+
+    def __init__(self, embed_dim: int, eps: float = 1e-6):
+        super(LayerNorm, self).__init__()
+        self.gamma = nn.Parameter(torch.ones(embed_dim))
+        self.beta = nn.Parameter(torch.zeros(embed_dim))
+        self.eps = eps
+
+    def forward(self, x: Tensor) -> Tensor:
+        mean, std = x.mean(-1, keepdim=True), x.std(-1, keepdim=True)
+        return self.gamma * (x - mean) / (std + self.eps) + self.beta
+
+
 class MultiHeadAttention(nn.Module):
     def __init__(self, embed_dim: int, num_heads: int, dropout: float):
         super(MultiHeadAttention, self).__init__()

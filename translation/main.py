@@ -35,10 +35,8 @@ def train_epoch(
             dict_mask, dict_data = batch.dict_mask, None
 
         with torch.cuda.amp.autocast():
-            logits = manager.model(
-                src_nums, tgt_nums[:, :-1], src_mask, tgt_mask, dict_mask, dict_data
-            )
-            loss = criterion(torch.flatten(logits, 0, 1), torch.flatten(tgt_nums[:, 1:]))
+            logits = manager.model(src_nums, tgt_nums, src_mask, tgt_mask, dict_mask, dict_data)
+            loss = criterion(torch.flatten(logits[:, :-1], 0, 1), torch.flatten(tgt_nums[:, 1:]))
 
         if optimizer and scaler:
             optimizer.zero_grad()
@@ -93,7 +91,7 @@ def train_model(train_data: list[Batch], val_data: list[Batch], manager: Manager
         print()
 
         if val_loss < best_loss:
-            manager.save_model()
+            manager.save_model((epoch, val_loss), optimizer, scheduler)
             patience, best_loss = 0, val_loss
         else:
             patience += 1
@@ -115,17 +113,17 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--lang-pair', required=True, help='source-target language pair')
     parser.add_argument(
-        '--train-data', metavar='FILE_PATH', required=True, help='parallel training'
+        '--train-data', metavar='FILE_PATH', required=True, help='parallel training data'
     )
     parser.add_argument(
-        '--val-data', metavar='FILE_PATH', required=True, help='parallel validation'
+        '--val-data', metavar='FILE_PATH', required=True, help='parallel validation data'
     )
-    parser.add_argument('--lem-train', metavar='FILE_PATH', help='lemmatized training')
-    parser.add_argument('--lem-val', metavar='FILE_PATH', help='lemmatized validation')
+    parser.add_argument('--lem-train', metavar='FILE_PATH', help='lemmatized training data')
+    parser.add_argument('--lem-val', metavar='FILE_PATH', help='lemmatized validation data')
     parser.add_argument('--dict', metavar='FILE_PATH', help='bilingual dictionary')
     parser.add_argument('--freq', metavar='FILE_PATH', help='frequency statistics')
-    parser.add_argument('--vocab', metavar='FILE_PATH', required=True, help='shared vocabulary')
-    parser.add_argument('--codes', metavar='FILE_PATH', required=True, help='subword-nmt codes')
+    parser.add_argument('--sw-vocab', metavar='FILE_PATH', required=True, help='subword vocab')
+    parser.add_argument('--sw-model', metavar='FILE_PATH', required=True, help='subword model')
     parser.add_argument('--model', metavar='FILE_PATH', required=True, help='translation model')
     parser.add_argument('--log', metavar='FILE_PATH', required=True, help='logger output')
     parser.add_argument('--seed', type=int, help='random seed')
@@ -154,14 +152,12 @@ def main():
         src_lang,
         tgt_lang,
         args.model,
-        args.vocab,
-        args.codes,
+        args.sw_vocab,
+        args.sw_model,
         args.dict,
         args.freq,
-        args.train_data,
     )
-    dict_file = args.dict if 'append_dict' in config else None
-    train_data = manager.load_data(args.train_data, args.lem_train, dict_file)
+    train_data = manager.load_data(args.train_data, args.lem_train)
     val_data = manager.load_data(args.val_data, args.lem_val)
 
     if device == 'cuda' and torch.cuda.get_device_capability()[0] >= 8:
