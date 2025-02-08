@@ -22,7 +22,7 @@ def greedy_search(
 
     for i in range(1, max_length):
         tgt_encs = model.decode(src_encs, path[:, :i], tgt_mask=tgt_mask[:, :i, :i])
-        logits = model.out_embed(tgt_encs[:, -1], inverse=True)
+        logits = model.out_embed(tgt_encs[:, -1], inverse=True)[:, : vocab.size()]
         scores = logits.log_softmax(dim=-1).max(dim=-1)
         prob[0, i], path[0, i] = scores
         if path[0, i] == vocab.EOS:
@@ -47,7 +47,7 @@ def beam_search(
         tgt_encs = model.decode(
             src_encs.expand(beam_size, -1, -1), paths[active, :i], tgt_mask=tgt_mask[:, :i, :i]
         )
-        logits = model.out_embed(tgt_encs[:, -1], inverse=True)
+        logits = model.out_embed(tgt_encs[:, -1], inverse=True)[:, : vocab.size()]
         scores = probs[active].unsqueeze(1) + logits.log_softmax(dim=-1)
         if i == 1:
             scores = scores[0]
