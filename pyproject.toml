@@ -14,30 +14,30 @@ url = "https://download.pytorch.org/whl/cu121"
 priority = "supplemental"
 
 [tool.poetry.dependencies]
-python = "^3.11.2"
-sacrebleu = "^2.4.0"
+python = "^3.10"
+sacrebleu = "^2.5.1"
 sacremoses = "^0.1.1"
 subword-nmt = "^0.3.8"
 sentencepiece = "^0.2.0"
-tqdm = "^4.66.2"
-nltk = "^3.8.1"
+tqdm = "^4.67.1"
+nltk = "^3.9.1"
 
 [tool.poetry.group.dev.dependencies]
-ipykernel = "^6.29.2"
-black = "^24.2.0"
-ruff = "^0.2.1"
-mypy = "^1.8.0"
-openai = "^1.55.0"
-scipy = "^1.14.1"
-matplotlib = "^3.9.2"
+ipython = "^8.32.0"
+black = "^25.1.0"
+ruff = "^0.9.5"
+mypy = "^1.15.0"
+openai = "^1.61.1"
+scipy = "^1.15.1"
+matplotlib = "^3.10.0"
 
 [tool.poetry.group.cu121.dependencies]
-torch = { version = "^2.2.0", source = "cu121" }
+torch = { version = "2.2.0", source = "cu121" }
 
 [tool.poetry.group.spacy.dependencies]
-spacy = "^3.7.2"
-numpy = "1.26.4"
-en_core_web_sm  = {url = "https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl"}
+spacy = "3.7.5"
+numpy = "^1.19.0"
+en_core_web_sm = {url = "https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl"}
 de_core_news_sm = {url = "https://github.com/explosion/spacy-models/releases/download/de_core_news_sm-3.8.0/de_core_news_sm-3.8.0-py3-none-any.whl"}
 
 [tool.black]

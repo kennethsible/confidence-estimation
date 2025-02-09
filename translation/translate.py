@@ -94,11 +94,11 @@ def translate(string: str, manager: Manager, *, confidence: str | None = None) -
         src_nums = torch.tensor(vocab.numberize(src_words), device=device)
         dict_data = list(zip([src_spans], [tgt_spans]))
         if manager.dpe_embed:
-            src_encs = model.encode(src_nums.unsqueeze(0), dict_mask=None, dict_data=dict_data)
+            src_encs, src_embs = model.encode(src_nums.unsqueeze(0), dict_mask=None, dict_data=dict_data)
         else:
             mask_size = src_nums.unsqueeze(-2).size()
             dict_mask = Batch.dict_mask_from_data(dict_data, mask_size, device)
-            src_encs = model.encode(src_nums.unsqueeze(0), dict_mask=dict_mask, dict_data=None)
+            src_encs, src_embs = model.encode(src_nums.unsqueeze(0), dict_mask=dict_mask, dict_data=None)
     else:
         src_nums = torch.tensor(vocab.numberize(src_words), device=device)
         src_encs, src_embs = model.encode(src_nums.unsqueeze(0))
@@ -155,7 +155,6 @@ def main():
         args.dict,
         args.freq,
     )
-    exit()
     manager.model.load_state_dict(model_state['state_dict'])
 
     if device == 'cuda' and torch.cuda.get_device_capability()[0] >= 8:
