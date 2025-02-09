@@ -14,7 +14,7 @@ def main():
     with open(f'{args.data_dir}/train/europarl-v10.de-en.tsv') as tsv_f, open(
         f'{args.data_dir}/train/train.de', 'w'
     ) as src_f, open(f'{args.data_dir}/train/train.en', 'w') as tgt_f:
-        for line in tsv_f.readlines()[:250_000]:
+        for line in tsv_f.readlines():
             src_line, tgt_line, *_ = line.split('\t')
             src_f.write(src_line.rstrip() + '\n')
             tgt_f.write(tgt_line.rstrip() + '\n')
