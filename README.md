@@ -18,7 +18,7 @@ Biomedical Test Set from WMT22 Biomedical Translation Task ([Source](https://www
 
 ## Data Preprocessing
 ```
-usage: preprocess.py [-h] --lang-pair LANG_PAIR --data-dir DATA_DIR [--lem-model LEM_MODEL] --max-length MAX_LENGTH --len-ratio LEN_RATIO {bpe,spm} ...
+usage: preprocess.py [-h] --lang-pair LANG_PAIR --data-dir DATA_DIR --max-length MAX_LENGTH --len-ratio LEN_RATIO [--spacy-model SPACY_MODEL] {bpe,spm} ...
 
 positional arguments:
   {bpe,spm}             BPE or SentencePiece
@@ -28,12 +28,12 @@ options:
   --lang-pair LANG_PAIR
                         language pair
   --data-dir DATA_DIR   data directory
-  --lem-model LEM_MODEL
-                        lemmatizer model
   --max-length MAX_LENGTH
                         maximum length
   --len-ratio LEN_RATIO
                         length ratio
+  --spacy-model SPACY_MODEL
+                        spaCy model
 ```
 
 ## Model Training
@@ -61,7 +61,7 @@ options:
 
 ## Model Inference
 ```
-usage: translate.py [-h] [--dict FILE_PATH] [--freq FILE_PATH] [--conf CONF_TYPE FILE_PATH] --sw-vocab FILE_PATH --sw-model FILE_PATH --model FILE_PATH [--input FILE_PATH]
+usage: translate.py [-h] [--dict FILE_PATH] [--freq FILE_PATH] [--conf CONF_TYPE FILE_PATH] [--spacy-model FILE_PATH] --sw-vocab FILE_PATH --sw-model FILE_PATH --model FILE_PATH [--input FILE_PATH]
 
 options:
   -h, --help            show this help message and exit
@@ -69,6 +69,8 @@ options:
   --freq FILE_PATH      frequency statistics
   --conf CONF_TYPE FILE_PATH
                         confidence scores
+  --spacy-model FILE_PATH
+                        spaCy model
   --sw-vocab FILE_PATH  subword vocab
   --sw-model FILE_PATH  subword model
   --model FILE_PATH     translation model

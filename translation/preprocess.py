@@ -128,12 +128,13 @@ def main():
     parser.add_argument('--data-dir', required=True, help='data directory')
     parser.add_argument('--max-length', type=int, required=True, help='maximum length')
     parser.add_argument('--len-ratio', type=float, required=True, help='length ratio')
-    parser.add_argument('--lemmatize', action='store_true', help='lemmatize source')
+    parser.add_argument('--spacy-model', type=str, help='spaCy model')
     subparsers = parser.add_subparsers(dest='cmd', help='BPE or SentencePiece')
     bpe_parser = subparsers.add_parser('bpe')
+
     bpe_parser.add_argument('--merge-ops', required=True, help='merge operations')
-    bpe_parser.add_argument('--dropout', type=float, help='subword dropout')
-    bpe_parser.add_argument('--seed', type=int, help='random seed')
+    bpe_parser.add_argument('--dropout', type=float, default=0.0, help='subword dropout')
+    bpe_parser.add_argument('--seed', type=int, default=0, help='random seed')
     sp_parser = subparsers.add_parser('spm')
     sp_parser.add_argument('--vocab-size', required=True, help='vocab size')
     sp_parser.add_argument('--model-type', required=True, help='model type')
@@ -211,9 +212,9 @@ def main():
     apply_final_filter(f'{train_path}.{src_lang}-{tgt_lang}', args.max_length, args.len_ratio)
     os.system(f'wc -l {train_path}.{src_lang}-{tgt_lang}')
 
-    if args.lemmatize:
+    if args.spacy_model:
         print('\n[-/10] Lemmatizing Source Data...')
-        lemmatizer = Lemmatizer(f'{src_lang}_core_news_sm', sw_model)
+        lemmatizer = Lemmatizer(args.spacy_model, sw_model)
         for file_path in (train_path, val_path):
             src_words = []
             with open(f'{file_path}.{src_lang}-{tgt_lang}') as src_f:

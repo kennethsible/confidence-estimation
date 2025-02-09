@@ -209,6 +209,7 @@ class Manager:
         sw_model_file: str,
         dict_file: str | None = None,
         freq_file: str | None = None,
+        spacy_model: str | None = None,
     ):
         self.config = config
         self.device = device
@@ -231,6 +232,7 @@ class Manager:
                 self.sw_model = BPE(sw_model_f)
         else:
             self.sw_model = spm.SentencePieceProcessor(sw_model_file)
+        self.spacy_model = spacy_model
 
         self.model = Model(
             self.vocab.size(),

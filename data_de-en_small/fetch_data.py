@@ -20,12 +20,12 @@ def main():
             tgt_f.write(tgt_line.rstrip() + '\n')
     os.system(f'rm {args.data_dir}/train/europarl-v10.de-en.tsv')
 
-    os.system('sacrebleu --language-pair de-en --download wmt19')
-    os.system(f'cp ~/.sacrebleu/wmt19/wmt19.de-en.src {args.data_dir}/val/val.de')
-    os.system(f'cp ~/.sacrebleu/wmt19/wmt19.de-en.ref {args.data_dir}/val/val.en')
+    os.system('sacrebleu --language-pair en-de --download wmt19')
+    os.system(f'cp ~/.sacrebleu/wmt19/wmt19.en-de.src {args.data_dir}/val/val.en')
+    os.system(f'cp ~/.sacrebleu/wmt19/wmt19.en-de.ref {args.data_dir}/val/val.de')
 
-    os.system('sacrebleu --language-pair de-en --download wmt22')
-    os.system(f'cp ~/.sacrebleu/wmt22/wmt22.de-en.src {args.data_dir}/test/test.de')
+    os.system('sacrebleu --language-pair en-de --download wmt24')
+    os.system(f'cp ~/.sacrebleu/wmt24/wmt24.en-de.src {args.data_dir}/test/test.en')
 
 
 if __name__ == '__main__':
