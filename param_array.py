@@ -16,14 +16,14 @@ def generate_header(job_name: str, args: Namespace) -> str:
     string = '#!/bin/bash\n\n'
     string += f'touch {args.model}/{job_name}.log\n'
     string += f'fsync -d 30 {args.model}/{job_name}.log &\n'
-    string += f'\nconda activate {args.conda}\n'
+    string += '\n$(poetry env activate)\n'
     string += 'export PYTHONPATH="${PYTHONPATH}:${pwd}"\n'
     string += 'export SACREBLEU_FORMAT=text\n'
     return string
 
 
 def generate_main(job_name: str, args: Namespace, params: list[tuple] | None = None) -> str:
-    string = 'python translation/main.py  \\\n'
+    string = 'python -m translation.main  \\\n'
     string += f'  --lang-pair {args.lang_pair} \\\n'
     string += f'  --train-data {args.train_data} \\\n'
     string += f'  --val-data {args.val_data} \\\n'
@@ -52,7 +52,7 @@ def generate_translate(job_name: str, test_data: str, args: Namespace) -> str:
     if re.match(r'wmt[0-9]{2}', test_data):
         _, test_data = test_data.split(':')
     test_set = test_data.split('/')[-1]
-    string = 'python translation/translate.py  \\\n'
+    string = 'python -m translation.translate  \\\n'
     if args.dict:
         string += f'  --dict {args.dict} \\\n'
     if args.freq:
@@ -123,7 +123,6 @@ def main():
     parser.add_argument('--model', required=True, help='translation model')
     parser.add_argument('--seed', type=int, help='random seed')
     parser.add_argument('--array', metavar='FILE_PATH', help='parameter array')
-    parser.add_argument('--conda', metavar='ENV', required=True, help='conda environment')
     parser.add_argument('--start', metavar='INDEX', type=int, default=1, help='starting index')
     parser.add_argument('--email', required=True, help='email address')
     parser.add_argument(

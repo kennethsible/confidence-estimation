@@ -24,6 +24,7 @@ nltk = "^3.9.1"
 
 [tool.poetry.group.dev.dependencies]
 ipython = "^8.32.0"
+ipykernel = "^6.29.5"
 black = "^25.1.0"
 ruff = "^0.9.5"
 mypy = "^1.15.0"
@@ -37,8 +38,8 @@ torch = { version = "2.2.0", source = "cu121" }
 [tool.poetry.group.spacy.dependencies]
 spacy = "3.7.5"
 numpy = "^1.19.0"
-en_core_web_sm = {url = "https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl"}
-de_core_news_sm = {url = "https://github.com/explosion/spacy-models/releases/download/de_core_news_sm-3.8.0/de_core_news_sm-3.8.0-py3-none-any.whl"}
+en_core_web_sm = {url = "https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.7.1/en_core_web_sm-3.7.1-py3-none-any.whl"}
+de_core_news_sm = {url = "https://github.com/explosion/spacy-models/releases/download/de_core_news_sm-3.7.0/de_core_news_sm-3.7.0-py3-none-any.whl"}
 
 [tool.black]
 skip-string-normalization = true
