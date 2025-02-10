@@ -142,15 +142,43 @@ class Tokenizer:
 
 class Lemmatizer:
     def __init__(self, model: str, sw_model: Any):
-        self.nlp = spacy.load(model, enable=['tok2vec', 'tagger', 'lemmatizer'])
+        match model.split('_')[0]:
+            case 'en':
+                self.nlp = spacy.load(
+                    model,
+                    enable=[
+                        'tok2vec',
+                        'tagger',
+                        'attribute_ruler',
+                        'lemmatizer',
+                    ],
+                )
+            case 'de':
+                self.nlp = spacy.load(
+                    model,
+                    enable=[
+                        'tok2vec',
+                        'tagger',
+                        'morphologizer',
+                        'lemmatizer',
+                    ],
+                )
+            case _:
+                self.nlp = spacy.load(model)
+
+        def whitespace_tokenizer(nlp: spacy.language.Language) -> spacy.tokenizer.Tokenizer:
+            return spacy.tokenizer.Tokenizer(nlp.vocab, token_match=lambda text: text)
+
+        self.nlp.tokenizer = whitespace_tokenizer(self.nlp)
         self.sw_model = sw_model
 
     @staticmethod
     def subword_mapping(texts: list[list[str]], sw_model: Any):
+        is_bpe = isinstance(sw_model, BPE)
         for text in texts:
             words, spans = '', []
             for j, subword in enumerate(text):
-                if isinstance(sw_model, BPE):
+                if is_bpe:
                     if subword.endswith('@@'):
                         words += subword.rstrip('@')
                     else:
@@ -163,18 +191,14 @@ class Lemmatizer:
                             spans.append(j + 1)
                     else:
                         words += subword
-            if not isinstance(sw_model, BPE):
-                spans.append(j + 2)
+            if not is_bpe:
+                spans.append(len(text) + 2)
             yield words.strip(), spans
 
     def lemmatize(self, texts: list[list[str]]):
         _texts = list(self.subword_mapping(texts, self.sw_model))
-        docs = self.nlp.pipe(_texts, as_tuples=True)
-        for (words, spans), (doc, _) in zip(_texts, docs):
-            if words.split() == [token.text for token in doc]:
-                yield [token.lemma_ for token in doc], spans
-            else:
-                yield words.split(), spans
+        for doc, spans in self.nlp.pipe(_texts, as_tuples=True):
+            yield [token.lemma_ for token in doc], spans
 
 
 class Manager:
@@ -278,6 +302,47 @@ class Manager:
         )
 
     def append_defs(self, src_words: list[str], lem_data: list[tuple[str, int]]):
+        src_spans, tgt_spans = [], []
+        delimiter = '@' if isinstance(self.sw_model, BPE) else '▁'
+
+        src_start = 1
+        for lemma, src_end in lem_data:
+            word = ''
+            for i in range(src_start, src_end):
+                word += src_words[i].strip(delimiter)
+
+            headword = ''
+            if word in self.dict:
+                if word not in self.freq or self.freq[word] <= self.threshold:
+                    headword = word
+            if lemma in self.dict:
+                if lemma not in self.freq or self.freq[lemma] <= self.threshold:
+                    headword = lemma
+
+            if headword:
+                definitions = self.dict[headword][: self.max_append]
+                tgt_start, spans = len(src_words), []
+                for definition in definitions:
+                    tgt_end = tgt_start + len(definition.split())
+                    spans.append((tgt_start, tgt_end))
+                    tgt_start = tgt_end
+                if tgt_end > self.max_length:
+                    break
+                src_spans.append((src_start, src_end))
+                tgt_spans.append(spans)
+                for definition in definitions:
+                    src_words.extend(definition.split())
+
+            src_start = src_end
+
+        # for (a, b), spans in zip(src_spans, tgt_spans):
+        #     print(' '.join(src_words[a:b]))
+        #     for c, d in spans:
+        #         print('  ', ' '.join(src_words[c:d]))
+
+        return src_spans, tgt_spans
+
+    def append_defs_multi(self, src_words: list[str], lem_data: list[tuple[str, int]]):
         src_spans, tgt_spans = [], []
         delimiter = '@' if isinstance(self.sw_model, BPE) else '▁'
 
@@ -393,7 +458,10 @@ class Manager:
                 tgt_words = ['<BOS>'] + tgt_line.split() + ['<EOS>']
                 src_spans, tgt_spans = [], []
                 if lem_data and self.dict and self.freq:
-                    src_spans, tgt_spans = self.append_defs(src_words, lem_data[i])
+                    if 'span_mode' in self.config and self.config['span_mode'] == 'multi':
+                        src_spans, tgt_spans = self.append_defs_multi(src_words, lem_data[i])
+                    else:
+                        src_spans, tgt_spans = self.append_defs(src_words, lem_data[i])
                     # if any(src_spans):
                     #     count += 1
                 data.append((src_words, tgt_words, src_spans, tgt_spans))
