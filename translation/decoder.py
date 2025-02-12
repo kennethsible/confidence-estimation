@@ -13,7 +13,10 @@ def triu_mask(size: int, device: str | None = None) -> Tensor:
 
 
 def greedy_search(
-    manager: 'Manager', src_encs: Tensor, max_length: int = 512
+    manager: 'Manager',
+    src_encs: Tensor,
+    max_length: int = 512,
+    cumulative: bool = True,
 ) -> tuple[Tensor, Tensor]:
     model, vocab, device = manager.model, manager.vocab, manager.device
     tgt_mask = triu_mask(max_length, device=device)
@@ -26,13 +29,21 @@ def greedy_search(
         scores = logits.log_softmax(dim=-1).max(dim=-1)
         prob[0, i], path[0, i] = scores
         if path[0, i] == vocab.EOS:
+            if cumulative:
+                return path[0, : i + 1], prob[0, : i + 1].sum(dim=-1)
             return path[0, : i + 1], prob[0, : i + 1]
 
+    if cumulative:
+        return path[0], prob.sum(dim=-1)
     return path[0], prob
 
 
 def beam_search(
-    manager: 'Manager', src_encs: Tensor, beam_size: int = 4, max_length: int = 512
+    manager: 'Manager',
+    src_encs: Tensor,
+    beam_size: int = 4,
+    max_length: int = 512,
+    cumulative: bool = True,
 ) -> tuple[Tensor, Tensor]:
     model, vocab, device = manager.model, manager.vocab, manager.device
     tgt_mask = triu_mask(max_length, device=device)
@@ -76,4 +87,6 @@ def beam_search(
         beam_size = int(active.count_nonzero())
 
     argmax = probs.argmax()
+    if cumulative:
+        return paths[argmax, :i], probs[argmax]
     return paths[argmax, :i], probs_[argmax, :i]

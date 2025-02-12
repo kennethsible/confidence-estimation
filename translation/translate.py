@@ -1,5 +1,7 @@
 import json
+from itertools import chain
 
+import spacy
 import torch
 from torch import Tensor
 
@@ -31,7 +33,7 @@ def conf_gradient(
                     score = sum(scores) / len(scores)
                 case 'max':
                     score = max(scores)
-            conf_list.append((word, score))
+            conf_list.append((word, score * 100))
             word, scores = '', []
 
     return conf_list
@@ -81,16 +83,39 @@ def conf_attention(manager: Manager, src_words: list[str], out_probs: Tensor) ->
     return conf_list
 
 
-def translate(string: str, manager: Manager, *, confidence: str | None = None) -> tuple[str, list]:
+def translate(string: str, manager: Manager, *, conf_method: str | None = None) -> tuple[str, list]:
     model, vocab, device = manager.model, manager.vocab, manager.device
     tokenizer = Tokenizer(manager.src_lang, manager.tgt_lang, manager.sw_model)
     src_words = ['<BOS>'] + tokenizer.tokenize(string) + ['<EOS>']
 
     model.eval()
+    src_nums = torch.tensor(vocab.numberize(src_words), device=device)
+    src_encs, src_embs = model.encode(src_nums.unsqueeze(0))
+
+    conf_list = []
+    if conf_method is not None:
+        match conf_method:
+            case 'gradient':
+                out_nums, out_prob = beam_search(
+                    manager, src_encs, max_length=manager.max_length * 2, cumulative=True
+                )
+                conf_list = conf_gradient(manager, src_words, out_prob, src_embs)
+            case 'attention':
+                out_nums, out_probs = beam_search(
+                    manager, src_encs, max_length=manager.max_length * 2, cumulative=False
+                )
+                conf_list = conf_attention(manager, src_words, out_probs)
+            case _:
+                raise NotImplementedError(conf_method)
+
     if manager.dict and manager.freq and manager.spacy_model:
         lemmatizer = Lemmatizer(manager.spacy_model, manager.sw_model)
         lem_data = next(lemmatizer.lemmatize([src_words[1:-1]]))
-        src_spans, tgt_spans = manager.append_defs(src_words, list(zip(*lem_data)))
+        # TODO add support for confidence thresholds
+        if 'span_mode' in manager.config and manager.config['span_mode'] == 'multi':
+            src_spans, tgt_spans = manager.append_defs_multi(src_words, list(zip(*lem_data)))
+        else:
+            src_spans, tgt_spans = manager.append_defs(src_words, list(zip(*lem_data)))
         src_nums = torch.tensor(vocab.numberize(src_words), device=device)
         dict_data = list(zip([src_spans], [tgt_spans]))
         if manager.dpe_embed:
@@ -103,21 +128,8 @@ def translate(string: str, manager: Manager, *, confidence: str | None = None) -
             src_encs, src_embs = model.encode(
                 src_nums.unsqueeze(0), dict_mask=dict_mask, dict_data=None
             )
-    else:
-        src_nums = torch.tensor(vocab.numberize(src_words), device=device)
-        src_encs, src_embs = model.encode(src_nums.unsqueeze(0))
 
-    out_nums, out_probs = beam_search(manager, src_encs, max_length=manager.max_length * 2)
-
-    conf_list = []
-    match confidence:
-        case 'gradient':
-            conf_list = conf_gradient(manager, src_words, out_probs[-1], src_embs)
-        case 'attention':
-            conf_list = conf_attention(manager, src_words, out_probs)
-        case 'giza':
-            raise NotImplementedError()
-
+    out_nums, _ = beam_search(manager, src_encs, max_length=manager.max_length * 2)
     return tokenizer.detokenize(vocab.denumberize(out_nums.tolist())), conf_list
 
 
@@ -170,7 +182,14 @@ def main():
         json_list = []
         with open(args.input) as data_f:
             for string in data_f.readlines():
-                output, conf_list = translate(string, manager, confidence=args.conf[0])
+                if args.spacy_model:
+                    sents = spacy.load(args.spacy_model)(string).sents
+                    outputs, conf_lists = zip(
+                        *(translate(sent, manager, conf_method=args.conf[0]) for sent in sents)
+                    )
+                    output, conf_list = ' '.join(outputs), list(chain.from_iterable(conf_lists))
+                else:
+                    output, conf_list = translate(string, manager, conf_method=args.conf[0])
                 json_list.append(conf_list)
                 print(output)
         with open(args.conf[1], 'w') as json_f:
@@ -179,7 +198,11 @@ def main():
         with open(args.input) as data_f:
             for string in data_f.readlines():
                 with torch.no_grad():
-                    output, _ = translate(string, manager)
+                    if args.spacy_model:
+                        sents = spacy.load(args.spacy_model)(string).sents
+                        output = ' '.join(translate(sent, manager)[0] for sent in sents)
+                    else:
+                        output, _ = translate(string, manager)
                     print(output)
 
 

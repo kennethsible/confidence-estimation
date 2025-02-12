@@ -301,25 +301,41 @@ class Manager:
             self._model_name,
         )
 
-    def append_defs(self, src_words: list[str], lem_data: list[tuple[str, int]]):
+    def is_match(
+        self,
+        word: str,
+        rare_only: bool = False,
+        # conf_mode: bool = False,
+    ):
+        # if conf_mode:
+        #     return word in self.dict and (
+        #         (rare_only and word in self.freq and self.freq[word] >= self.threshold)
+        #         or (word not in self.freq or self.freq[word] >= self.threshold)
+        #     )
+        return word in self.dict and (
+            (rare_only and word in self.freq and self.freq[word] <= self.threshold)
+            or (word not in self.freq or self.freq[word] <= self.threshold)
+        )
+
+    def append_defs(
+        self,
+        src_words: list[str],
+        lem_spans: list[tuple[str, int]],
+        # conf_list: list[tuple[str, float]] | None = None,
+    ):
         src_spans, tgt_spans = [], []
         delimiter = '@' if isinstance(self.sw_model, BPE) else '▁'
 
         src_start = 1
-        for lemma, src_end in lem_data:
-            word = ''
-            for i in range(src_start, src_end):
-                word += src_words[i].strip(delimiter)
+        for lemma, src_end in lem_spans:
+            word = ''.join(subword.strip(delimiter) for subword in src_words[src_start:src_end])
+            rare_only = 'rare_mode' in self.config and self.config['rare_mode'] == 'rare-only'
 
-            headword = ''
-            if word in self.dict:
-                if word not in self.freq or self.freq[word] <= self.threshold:
-                    headword = word
-            if lemma in self.dict:
-                if lemma not in self.freq or self.freq[lemma] <= self.threshold:
-                    headword = lemma
-
-            if headword:
+            if headword := (
+                word
+                if self.is_match(word, rare_only)
+                else lemma if self.is_match(lemma, rare_only) else None
+            ):
                 definitions = self.dict[headword][: self.max_append]
                 tgt_start, spans = len(src_words), []
                 for definition in definitions:
@@ -342,33 +358,32 @@ class Manager:
 
         return src_spans, tgt_spans
 
-    def append_defs_multi(self, src_words: list[str], lem_data: list[tuple[str, int]]):
+    def append_defs_multi(
+        self,
+        src_words: list[str],
+        lem_spans: list[tuple[str, int]],
+        # conf_list: list[tuple[str, float]] | None = None,
+    ):
         src_spans, tgt_spans = [], []
         delimiter = '@' if isinstance(self.sw_model, BPE) else '▁'
 
         i, src_start = 0, 1
-        while i < len(lem_data):
-            _, src_next = lem_data[i]
-            for j in range(len(lem_data), i, -1):
+        while i < len(lem_spans):
+            _, src_next = lem_spans[i]
+            for j in range(len(lem_spans), i, -1):
                 word, lemma = '', ''
                 src_prv = src_start
-                for lemma_next, src_end in lem_data[i:j]:
-                    if len(word) > 1 and len(lemma) > 1:
+                for lemma_next, src_end in lem_spans[i:j]:
+                    if len(word) >= 1 and len(lemma) >= 1:
                         word, lemma = word + ' ', lemma + ' '
                     for k in range(src_prv, src_end):
                         word += src_words[k].strip(delimiter)
                     lemma += lemma_next
                     src_prv = src_end
 
-                headword = ''
-                if word in self.dict:
-                    if word not in self.freq or self.freq[word] <= self.threshold:
-                        headword = word
-                elif lemma in self.dict:
-                    if lemma not in self.freq or self.freq[lemma] <= self.threshold:
-                        headword = lemma
-
-                if headword:
+                if headword := (
+                    word if self.is_match(word) else lemma if self.is_match(lemma) else None
+                ):
                     definitions = self.dict[headword][: self.max_append]
                     tgt_start, spans = len(src_words), []
                     for definition in definitions:
@@ -442,12 +457,12 @@ class Manager:
         return batched_data
 
     def load_data(self, data_file: str, lem_file: str | None = None) -> list[Batch]:
-        lem_data = []
+        lem_spans = []
         if lem_file:
             with open(lem_file) as lem_f:
                 for line in lem_f.readlines():
                     words, spans = line.split('\t')
-                    lem_data.append(list(zip(words.split(), list(map(int, spans.split())))))
+                    lem_spans.append(list(zip(words.split(), list(map(int, spans.split())))))
 
         data = []
         # count = total = 0
@@ -457,11 +472,11 @@ class Manager:
                 src_words = ['<BOS>'] + src_line.split() + ['<EOS>']
                 tgt_words = ['<BOS>'] + tgt_line.split() + ['<EOS>']
                 src_spans, tgt_spans = [], []
-                if lem_data and self.dict and self.freq:
+                if lem_spans and self.dict and self.freq:
                     if 'span_mode' in self.config and self.config['span_mode'] == 'multi':
-                        src_spans, tgt_spans = self.append_defs_multi(src_words, lem_data[i])
+                        src_spans, tgt_spans = self.append_defs_multi(src_words, lem_spans[i])
                     else:
-                        src_spans, tgt_spans = self.append_defs(src_words, lem_data[i])
+                        src_spans, tgt_spans = self.append_defs(src_words, lem_spans[i])
                     # if any(src_spans):
                     #     count += 1
                 data.append((src_words, tgt_words, src_spans, tgt_spans))
