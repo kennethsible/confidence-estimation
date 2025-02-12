@@ -54,10 +54,10 @@ def main():
             for words, defns in zip(de.split('|'), en.split('|')):
                 for headword in words.split(';'):
                     headword = re.split('|'.join(abbrs), headword)[0]
-                    headword = re.sub(r'^sich ', '', headword).strip()
+                    headword = re.sub(r'^sich ', '', headword.strip())
                     for definition in defns.split(';'):
                         definition = re.split('|'.join(abbrs), definition)[0]
-                        definition = re.sub(r'^to ', '', definition).strip()
+                        definition = re.sub(r'^to ', '', definition.strip())
                         if not (headword and definition) or headword == definition:
                             continue
                         _headword, _definition = definition, headword
