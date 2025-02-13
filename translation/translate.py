@@ -5,7 +5,7 @@ import spacy
 import torch
 from torch import Tensor
 
-from translation.decoder import beam_search
+from translation.decoder import beam_search, triu_mask
 from translation.manager import Batch, Lemmatizer, Manager, Tokenizer
 
 
@@ -44,26 +44,20 @@ def conf_attention(manager: Manager, src_words: list[str], out_probs: Tensor) ->
     if 'accum' in manager.config:
         accum = manager.config['accum']
 
-    # posteriors = torch.zeros(len(src_words), device=manager.device)
-    # for layer in manager.model.decoder.layers:
-    #     scores = layer.crss_attn.scores
-    #     for k in range(manager.num_heads):
-    #         posteriors += out_probs[1:-1].abs() @ scores[0, k, 1:]
     layers = manager.model.decoder.layers
-    scores = sum(layer.crss_attn.scores.sum(dim=1)[0] for layer in layers)
-    posteriors = out_probs[1:-1].abs() @ scores[1:]
+    scores = sum(layer.crss_attn.scores.sum(dim=1) for layer in layers)
+    posteriors = out_probs[1:-1].abs() @ scores[0, 1:]
 
-    # out_words = manager.vocab.denumberize(out_nums.tolist())
-    # alignment: dict[str, list[str]] = {}
+    # alignments: dict[str, list[str]] = {}
     # posteriors = torch.zeros(len(src_words), device=manager.device)
     # for i, (subword, out_prob) in enumerate(zip(out_words, out_probs[1:-1])):
-    #     index = alpha[i, 1:].argmax().item() + 1
+    #     index = scores[0, i, 1:-1].argmax().item() + 1
     #     src_word_aligned = src_words[index]
-    #     if src_word_aligned not in alignment:
-    #         alignment[src_word_aligned] = []
+    #     if src_word_aligned not in alignments:
+    #         alignments[src_word_aligned] = []
     #     posteriors[index] += abs(out_prob.item())
-    #     alignment[src_word_aligned].append(subword)
-    # print(alignment)
+    #     alignments[src_word_aligned].append(subword)
+    # print(json.dumps(alignments, index=4))
 
     word, scores, conf_list = '', [], []
     for subword, posterior in zip(src_words, posteriors):
@@ -104,6 +98,8 @@ def translate(string: str, manager: Manager, *, conf_method: str | None = None) 
                 out_nums, out_probs = beam_search(
                     manager, src_encs, max_length=manager.max_length * 2, cumulative=False
                 )
+                tgt_mask = triu_mask(len(out_nums) - 1, device=device)
+                model.decode(src_encs, out_nums[:-1].unsqueeze(0), tgt_mask=tgt_mask)
                 conf_list = conf_attention(manager, src_words, out_probs)
             case _:
                 raise NotImplementedError(conf_method)
