@@ -301,40 +301,37 @@ class Manager:
             self._model_name,
         )
 
-    def is_match(
-        self,
-        word: str,
-        rare_only: bool = False,
-        # conf_mode: bool = False,
-    ):
-        # if conf_mode:
-        #     return word in self.dict and (
-        #         (rare_only and word in self.freq and self.freq[word] >= self.threshold)
-        #         or (word not in self.freq or self.freq[word] >= self.threshold)
-        #     )
+    def is_match(self, word: str, rare_only: bool = False, confidence: float = 0.0):
+        if confidence > 0.0:
+            return word in self.dict and confidence >= self.threshold
         return word in self.dict and (
             (rare_only and word in self.freq and self.freq[word] <= self.threshold)
             or (word not in self.freq or self.freq[word] <= self.threshold)
         )
 
-    def append_defs(
+    def append_defs_1(
         self,
         src_words: list[str],
         lem_spans: list[tuple[str, int]],
-        # conf_list: list[tuple[str, float]] | None = None,
+        conf_list: list[tuple[str, float]] | None = None,
     ):
         src_spans, tgt_spans = [], []
         delimiter = '@' if isinstance(self.sw_model, BPE) else '▁'
+        rare_only = 'rare_mode' in self.config and self.config['rare_mode'] == 2
 
-        src_start = 1
+        i, src_start = 0, 1
         for lemma, src_end in lem_spans:
             word = ''.join(subword.strip(delimiter) for subword in src_words[src_start:src_end])
-            rare_only = 'rare_mode' in self.config and self.config['rare_mode'] == 'rare-only'
+            if conf_list is None:
+                confidence = 0.0
+            else:
+                conf_word, confidence = conf_list[i]
+                assert word == conf_word
 
             if headword := (
                 word
-                if self.is_match(word, rare_only)
-                else lemma if self.is_match(lemma, rare_only) else None
+                if self.is_match(word, rare_only, confidence)
+                else lemma if self.is_match(lemma, rare_only, confidence) else None
             ):
                 definitions = self.dict[headword][: self.max_append]
                 tgt_start, spans = len(src_words), []
@@ -350,6 +347,7 @@ class Manager:
                     src_words.extend(definition.split())
 
             src_start = src_end
+            i += 1
 
         # for (a, b), spans in zip(src_spans, tgt_spans):
         #     print(' '.join(src_words[a:b]))
@@ -358,14 +356,15 @@ class Manager:
 
         return src_spans, tgt_spans
 
-    def append_defs_multi(
+    def append_defs_2(
         self,
         src_words: list[str],
         lem_spans: list[tuple[str, int]],
-        # conf_list: list[tuple[str, float]] | None = None,
-    ):
+        conf_list: list[tuple[str, float]] | None = None,
+    ):  # supports space-separated words and phrases
         src_spans, tgt_spans = [], []
         delimiter = '@' if isinstance(self.sw_model, BPE) else '▁'
+        accum = 'sum' if 'accum' not in self.config else self.config['accum']
 
         i, src_start = 0, 1
         while i < len(lem_spans):
@@ -381,8 +380,24 @@ class Manager:
                     lemma += lemma_next
                     src_prv = src_end
 
+                if conf_list is None:
+                    confidence = 0.0
+                else:
+                    tokens, scores = list(zip(*conf_list[i:j]))
+                    conf_word = ' '.join(tokens)
+                    match accum:
+                        case 'sum':
+                            confidence = sum(scores)
+                        case 'avg':
+                            confidence = sum(scores) / len(scores)
+                        case 'max':
+                            confidence = max(scores)
+                    assert word == conf_word
+
                 if headword := (
-                    word if self.is_match(word) else lemma if self.is_match(lemma) else None
+                    word
+                    if self.is_match(word, confidence=confidence)
+                    else lemma if self.is_match(lemma, confidence=confidence) else None
                 ):
                     definitions = self.dict[headword][: self.max_append]
                     tgt_start, spans = len(src_words), []
@@ -473,10 +488,10 @@ class Manager:
                 tgt_words = ['<BOS>'] + tgt_line.split() + ['<EOS>']
                 src_spans, tgt_spans = [], []
                 if lem_spans and self.dict and self.freq:
-                    if 'span_mode' in self.config and self.config['span_mode'] == 'multi':
-                        src_spans, tgt_spans = self.append_defs_multi(src_words, lem_spans[i])
+                    if 'span_mode' in self.config and self.config['span_mode'] == 2:
+                        src_spans, tgt_spans = self.append_defs_2(src_words, lem_spans[i])
                     else:
-                        src_spans, tgt_spans = self.append_defs(src_words, lem_spans[i])
+                        src_spans, tgt_spans = self.append_defs_1(src_words, lem_spans[i])
                     # if any(src_spans):
                     #     count += 1
                 data.append((src_words, tgt_words, src_spans, tgt_spans))
