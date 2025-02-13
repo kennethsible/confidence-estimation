@@ -12,6 +12,10 @@ QUEUES = [
 ]
 
 
+def comment_section(section: str) -> str:
+    return '\n'.join(f'# {line}' for line in section.splitlines())
+
+
 def generate_header(job_name: str, args: Namespace) -> str:
     string = '#!/bin/bash\n\n'
     string += f'touch {args.model}/{job_name}.log\n'
@@ -57,6 +61,8 @@ def generate_translate(job_name: str, test_data: str, args: Namespace) -> str:
         string += f'  --dict {args.dict} \\\n'
     if args.freq:
         string += f'  --freq {args.freq} \\\n'
+    if args.spacy_model:
+        string += f'  --spacy-model {args.spacy_model} \\\n'
     string += f'  --sw-vocab {args.sw_vocab} \\\n'
     string += f'  --sw-model {args.sw_model} \\\n'
     string += f'  --model {args.model}/{job_name}.pt \\\n'
@@ -118,6 +124,7 @@ def main():
     parser.add_argument('--lem-val', metavar='FILE_PATH', help='lemmatized validation data')
     parser.add_argument('--dict', metavar='FILE_PATH', help='bilingual dictionary')
     parser.add_argument('--freq', metavar='FILE_PATH', help='frequency statistics')
+    parser.add_argument('--spacy-model', metavar='FILE_PATH', help='spaCy model')
     parser.add_argument('--sw-vocab', metavar='FILE_PATH', required=True, help='subword vocab')
     parser.add_argument('--sw-model', metavar='FILE_PATH', required=True, help='subword model')
     parser.add_argument('--model', required=True, help='translation model')
