@@ -74,10 +74,13 @@ class DecoderLayer(nn.Module):
         tgt_encs: Tensor,
         src_mask: Tensor | None = None,
         tgt_mask: Tensor | None = None,
+        store_attn: bool = False,
     ) -> Tensor:
         m = src_encs
         tgt_encs = self.sublayers[0](tgt_encs, lambda x: self.self_attn(x, x, x, tgt_mask))
-        tgt_encs = self.sublayers[1](tgt_encs, lambda x: self.crss_attn(x, m, m, src_mask))
+        tgt_encs = self.sublayers[1](
+            tgt_encs, lambda x: self.crss_attn(x, m, m, src_mask, store_attn=store_attn)
+        )
         return self.sublayers[2](tgt_encs, self.ff)
 
 
@@ -95,10 +98,11 @@ class Decoder(nn.Module):
         tgt_embs: Tensor,
         src_mask: Tensor | None = None,
         tgt_mask: Tensor | None = None,
+        store_attn: bool = False,
     ) -> Tensor:
         tgt_encs = tgt_embs
         for layer in self.layers:
-            tgt_encs = layer(src_encs, tgt_encs, src_mask, tgt_mask)
+            tgt_encs = layer(src_encs, tgt_encs, src_mask, tgt_mask, store_attn)
         return self.norm(tgt_encs)
 
 
@@ -141,9 +145,10 @@ class Model(nn.Module):
         tgt_nums: Tensor,
         src_mask: Tensor | None = None,
         tgt_mask: Tensor | None = None,
+        store_attn: bool = False,
     ) -> Tensor:
         tgt_embs = self.tgt_embed(tgt_nums)
-        return self.decoder(src_encs, tgt_embs, src_mask, tgt_mask)
+        return self.decoder(src_encs, tgt_embs, src_mask, tgt_mask, store_attn)
 
     def forward(
         self,

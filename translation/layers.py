@@ -105,14 +105,17 @@ class MultiHeadAttention(nn.Module):
         value: Tensor,
         mask: Tensor | None = None,
         dict_mask: Tensor | None = None,
+        store_attn: bool = False,
     ) -> Tensor:
         scores = query @ key.transpose(-2, -1) / math.sqrt(self.head_dim)
         if mask is not None:
             scores.masked_fill_(mask.unsqueeze(1) == 0, -torch.inf)
         if dict_mask is not None:
             scores -= torch.nan_to_num(dict_mask.transpose(0, 1))
-        self.scores = scores.softmax(dim=-1)
-        return self.dropout(self.scores) @ value
+        if store_attn:
+            self.scores = scores.softmax(dim=-1)
+            return self.dropout(self.scores) @ value
+        return self.dropout(scores.softmax(dim=-1)) @ value
 
     def _reshape_from(self, x: Tensor) -> Tensor:
         return x.reshape(*x.size()[:2], self.num_heads, self.head_dim)
@@ -127,6 +130,7 @@ class MultiHeadAttention(nn.Module):
         value: Tensor,
         mask: Tensor | None = None,
         dict_mask: Tensor | None = None,
+        store_attn: bool = False,
     ) -> Tensor:
         query, key, value = [
             self._reshape_from(linear(x)).transpose(1, 2)
@@ -134,5 +138,5 @@ class MultiHeadAttention(nn.Module):
         ]
         if dict_mask is not None:
             dict_mask = torch.einsum('ij,j...->i...', torch.exp(self.weights), dict_mask)
-        outputs = self.attention(query, key, value, mask, dict_mask)
+        outputs = self.attention(query, key, value, mask, dict_mask, store_attn)
         return self.linears[-1](self._reshape_to(outputs.transpose(1, 2)))

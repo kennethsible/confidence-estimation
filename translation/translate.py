@@ -3,6 +3,7 @@ from itertools import chain
 
 import spacy
 import torch
+import tqdm
 from torch import Tensor
 
 from translation.decoder import beam_search, triu_mask
@@ -11,7 +12,7 @@ from translation.manager import Batch, Lemmatizer, Manager, Tokenizer
 
 def conf_gradient(
     manager: Manager, src_words: list[str], out_prob: Tensor, src_embs: Tensor
-) -> list:
+) -> list[tuple[str, float]]:
     order, accum = 1, 'sum'
     if 'order' in manager.config:
         order = manager.config['order']
@@ -23,7 +24,7 @@ def conf_gradient(
 
     word, scores, conf_list = '', [], []
     for subword, partial in zip(src_words, partials):
-        word += subword.rstrip('@')
+        word += subword.removesuffix('@@')
         scores.append(partial.item())
         if not subword.endswith('@@'):
             match accum:
@@ -39,7 +40,9 @@ def conf_gradient(
     return conf_list
 
 
-def conf_attention(manager: Manager, src_words: list[str], out_probs: Tensor) -> list:
+def conf_attention(
+    manager: Manager, src_words: list[str], out_probs: Tensor
+) -> list[tuple[str, float]]:
     accum = 'sum'
     if 'accum' in manager.config:
         accum = manager.config['accum']
@@ -61,7 +64,7 @@ def conf_attention(manager: Manager, src_words: list[str], out_probs: Tensor) ->
 
     word, scores, conf_list = '', [], []
     for subword, posterior in zip(src_words, posteriors):
-        word += subword.rstrip('@')
+        word += subword.removesuffix('@@')
         scores.append(posterior.item())
         if not subword.endswith('@@'):
             match accum:
@@ -83,11 +86,10 @@ def translate(string: str, manager: Manager, *, conf_method: str | None = None) 
     src_words = ['<BOS>'] + tokenizer.tokenize(string) + ['<EOS>']
 
     model.eval()
-    src_nums = torch.tensor(vocab.numberize(src_words), device=device)
-    src_encs, src_embs = model.encode(src_nums.unsqueeze(0))
-
     conf_list = []
     if conf_method is not None:
+        src_nums = torch.tensor(vocab.numberize(src_words), device=device)
+        src_encs, src_embs = model.encode(src_nums.unsqueeze(0))
         match conf_method:
             case 'gradient':
                 out_nums, out_prob = beam_search(
@@ -99,37 +101,45 @@ def translate(string: str, manager: Manager, *, conf_method: str | None = None) 
                     manager, src_encs, max_length=manager.max_length * 2, cumulative=False
                 )
                 tgt_mask = triu_mask(len(out_nums) - 1, device=device)
-                model.decode(src_encs, out_nums[:-1].unsqueeze(0), tgt_mask=tgt_mask)
+                model.decode(
+                    src_encs, out_nums[:-1].unsqueeze(0), tgt_mask=tgt_mask, store_attn=True
+                )
                 conf_list = conf_attention(manager, src_words, out_probs)
             case _:
                 raise NotImplementedError(conf_method)
+        del src_nums, src_embs, src_encs
 
-    if manager.dict and manager.freq and manager.spacy_model:
-        lemmatizer = Lemmatizer(manager.spacy_model, manager.sw_model)
-        lem_data = next(lemmatizer.lemmatize([src_words[1:-1]]))
-        _conf_list = None if conf_method is None else conf_list[1:-1]
-        if 'span_mode' in manager.config and manager.config['span_mode'] == 2:
-            src_spans, tgt_spans = manager.append_defs_2(
-                src_words, list(zip(*lem_data)), _conf_list
-            )  # supports space-separated words and phrases
-        else:
-            src_spans, tgt_spans = manager.append_defs_1(
-                src_words, list(zip(*lem_data)), _conf_list
-            )
-        src_nums = torch.tensor(vocab.numberize(src_words), device=device)
-        dict_data = list(zip([src_spans], [tgt_spans]))
-        if manager.dpe_embed:
-            src_encs, src_embs = model.encode(
-                src_nums.unsqueeze(0), dict_mask=None, dict_data=dict_data
-            )
-        else:
-            mask_size = src_nums.unsqueeze(-2).size()
-            dict_mask = Batch.dict_mask_from_data(dict_data, mask_size, device)
-            src_encs, src_embs = model.encode(
-                src_nums.unsqueeze(0), dict_mask=dict_mask, dict_data=None
-            )
+    with torch.no_grad():
+        if manager.dict and manager.freq and manager.spacy_model:
+            lemmatizer = Lemmatizer(manager.spacy_model, manager.sw_model)
+            lem_data = next(lemmatizer.lemmatize([src_words[1:-1]]))
+            _conf_list = None if conf_method is None else conf_list[1:-1]
+            if 'span_mode' in manager.config and manager.config['span_mode'] == 2:
+                src_spans, tgt_spans = manager.append_defs_2(
+                    src_words, list(zip(*lem_data)), _conf_list
+                )  # supports space-separated words and phrases
+            else:
+                src_spans, tgt_spans = manager.append_defs_1(
+                    src_words, list(zip(*lem_data)), _conf_list
+                )
+            src_nums = torch.tensor(vocab.numberize(src_words), device=device)
+            dict_data = list(zip([src_spans], [tgt_spans]))
+            if manager.dpe_embed:
+                src_encs, _ = model.encode(
+                    src_nums.unsqueeze(0), dict_mask=None, dict_data=dict_data
+                )
+            else:
+                mask_size = src_nums.unsqueeze(-2).size()
+                dict_mask = Batch.dict_mask_from_data(dict_data, mask_size, device)
+                src_encs, _ = model.encode(
+                    src_nums.unsqueeze(0), dict_mask=dict_mask, dict_data=None
+                )
+            out_nums, _ = beam_search(manager, src_encs, max_length=manager.max_length * 2)
+        elif conf_method is None:
+            src_nums = torch.tensor(vocab.numberize(src_words), device=device)
+            src_encs, _ = model.encode(src_nums.unsqueeze(0))
+            out_nums, _ = beam_search(manager, src_encs, max_length=manager.max_length * 2)
 
-    out_nums, _ = beam_search(manager, src_encs, max_length=manager.max_length * 2)
     return tokenizer.detokenize(vocab.denumberize(out_nums.tolist())), conf_list
 
 
@@ -181,7 +191,7 @@ def main():
     if args.conf:
         json_list = []
         with open(args.input) as data_f:
-            for string in data_f.readlines():
+            for string in tqdm.tqdm(data_f.readlines()):
                 if args.spacy_model:
                     sents = spacy.load(args.spacy_model)(string).sents
                     outputs, conf_lists = zip(
@@ -193,17 +203,16 @@ def main():
                 json_list.append(conf_list)
                 print(output)
         with open(args.conf[1], 'w') as json_f:
-            json.dump(json_list, json_f, indent=4)
+            json.dump(json_list, json_f)
     else:
         with open(args.input) as data_f:
             for string in data_f.readlines():
-                with torch.no_grad():
-                    if args.spacy_model:
-                        sents = spacy.load(args.spacy_model)(string).sents
-                        output = ' '.join(translate(sent, manager)[0] for sent in sents)
-                    else:
-                        output, _ = translate(string, manager)
-                    print(output)
+                if args.spacy_model:
+                    sents = spacy.load(args.spacy_model)(string).sents
+                    output = ' '.join(translate(sent, manager)[0] for sent in sents)
+                else:
+                    output, _ = translate(string, manager)
+                print(output)
 
 
 if __name__ == '__main__':
