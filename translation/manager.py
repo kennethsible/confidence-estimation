@@ -180,13 +180,13 @@ class Lemmatizer:
             for j, subword in enumerate(text):
                 if is_bpe:
                     if subword.endswith('@@'):
-                        words += subword.rstrip('@')
+                        words += subword.removesuffix('@@')
                     else:
                         words += subword + ' '
                         spans.append(j + 2)
                 else:
                     if subword.startswith('▁'):
-                        words += ' ' + subword.lstrip('▁')
+                        words += ' ' + subword.removeprefix('▁')
                         if j > 0:
                             spans.append(j + 1)
                     else:
@@ -315,13 +315,20 @@ class Manager:
         lem_spans: list[tuple[str, int]],
         conf_list: list[tuple[str, float]] | None = None,
     ):
-        src_spans, tgt_spans = [], []
-        delimiter = '@' if isinstance(self.sw_model, BPE) else '▁'
+        src_spans, tgt_spans = [], []  # type: ignore[var-annotated]
+        delimiter = '@@' if isinstance(self.sw_model, BPE) else '▁'
         rare_only = 'rare_mode' in self.config and self.config['rare_mode'] == 2
 
         i, src_start = 0, 1
         for lemma, src_end in lem_spans:
-            word = ''.join(subword.strip(delimiter) for subword in src_words[src_start:src_end])
+            word = ''.join(
+                (
+                    subword.removesuffix(delimiter)
+                    if delimiter == '@@'
+                    else subword.removeprefix(delimiter)
+                )
+                for subword in src_words[src_start:src_end]
+            )
             if conf_list is None:
                 confidence = 0.0
             else:
@@ -340,7 +347,7 @@ class Manager:
                     spans.append((tgt_start, tgt_end))
                     tgt_start = tgt_end
                 if tgt_end > self.max_length:
-                    break
+                    return src_spans, tgt_spans
                 src_spans.append((src_start, src_end))
                 tgt_spans.append(spans)
                 for definition in definitions:
@@ -362,13 +369,12 @@ class Manager:
         lem_spans: list[tuple[str, int]],
         conf_list: list[tuple[str, float]] | None = None,
     ):  # supports space-separated words and phrases
-        src_spans, tgt_spans = [], []
-        delimiter = '@' if isinstance(self.sw_model, BPE) else '▁'
+        src_spans, tgt_spans = [], []  # type: ignore[var-annotated]
+        delimiter = '@@' if isinstance(self.sw_model, BPE) else '▁'
         accum = 'sum' if 'accum' not in self.config else self.config['accum']
 
         i, src_start = 0, 1
         while i < len(lem_spans):
-            _, src_next = lem_spans[i]
             for j in range(len(lem_spans), i, -1):
                 word, lemma = '', ''
                 src_prv = src_start
@@ -376,7 +382,11 @@ class Manager:
                     if len(word) >= 1 and len(lemma) >= 1:
                         word, lemma = word + ' ', lemma + ' '
                     for k in range(src_prv, src_end):
-                        word += src_words[k].strip(delimiter)
+                        word += (
+                            src_words[k].removesuffix(delimiter)
+                            if delimiter == '@@'
+                            else src_words[k].removeprefix(delimiter)
+                        )
                     lemma += lemma_next
                     src_prv = src_end
 
@@ -406,7 +416,7 @@ class Manager:
                         spans.append((tgt_start, tgt_end))
                         tgt_start = tgt_end
                     if tgt_end > self.max_length:
-                        break
+                        return src_spans, tgt_spans
                     src_spans.append((src_start, src_end))
                     tgt_spans.append(spans)
                     for definition in definitions:
@@ -414,7 +424,7 @@ class Manager:
                     i = j - 1
                     break
 
-            src_start = src_next
+            src_start = src_end
             i += 1
 
         # for (a, b), spans in zip(src_spans, tgt_spans):
