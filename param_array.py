@@ -13,7 +13,7 @@ QUEUES = [
 
 
 def comment_section(section: str) -> str:
-    return '\n'.join(f'# {line}' for line in section.splitlines())
+    return '\n'.join(f'# {line}' for line in section.splitlines()) + '\n'
 
 
 def generate_header(job_name: str, args: Namespace) -> str:
@@ -61,6 +61,10 @@ def generate_translate(job_name: str, test_data: str, args: Namespace) -> str:
         string += f'  --dict {args.dict} \\\n'
     if args.freq:
         string += f'  --freq {args.freq} \\\n'
+    if args.conf:
+        string += f'  --conf {args.conf[0]} {args.model}/{job_name}.conf \\\n'
+        string += f'  --span-mode {args.conf[1]} \\\n'
+        string += f'  --threshold {args.conf[2]} \\\n'
     if args.spacy_model:
         string += f'  --spacy-model {args.spacy_model} \\\n'
     string += f'  --sw-vocab {args.sw_vocab} \\\n'
@@ -79,16 +83,38 @@ def generate_sacrebleu(job_name: str, test_data: str, args: Namespace) -> str:
     test_set = test_data.split('/')[-1]
     string = ''
     if wmt_set:
-        string += f'echo "\\n{test_data}\\n" >> {args.model}/{job_name}.log \n'
+        string += f'echo -e "\\n{test_data} (BLEU)" >> {args.model}/{job_name}.log \n'
         string += f'sacrebleu -t {wmt_set} -l {args.lang_pair} -w 4 \\\n'
         string += f'  -i {args.model}/{job_name}.{test_set}.hyp \\\n'
-        string += f"  -m {' '.join(args.metric)} \\\n"
+        string += f"  -m {' '.join(metric.strip('"') for metric in args.metric)} \\\n"
         string += f'  >> {args.model}/{job_name}.log \n'
     else:
-        string += f'echo "\\n{test_data}\\n" >> {args.model}/{job_name}.log \n'
+        string += f'echo -e "\\n{test_data} (BLEU)" >> {args.model}/{job_name}.log \n'
         string += f'sacrebleu {test_data}.{tgt_lang} -w 4 \\\n'
         string += f'  -i {args.model}/{job_name}.{test_set}.hyp \\\n'
-        string += f"  -m {' '.join(args.metric)} \\\n"
+        string += f"  -m {' '.join(metric.strip('"') for metric in args.metric)} \\\n"
+        string += f'  >> {args.model}/{job_name}.log \n'
+    return string
+
+
+def generate_comet(job_name: str, test_data: str, args: Namespace) -> str:
+    src_lang, tgt_lang = args.lang_pair.split('-')
+    wmt_set = ''
+    if re.match(r'wmt[0-9]{2}', test_data):
+        wmt_set, test_data = test_data.split(':')
+    test_set = test_data.split('/')[-1]
+    string = ''
+    if wmt_set:
+        string += f'echo -e "\\n{test_data} (COMET)" >> {args.model}/{job_name}.log \n'
+        string += f'comet-score --quiet --only_system -d {wmt_set}:{args.lang_pair} \\\n'
+        string += f'  -t {args.model}/{job_name}.{test_set}.hyp \\\n'
+        string += f'  >> {args.model}/{job_name}.log \n'
+    else:
+        string += f'echo -e "\\n{test_data} (COMET)" >> {args.model}/{job_name}.log \n'
+        string += 'comet-score --quiet --only_system \\\n'
+        string += f'  -s {test_data}.{src_lang} \\\n'
+        string += f'  -r {test_data}.{tgt_lang} \\\n'
+        string += f'  -t {args.model}/{job_name}.{test_set}.hyp \\\n'
         string += f'  >> {args.model}/{job_name}.log \n'
     return string
 
@@ -99,6 +125,7 @@ def generate_job_script(job_name: str, args: Namespace, params: list[tuple] | No
     for test_data in args.test_data:
         string += '\n' + generate_translate(job_name, test_data, args)
         string += '\n' + generate_sacrebleu(job_name, test_data, args)
+        string += '\n' + generate_comet(job_name, test_data, args)
     return string
 
 
@@ -124,6 +151,7 @@ def main():
     parser.add_argument('--lem-val', metavar='FILE_PATH', help='lemmatized validation data')
     parser.add_argument('--dict', metavar='FILE_PATH', help='bilingual dictionary')
     parser.add_argument('--freq', metavar='FILE_PATH', help='frequency statistics')
+    parser.add_argument('--conf', nargs=3, metavar=('CONF_TYPE', 'SPAN_MODE', 'THRESHOLD'))
     parser.add_argument('--spacy-model', metavar='FILE_PATH', help='spaCy model')
     parser.add_argument('--sw-vocab', metavar='FILE_PATH', required=True, help='subword vocab')
     parser.add_argument('--sw-model', metavar='FILE_PATH', required=True, help='subword model')
