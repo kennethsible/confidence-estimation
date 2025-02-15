@@ -1,7 +1,7 @@
 import json
 import math
 import re
-from typing import Any
+from typing import Any, Iterable
 
 import sentencepiece as spm
 import spacy
@@ -16,6 +16,7 @@ from translation.model import Model
 
 Optimizer = torch.optim.Optimizer
 LRScheduler = torch.optim.lr_scheduler.LRScheduler
+Token = tuple[str, str, int]
 
 
 class Vocab:
@@ -201,6 +202,50 @@ class Lemmatizer:
             yield [token.lemma_ for token in doc], spans
 
 
+class TrieNode:
+    def __init__(self):
+        self.children = {}
+        self.is_leaf = False
+
+
+class Trie:
+    def __init__(self, phrases: Iterable[str]):
+        self.root = TrieNode()
+        for phrase in phrases:
+            self.insert(phrase)
+
+    def insert(self, phrase: str):
+        node = self.root
+        for word in phrase.split():
+            if word not in node.children:
+                node.children[word] = TrieNode()
+            node = node.children[word]
+        node.is_leaf = True
+
+    def search_longest_match(self, tokens: list[Token], start: int = 0) -> list[Token]:
+        longest_match = []
+        i, node = start, self.root
+        while i < len(tokens) and tokens[i][0] in node.children:
+            node = node.children[tokens[i][0]]
+            if node.is_leaf:
+                longest_match = tokens[start : i + 1]
+            i += 1
+        return longest_match
+
+    def greedy_match(self, tokens: list[Token]) -> list[Token]:
+        i, matched_tokens = 0, []
+        while i < len(tokens):
+            longest_match = self.search_longest_match(tokens, i)
+            if longest_match:
+                word, lemma, ends = list(zip(*longest_match))
+                matched_tokens.append((' '.join(word), ' '.join(lemma), ends[-1]))
+                i += len(longest_match)
+            else:
+                matched_tokens.append(tokens[i])
+                i += 1
+        return matched_tokens
+
+
 class Manager:
     embed_dim: int
     ff_dim: int
@@ -277,6 +322,7 @@ class Manager:
         if dict_file:
             with open(dict_file) as dict_f:
                 self.dict = json.load(dict_f)
+                self.trie = Trie(self.dict)
 
         self.freq: dict[str, int] = {}
         if freq_file:
@@ -339,7 +385,7 @@ class Manager:
                     spans.append((tgt_start, tgt_end))
                     tgt_start = tgt_end
                 if tgt_end > self.max_length:
-                    return src_spans, tgt_spans
+                    break
                 src_spans.append((src_start, src_end))
                 tgt_spans.append(spans)
                 for definition in definitions:
@@ -365,63 +411,62 @@ class Manager:
         delimiter = '@@' if isinstance(self.sw_model, BPE) else '▁'
         accum = 'sum' if 'accum' not in self.config else self.config['accum']
 
-        i, src_start = 0, 1
-        while i < len(lem_spans):
-            for j in range(len(lem_spans), i, -1):
-                word, lemma = '', ''
-                src_prv = src_start
-                for lemma_next, src_end in lem_spans[i:j]:
-                    if len(word) >= 1 and len(lemma) >= 1:
-                        word, lemma = word + ' ', lemma + ' '
-                    for k in range(src_prv, src_end):
-                        word += (
-                            src_words[k].removesuffix(delimiter)
+        tokens, src_start = [], 1
+        for lemma, src_end in lem_spans:
+            tokens.append(
+                (
+                    ''.join(
+                        (
+                            subword.removesuffix(delimiter)
                             if delimiter == '@@'
-                            else src_words[k].removeprefix(delimiter)
+                            else subword.removeprefix(delimiter)
                         )
-                    lemma += lemma_next
-                    src_prv = src_end
+                        for subword in src_words[src_start:src_end]
+                    ),
+                    lemma,
+                    src_end,
+                )
+            )
+            src_start = src_end
+        matched_tokens = self.trie.greedy_match(tokens)
 
-                headword = None
-                if conf_list is None:
-                    if word not in self.freq or self.freq[word] <= self.threshold:
-                        headword = (
-                            word if word in self.dict else lemma if lemma in self.dict else None
-                        )
-                else:
-                    tokens, scores = list(zip(*conf_list[i:j]))
-                    _word = ' '.join(tokens)
-                    match accum:
-                        case 'sum':
-                            confidence = sum(scores)
-                        case 'avg':
-                            confidence = sum(scores) / len(scores)
-                        case 'max':
-                            confidence = max(scores)
-                    assert _word == word
-                    if confidence >= self.threshold:
-                        headword = (
-                            word if word in self.dict else lemma if lemma in self.dict else None
-                        )
+        i, src_start = 0, 1
+        for word, lemma, src_end in matched_tokens:
+            j = i + len(word.split())
+            headword = None
+            if conf_list is None:
+                if word not in self.freq or self.freq[word] <= self.threshold:
+                    headword = word if word in self.dict else lemma if lemma in self.dict else None
+            else:
+                words, scores = list(zip(*conf_list[i:j]))
+                _word = ' '.join(words)
+                match accum:
+                    case 'sum':
+                        confidence = sum(scores)
+                    case 'avg':
+                        confidence = sum(scores) / len(scores)
+                    case 'max':
+                        confidence = max(scores)
+                assert _word == word
+                if confidence >= self.threshold:
+                    headword = word if word in self.dict else lemma if lemma in self.dict else None
 
-                if headword is not None:
-                    definitions = self.dict[headword][: self.max_append]
-                    tgt_start, spans = len(src_words), []
-                    for definition in definitions:
-                        tgt_end = tgt_start + len(definition.split())
-                        spans.append((tgt_start, tgt_end))
-                        tgt_start = tgt_end
-                    if tgt_end > self.max_length:
-                        return src_spans, tgt_spans
-                    src_spans.append((src_start, src_end))
-                    tgt_spans.append(spans)
-                    for definition in definitions:
-                        src_words.extend(definition.split())
-                    i = j - 1
+            if headword is not None:
+                definitions = self.dict[headword][: self.max_append]
+                tgt_start, spans = len(src_words), []
+                for definition in definitions:
+                    tgt_end = tgt_start + len(definition.split())
+                    spans.append((tgt_start, tgt_end))
+                    tgt_start = tgt_end
+                if tgt_end > self.max_length:
                     break
+                src_spans.append((src_start, src_end))
+                tgt_spans.append(spans)
+                for definition in definitions:
+                    src_words.extend(definition.split())
 
             src_start = src_end
-            i += 1
+            i = j
 
         # for (a, b), spans in zip(src_spans, tgt_spans):
         #     print(' '.join(src_words[a:b]))
