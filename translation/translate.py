@@ -1,12 +1,12 @@
 import json
+import math
 from itertools import chain
 
 import spacy
 import torch
-import tqdm
 from torch import Tensor
 
-from translation.decoder import beam_search, triu_mask
+from translation.decoder import beam_search, greedy_search, triu_mask
 from translation.manager import Batch, Lemmatizer, Manager, Tokenizer
 
 
@@ -34,7 +34,7 @@ def conf_gradient(
                     score = sum(scores) / len(scores)
                 case 'max':
                     score = max(scores)
-            conf_list.append((word, score * 100))
+            conf_list.append((word, score))
             word, scores = '', []
 
     return conf_list
@@ -82,32 +82,34 @@ def conf_attention(
 
 def translate(string: str, manager: Manager, *, conf_method: str | None = None) -> tuple[str, list]:
     model, vocab, device = manager.model, manager.vocab, manager.device
+    beam_size, max_length = manager.beam_size, math.floor(manager.max_length * 1.3)
     tokenizer = Tokenizer(manager.src_lang, manager.tgt_lang, manager.sw_model)
-    src_words = ['<BOS>'] + tokenizer.tokenize(string) + ['<EOS>']
+    src_words, conf_list = ['<BOS>'] + tokenizer.tokenize(string) + ['<EOS>'], []
 
     model.eval()
-    conf_list = []
     if conf_method is not None:
-        src_nums = torch.tensor(vocab.numberize(src_words), device=device)
-        src_encs, src_embs = model.encode(src_nums.unsqueeze(0))
         match conf_method:
             case 'gradient':
-                out_nums, out_prob = beam_search(
-                    manager, src_encs, max_length=manager.max_length * 2, cumulative=True
-                )
+                src_nums = torch.tensor(vocab.numberize(src_words), device=device)
+                src_encs, src_embs = model.encode(src_nums.unsqueeze(0))
+                out_nums, out_prob = greedy_search(manager, src_encs, max_length)
                 conf_list = conf_gradient(manager, src_words, out_prob, src_embs)
+                del src_nums, src_embs, src_encs, out_nums, out_prob
             case 'attention':
-                out_nums, out_probs = beam_search(
-                    manager, src_encs, max_length=manager.max_length * 2, cumulative=False
-                )
-                tgt_mask = triu_mask(len(out_nums) - 1, device=device)
-                model.decode(
-                    src_encs, out_nums[:-1].unsqueeze(0), tgt_mask=tgt_mask, store_attn=True
-                )
-                conf_list = conf_attention(manager, src_words, out_probs)
+                with torch.no_grad():
+                    src_nums = torch.tensor(vocab.numberize(src_words), device=device)
+                    src_encs, src_embs = model.encode(src_nums.unsqueeze(0))
+                    out_nums, out_probs = beam_search(
+                        manager, src_encs, beam_size, max_length, cumulative=False
+                    )
+                    tgt_mask = triu_mask(len(out_nums) - 1, device=device)
+                    model.decode(
+                        src_encs, out_nums[:-1].unsqueeze(0), tgt_mask=tgt_mask, store_attn=True
+                    )
+                    conf_list = conf_attention(manager, src_words, out_probs)
+                del src_nums, src_embs, src_encs, out_nums, out_probs
             case _:
                 raise NotImplementedError(conf_method)
-        del src_nums, src_embs, src_encs
 
     with torch.no_grad():
         if manager.dict and manager.freq and manager.spacy_model:
@@ -134,11 +136,11 @@ def translate(string: str, manager: Manager, *, conf_method: str | None = None) 
                 src_encs, _ = model.encode(
                     src_nums.unsqueeze(0), dict_mask=dict_mask, dict_data=None
                 )
-            out_nums, _ = beam_search(manager, src_encs, max_length=manager.max_length * 2)
+            out_nums, _ = beam_search(manager, src_encs, beam_size, max_length)
         elif conf_method is None:
             src_nums = torch.tensor(vocab.numberize(src_words), device=device)
             src_encs, _ = model.encode(src_nums.unsqueeze(0))
-            out_nums, _ = beam_search(manager, src_encs, max_length=manager.max_length * 2)
+            out_nums, _ = beam_search(manager, src_encs, beam_size, max_length)
 
     return tokenizer.detokenize(vocab.denumberize(out_nums.tolist())), conf_list
 
@@ -191,7 +193,7 @@ def main():
     if args.conf:
         json_list = []
         with open(args.input) as data_f:
-            for string in tqdm.tqdm(data_f.readlines()):
+            for string in data_f.readlines():
                 if args.spacy_model:
                     sents = spacy.load(args.spacy_model)(string).sents
                     outputs, conf_lists = zip(
