@@ -99,8 +99,8 @@ def translate(string: str, manager: Manager, *, conf_method: str | None = None) 
                 with torch.no_grad():
                     src_nums = torch.tensor(vocab.numberize(src_words), device=device)
                     src_encs, src_embs = model.encode(src_nums.unsqueeze(0))
-                    out_nums, out_probs = beam_search(
-                        manager, src_encs, beam_size, max_length, cumulative=False
+                    out_nums, out_probs = greedy_search(
+                        manager, src_encs, max_length, cumulative=False
                     )
                     tgt_mask = triu_mask(len(out_nums) - 1, device=device)
                     model.decode(
