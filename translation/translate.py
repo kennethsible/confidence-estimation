@@ -9,6 +9,8 @@ from torch import Tensor
 from translation.decoder import beam_search, greedy_search, triu_mask
 from translation.manager import Batch, Lemmatizer, Manager, Tokenizer
 
+sent_align: dict[int, list[int]] = {}
+
 
 def conf_gradient(
     manager: Manager, src_words: list[str], out_prob: Tensor, src_embs: Tensor
@@ -80,6 +82,38 @@ def conf_attention(
     return conf_list
 
 
+def conf_mgiza(
+    manager: Manager, src_words: list[str], out_probs: Tensor
+) -> list[tuple[str, float]]:
+    accum = 'sum'
+    if 'accum' in manager.config:
+        accum = manager.config['accum']
+
+    out_probs = out_probs[1:-1].abs()
+    posteriors = [0.0] * len(src_words)
+    for tgt_i in sent_align:
+        for src_i in sent_align[tgt_i]:
+            # if src:tgt is one-to-many or many-to-many, divide probability equally
+            posteriors[src_i] += out_probs[tgt_i].item() / len(sent_align[tgt_i])
+
+    word, scores, conf_list = '', [], []
+    for subword, posterior in zip(src_words, posteriors):
+        word += subword.removesuffix('@@')
+        scores.append(posterior)
+        if not subword.endswith('@@'):
+            match accum:
+                case 'sum':
+                    score = sum(scores)
+                case 'avg':
+                    score = sum(scores) / len(scores)
+                case 'max':
+                    score = max(scores)
+            conf_list.append((word, score))
+            word, scores = '', []
+
+    return conf_list
+
+
 def translate(string: str, manager: Manager, *, conf_method: str | None = None) -> tuple[str, list]:
     model, vocab, device = manager.model, manager.vocab, manager.device
     beam_size, max_length = manager.beam_size, math.floor(manager.max_length * 1.3)
@@ -107,6 +141,15 @@ def translate(string: str, manager: Manager, *, conf_method: str | None = None) 
                         src_encs, out_nums[:-1].unsqueeze(0), tgt_mask=tgt_mask, store_attn=True
                     )
                     conf_list = conf_attention(manager, src_words, out_probs)
+                del src_nums, src_embs, src_encs, out_probs
+            case 'mgiza':
+                with torch.no_grad():
+                    src_nums = torch.tensor(vocab.numberize(src_words), device=device)
+                    src_encs, src_embs = model.encode(src_nums.unsqueeze(0))
+                    out_nums, out_probs = greedy_search(
+                        manager, src_encs, max_length, cumulative=False
+                    )
+                    conf_list = conf_mgiza(manager, src_words, out_probs)
                 del src_nums, src_embs, src_encs, out_probs
             case _:
                 raise NotImplementedError(conf_method)
@@ -152,8 +195,9 @@ def main():
     parser.add_argument('--dict', metavar='FILE_PATH', help='bilingual dictionary')
     parser.add_argument('--freq', metavar='FILE_PATH', help='frequency statistics')
     parser.add_argument(
-        '--conf', nargs=2, metavar=('CONF_TYPE', 'FILE_PATH'), help='confidence scores'
+        '--conf', nargs=2, metavar=('CONF_TYPE', 'FILE_PATH'), help='confidence method'
     )
+    parser.add_argument('--align', metavar='FILE_PATH', help='phrase table format')
     parser.add_argument('--spacy-model', metavar='FILE_PATH', help='spaCy model')
     parser.add_argument('--sw-vocab', metavar='FILE_PATH', required=True, help='subword vocab')
     parser.add_argument('--sw-model', metavar='FILE_PATH', required=True, help='subword model')
@@ -190,10 +234,22 @@ def main():
     if device == 'cuda' and torch.cuda.get_device_capability()[0] >= 8:
         torch.set_float32_matmul_precision('high')
 
+    if args.align:
+        sent_aligns = []
+        with open(args.align) as align_f:
+            for line in align_f.readlines():
+                sent_aligns.append({})  # target -> source
+                for alignment in line.split():
+                    src_i, tgt_i = alignment.split(':')[0].split('-')
+                    sent_aligns[-1].setdefault(int(tgt_i), []).append(int(src_i))
+        global sent_align
+
     if args.conf:
         json_list = []
         with open(args.input) as data_f:
-            for string in data_f.readlines():
+            for i, string in enumerate(data_f.readlines()):
+                if args.align:
+                    sent_align = sent_aligns[i]
                 if args.spacy_model:
                     sents = spacy.load(args.spacy_model)(string).sents
                     outputs, conf_lists = zip(

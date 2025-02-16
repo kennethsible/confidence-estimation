@@ -61,14 +61,15 @@ options:
 
 ## Model Inference
 ```
-usage: translate.py [-h] [--dict FILE_PATH] [--freq FILE_PATH] [--conf CONF_TYPE FILE_PATH] [--spacy-model FILE_PATH] --sw-vocab FILE_PATH --sw-model FILE_PATH --model FILE_PATH [--input FILE_PATH]
+usage: translate.py [-h] [--dict FILE_PATH] [--freq FILE_PATH] [--conf CONF_TYPE FILE_PATH] [--align FILE_PATH] [--spacy-model FILE_PATH] --sw-vocab FILE_PATH --sw-model FILE_PATH --model FILE_PATH [--input FILE_PATH]
 
 options:
   -h, --help            show this help message and exit
   --dict FILE_PATH      bilingual dictionary
   --freq FILE_PATH      frequency statistics
   --conf CONF_TYPE FILE_PATH
-                        confidence scores
+                        confidence method
+  --align FILE_PATH     phrase table format
   --spacy-model FILE_PATH
                         spaCy model
   --sw-vocab FILE_PATH  subword vocab
