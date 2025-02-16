@@ -94,7 +94,7 @@ def translate(string: str, manager: Manager, *, conf_method: str | None = None) 
                 src_encs, src_embs = model.encode(src_nums.unsqueeze(0))
                 out_nums, out_prob = greedy_search(manager, src_encs, max_length)
                 conf_list = conf_gradient(manager, src_words, out_prob, src_embs)
-                del src_nums, src_embs, src_encs, out_nums, out_prob
+                del src_nums, src_embs, src_encs, out_prob
             case 'attention':
                 with torch.no_grad():
                     src_nums = torch.tensor(vocab.numberize(src_words), device=device)
@@ -107,7 +107,7 @@ def translate(string: str, manager: Manager, *, conf_method: str | None = None) 
                         src_encs, out_nums[:-1].unsqueeze(0), tgt_mask=tgt_mask, store_attn=True
                     )
                     conf_list = conf_attention(manager, src_words, out_probs)
-                del src_nums, src_embs, src_encs, out_nums, out_probs
+                del src_nums, src_embs, src_encs, out_probs
             case _:
                 raise NotImplementedError(conf_method)
 
