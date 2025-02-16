@@ -47,7 +47,12 @@ def score_model(
     # ROC AUC ->  heavily imbalanced, every class is equally important
     # PR AUC ->   heavily imbalanced, positive class is more important
     precision = recall = F1 = None
+    # Precision -> out of all the times the model predicted positive, how often was it actually correct?
+    # Recall ->    out of all the actual positives, how many did the model correctly identify?
     if true_positive > 0 or false_positive > 0:
+        # Class Imbalance: If your dataset has very few actual positives, at extreme
+        #   thresholds, almost all predictions may be incorrect, reducing precision.
+        # Solution: Precision-Recall (PR) Curve
         precision = true_positive / (true_positive + false_positive)
     if true_positive > 0 or false_negative > 0:
         recall = true_positive / (true_positive + false_negative)
@@ -59,8 +64,8 @@ def score_model(
 def pr_curve(data_dir: str, output_dir: str):
     conf_precision = []
     conf_recall = []
-    with open(f'{data_dir}/mistranslated.txt') as gpt_f, open(
-        f'{output_dir}/news-test2008.json'
+    with open(f'{data_dir}/annotate_errors.txt') as gpt_f, open(
+        f'{output_dir}/wmt17.en-de.grad'
     ) as conf_f:
         if output_dir.split('_')[-1] in ('2', 'inf'):
             N = max(math.floor(conf * 100) for sent in json.load(conf_f) for _, conf in sent)
@@ -81,8 +86,8 @@ def pr_curve(data_dir: str, output_dir: str):
 
     freq_precision = []
     freq_recall = []
-    with open(f'{data_dir}/mistranslated.txt') as gpt_f, open(
-        f'{output_dir}/news-test2008.freq.json'
+    with open(f'{data_dir}/annotate_errors.txt') as gpt_f, open(
+        f'{output_dir}/wmt17.en-de.freq'
     ) as freq_f:
         N = max(freq for sent in json.load(freq_f) for _, freq in sent)
         freq_f.seek(0)
@@ -112,8 +117,8 @@ def pr_curve(data_dir: str, output_dir: str):
 def roc_curve(data_dir: str, output_dir: str):
     conf_tp = []
     conf_fp = []
-    with open(f'{data_dir}/mistranslated.txt') as gpt_f, open(
-        f'{output_dir}/news-test2008.json'
+    with open(f'{data_dir}/annotate_errors.txt') as gpt_f, open(
+        f'{output_dir}/wmt17.en-de.grad'
     ) as conf_f:
         if output_dir.split('_')[-1] in ('2', 'inf'):
             N = max(math.floor(conf * 100) for sent in json.load(conf_f) for _, conf in sent)
@@ -133,8 +138,8 @@ def roc_curve(data_dir: str, output_dir: str):
 
     freq_tp = []
     freq_fp = []
-    with open(f'{data_dir}/mistranslated.txt') as gpt_f, open(
-        f'{output_dir}/news-test2008.freq.json'
+    with open(f'{data_dir}/annotate_errors.txt') as gpt_f, open(
+        f'{output_dir}/wmt17.en-de.freq'
     ) as freq_f:
         N = max(freq for sent in json.load(freq_f) for _, freq in sent)
         freq_f.seek(0)
@@ -165,8 +170,8 @@ def pr_F1(data_dir: str, output_dir: str):
     conf_recall = []
     conf_F1 = []
     conf_x = []
-    with open(f'{data_dir}/mistranslated.txt') as gpt_f, open(
-        f'{output_dir}/news-test2008.json'
+    with open(f'{data_dir}/annotate_errors.txt') as gpt_f, open(
+        f'{output_dir}/wmt17.en-de.grad'
     ) as conf_f:
         if output_dir.split('_')[-1] in ('2', 'inf'):
             N = max(math.floor(conf * 100) for sent in json.load(conf_f) for _, conf in sent)
@@ -199,8 +204,8 @@ def pr_F1(data_dir: str, output_dir: str):
     freq_recall = []
     freq_F1 = []
     freq_x = []
-    with open(f'{data_dir}/mistranslated.txt') as gpt_f, open(
-        f'{output_dir}/news-test2008.freq.json'
+    with open(f'{data_dir}/annotate_errors.txt') as gpt_f, open(
+        f'{output_dir}/wmt17.en-de.freq'
     ) as freq_f:
         N = max(freq for sent in json.load(freq_f) for _, freq in sent)
         freq_f.seek(0)
