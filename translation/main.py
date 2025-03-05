@@ -34,7 +34,7 @@ def train_epoch(
         else:
             dict_mask, dict_data = batch.dict_mask, None
 
-        with torch.cuda.amp.autocast():
+        with torch.cuda.amp.autocast(enabled=False):
             logits = manager.model(src_nums, tgt_nums, src_mask, tgt_mask, dict_mask, dict_data)
             loss = criterion(torch.flatten(logits[:, :-1], 0, 1), torch.flatten(tgt_nums[:, 1:]))
 
@@ -48,6 +48,14 @@ def train_epoch(
             )
             scaler.step(optimizer)
             scaler.update()
+        elif optimizer:
+            optimizer.zero_grad()
+            loss.backward()
+            torch.nn.utils.clip_grad_norm_(
+                manager.model.parameters(),
+                manager.clip_grad,
+            )
+            optimizer.step()
 
         total_loss += batch_length * loss.item()
         num_tokens += batch_length
@@ -65,7 +73,7 @@ def train_model(train_data: list[Batch], val_data: list[Batch], manager: Manager
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
         optimizer, factor=manager.decay_factor, patience=manager.patience
     )
-    scaler = torch.cuda.amp.GradScaler()
+    # scaler = torch.cuda.amp.GradScaler()
 
     epoch = patience = 0
     best_loss = torch.inf
@@ -74,7 +82,7 @@ def train_model(train_data: list[Batch], val_data: list[Batch], manager: Manager
 
         model.train()
         start = time.perf_counter()
-        train_loss = train_epoch(train_data, manager, criterion, optimizer, scaler)
+        train_loss = train_epoch(train_data, manager, criterion, optimizer)
         elapsed = timedelta(seconds=(time.perf_counter() - start))
 
         model.eval()
