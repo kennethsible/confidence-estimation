@@ -96,9 +96,10 @@ def apply_initial_filter(file_path: str, src_lang: str, tgt_lang: str):
                 src_line = re.sub(r'\s+', ' ', src_line)
                 tgt_line = re.sub(r'\s+', ' ', tgt_line)
                 lines.append(f'{src_line}\t{tgt_line}')
-    with open(f'{file_path}.{src_lang}', 'w') as src_f, open(
-        f'{file_path}.{tgt_lang}', 'w'
-    ) as tgt_f:
+    with (
+        open(f'{file_path}.{src_lang}', 'w') as src_f,
+        open(f'{file_path}.{tgt_lang}', 'w') as tgt_f,
+    ):
         for unique_lines in list(dict.fromkeys(lines)):
             src_line, tgt_line = unique_lines.split('\t')
             src_f.write(src_line + '\n')

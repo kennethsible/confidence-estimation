@@ -11,9 +11,11 @@ def main():
     os.system(f'mkdir -p {args.data_dir}/train {args.data_dir}/val {args.data_dir}/test')
     os.system(f'wget -q -P {args.data_dir}/train {europarl_url} --show-progress')
     os.system(f'gzip -d {args.data_dir}/train/europarl-v10.de-en.tsv.gz')
-    with open(f'{args.data_dir}/train/europarl-v10.de-en.tsv') as tsv_f, open(
-        f'{args.data_dir}/train/train.de', 'w'
-    ) as src_f, open(f'{args.data_dir}/train/train.en', 'w') as tgt_f:
+    with (
+        open(f'{args.data_dir}/train/europarl-v10.de-en.tsv') as tsv_f,
+        open(f'{args.data_dir}/train/train.de', 'w') as src_f,
+        open(f'{args.data_dir}/train/train.en', 'w') as tgt_f,
+    ):
         for line in tsv_f.readlines()[:250_000]:
             src_line, tgt_line, *_ = line.split('\t')
             src_f.write(src_line.rstrip() + '\n')
@@ -26,6 +28,9 @@ def main():
 
     os.system('sacrebleu --language-pair en-de --download wmt24')
     os.system(f'cp ~/.sacrebleu/wmt24/wmt24.en-de.src {args.data_dir}/test/test.en')
+
+    os.system('poetry run python -m spacy download de_core_news_sm')
+    os.system('poetry run python -m spacy download en_core_web_sm')
 
 
 if __name__ == '__main__':
