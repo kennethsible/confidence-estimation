@@ -64,9 +64,10 @@ def score_model(
 def pr_curve(data_dir: str, output_dir: str):
     conf_precision = []
     conf_recall = []
-    with open(f'{data_dir}/annotate_errors.txt') as gpt_f, open(
-        f'{output_dir}/wmt17.en-de.grad'
-    ) as conf_f:
+    with (
+        open(f'{data_dir}/annotate_errors.txt') as gpt_f,
+        open(f'{output_dir}/wmt17.en-de.grad') as conf_f,
+    ):
         if output_dir.split('_')[-1] in ('2', 'inf'):
             N = max(math.floor(conf * 100) for sent in json.load(conf_f) for _, conf in sent)
             rescale = True
@@ -86,9 +87,10 @@ def pr_curve(data_dir: str, output_dir: str):
 
     freq_precision = []
     freq_recall = []
-    with open(f'{data_dir}/annotate_errors.txt') as gpt_f, open(
-        f'{output_dir}/wmt17.en-de.freq'
-    ) as freq_f:
+    with (
+        open(f'{data_dir}/annotate_errors.txt') as gpt_f,
+        open(f'{output_dir}/wmt17.en-de.freq') as freq_f,
+    ):
         N = max(freq for sent in json.load(freq_f) for _, freq in sent)
         freq_f.seek(0)
         for threshold in tqdm(list(chain(range(9000), linspace(9000, N + 1, 1000)))):
@@ -117,9 +119,10 @@ def pr_curve(data_dir: str, output_dir: str):
 def roc_curve(data_dir: str, output_dir: str):
     conf_tp = []
     conf_fp = []
-    with open(f'{data_dir}/annotate_errors.txt') as gpt_f, open(
-        f'{output_dir}/wmt17.en-de.grad'
-    ) as conf_f:
+    with (
+        open(f'{data_dir}/annotate_errors.txt') as gpt_f,
+        open(f'{output_dir}/wmt17.en-de.grad') as conf_f,
+    ):
         if output_dir.split('_')[-1] in ('2', 'inf'):
             N = max(math.floor(conf * 100) for sent in json.load(conf_f) for _, conf in sent)
             rescale = True
@@ -138,9 +141,10 @@ def roc_curve(data_dir: str, output_dir: str):
 
     freq_tp = []
     freq_fp = []
-    with open(f'{data_dir}/annotate_errors.txt') as gpt_f, open(
-        f'{output_dir}/wmt17.en-de.freq'
-    ) as freq_f:
+    with (
+        open(f'{data_dir}/annotate_errors.txt') as gpt_f,
+        open(f'{output_dir}/wmt17.en-de.freq') as freq_f,
+    ):
         N = max(freq for sent in json.load(freq_f) for _, freq in sent)
         freq_f.seek(0)
         for threshold in tqdm(list(chain(range(9000), linspace(9000, N + 1, 1000)))):
@@ -170,9 +174,10 @@ def pr_F1(data_dir: str, output_dir: str):
     conf_recall = []
     conf_F1 = []
     conf_x = []
-    with open(f'{data_dir}/annotate_errors.txt') as gpt_f, open(
-        f'{output_dir}/wmt17.en-de.grad'
-    ) as conf_f:
+    with (
+        open(f'{data_dir}/annotate_errors.txt') as gpt_f,
+        open(f'{output_dir}/wmt17.en-de.grad') as conf_f,
+    ):
         if output_dir.split('_')[-1] in ('2', 'inf'):
             N = max(math.floor(conf * 100) for sent in json.load(conf_f) for _, conf in sent)
             rescale = True
@@ -204,9 +209,10 @@ def pr_F1(data_dir: str, output_dir: str):
     freq_recall = []
     freq_F1 = []
     freq_x = []
-    with open(f'{data_dir}/annotate_errors.txt') as gpt_f, open(
-        f'{output_dir}/wmt17.en-de.freq'
-    ) as freq_f:
+    with (
+        open(f'{data_dir}/annotate_errors.txt') as gpt_f,
+        open(f'{output_dir}/wmt17.en-de.freq') as freq_f,
+    ):
         N = max(freq for sent in json.load(freq_f) for _, freq in sent)
         freq_f.seek(0)
         for threshold in tqdm(linspace(0, N + 1, 10000)):

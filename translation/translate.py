@@ -1,8 +1,6 @@
 import json
 import math
-from itertools import chain
 
-import spacy
 import torch
 from torch import Tensor
 
@@ -83,33 +81,25 @@ def conf_attention(
 
 
 def conf_mgiza(
-    manager: Manager, src_words: list[str], out_probs: Tensor
+    manager: Manager, src_words: list[str], out_probs: Tensor, out_words: list[str]
 ) -> list[tuple[str, float]]:
-    accum = 'sum'
-    if 'accum' in manager.config:
-        accum = manager.config['accum']
+
+    words, src_spans = next(Lemmatizer.subword_mapping([src_words], manager.sw_model))
+    _, out_spans = next(Lemmatizer.subword_mapping([out_words], manager.sw_model))
 
     out_probs = out_probs[1:-1].abs()
-    posteriors = [0.0] * len(src_words)
+    posteriors = [0.0] * len(src_spans)
     for tgt_i in sent_align:
+        i = 0 if tgt_i - 1 < 0 else tgt_i - 1
+        j = out_spans[tgt_i]
         for src_i in sent_align[tgt_i]:
             # if src:tgt is one-to-many or many-to-many, divide probability equally
-            posteriors[src_i] += out_probs[tgt_i].item() / len(sent_align[tgt_i])
+            posteriors[src_i + 1] += out_probs[i:j].sum().item() / len(sent_align[tgt_i])
+    posteriors[0], posteriors[-1] = out_probs[0].abs().item(), out_probs[-1].abs().item()
 
-    word, scores, conf_list = '', [], []
-    for subword, posterior in zip(src_words, posteriors):
-        word += subword.removesuffix('@@')
-        scores.append(posterior)
-        if not subword.endswith('@@'):
-            match accum:
-                case 'sum':
-                    score = sum(scores)
-                case 'avg':
-                    score = sum(scores) / len(scores)
-                case 'max':
-                    score = max(scores)
-            conf_list.append((word, score))
-            word, scores = '', []
+    conf_list = []
+    for word, score in zip(words.split(), posteriors):
+        conf_list.append((word, score))
 
     return conf_list
 
@@ -133,7 +123,7 @@ def translate(string: str, manager: Manager, *, conf_method: str | None = None) 
                 with torch.no_grad():
                     src_nums = torch.tensor(vocab.numberize(src_words), device=device)
                     src_encs, src_embs = model.encode(src_nums.unsqueeze(0))
-                    out_nums, out_probs = greedy_search(
+                    out_nums, out_probs = greedy_search(  # TODO beam_search
                         manager, src_encs, max_length, cumulative=False
                     )
                     tgt_mask = triu_mask(len(out_nums) - 1, device=device)
@@ -146,10 +136,13 @@ def translate(string: str, manager: Manager, *, conf_method: str | None = None) 
                 with torch.no_grad():
                     src_nums = torch.tensor(vocab.numberize(src_words), device=device)
                     src_encs, src_embs = model.encode(src_nums.unsqueeze(0))
-                    out_nums, out_probs = greedy_search(
+                    out_nums, out_probs = greedy_search(  # TODO beam_search
                         manager, src_encs, max_length, cumulative=False
                     )
-                    conf_list = conf_mgiza(manager, src_words, out_probs)
+                    out_words = tokenizer.tokenize(
+                        tokenizer.detokenize(vocab.denumberize(out_nums.tolist()))
+                    )
+                    conf_list = conf_mgiza(manager, src_words, out_probs, out_words)
                 del src_nums, src_embs, src_encs, out_probs
             case _:
                 raise NotImplementedError(conf_method)
@@ -180,7 +173,7 @@ def translate(string: str, manager: Manager, *, conf_method: str | None = None) 
                     src_nums.unsqueeze(0), dict_mask=dict_mask, dict_data=None
                 )
             out_nums, _ = beam_search(manager, src_encs, beam_size, max_length)
-        elif conf_method is None:
+        elif conf_method is None or conf_method == 'gradient':
             src_nums = torch.tensor(vocab.numberize(src_words), device=device)
             src_encs, _ = model.encode(src_nums.unsqueeze(0))
             out_nums, _ = beam_search(manager, src_encs, beam_size, max_length)
@@ -206,7 +199,9 @@ def main():
     args, unknown = parser.parse_known_args()
 
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    model_state = torch.load(args.model, map_location=device)
+    model_state = torch.load(args.model, weights_only=False, map_location=device)
+    if args.dict or args.freq or args.spacy_model:
+        assert args.dict and args.freq and args.spacy_model
 
     config = model_state['config']
     for i, arg in enumerate(unknown):
@@ -250,14 +245,7 @@ def main():
             for i, string in enumerate(data_f.readlines()):
                 if args.align:
                     sent_align = sent_aligns[i]
-                if args.spacy_model:
-                    sents = spacy.load(args.spacy_model)(string).sents
-                    outputs, conf_lists = zip(
-                        *(translate(sent, manager, conf_method=args.conf[0]) for sent in sents)
-                    )
-                    output, conf_list = ' '.join(outputs), list(chain.from_iterable(conf_lists))
-                else:
-                    output, conf_list = translate(string, manager, conf_method=args.conf[0])
+                output, conf_list = translate(string, manager, conf_method=args.conf[0])
                 json_list.append(conf_list)
                 print(output)
         with open(args.conf[1], 'w') as json_f:
@@ -265,11 +253,7 @@ def main():
     else:
         with open(args.input) as data_f:
             for string in data_f.readlines():
-                if args.spacy_model:
-                    sents = spacy.load(args.spacy_model)(string).sents
-                    output = ' '.join(translate(sent, manager)[0] for sent in sents)
-                else:
-                    output, _ = translate(string, manager)
+                output, _ = translate(string, manager)
                 print(output)
 
 
