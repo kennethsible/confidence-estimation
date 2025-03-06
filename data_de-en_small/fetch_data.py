@@ -26,8 +26,8 @@ def main():
     os.system(f'cp ~/.sacrebleu/wmt19/wmt19.en-de.src {args.data_dir}/val/val.en')
     os.system(f'cp ~/.sacrebleu/wmt19/wmt19.en-de.ref {args.data_dir}/val/val.de')
 
-    os.system('sacrebleu --language-pair en-de --download wmt24')
-    os.system(f'cp ~/.sacrebleu/wmt24/wmt24.en-de.src {args.data_dir}/test/test.en')
+    os.system('sacrebleu --language-pair en-de --download wmt22')
+    os.system(f'cp ~/.sacrebleu/wmt22/wmt22.en-de.src {args.data_dir}/test/test.en')
 
     os.system('poetry run python -m spacy download de_core_news_sm')
     os.system('poetry run python -m spacy download en_core_web_sm')

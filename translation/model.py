@@ -158,7 +158,7 @@ class Model(nn.Module):
         tgt_mask: Tensor | None = None,
         dict_mask: Tensor | None = None,
         dict_data=None,
-    ) -> Tensor:
-        src_encs, _ = self.encode(src_nums, src_mask, dict_mask, dict_data)
+    ) -> tuple[Tensor, Tensor]:
+        src_encs, src_embs = self.encode(src_nums, src_mask, dict_mask, dict_data)
         tgt_encs = self.decode(src_encs, tgt_nums, src_mask, tgt_mask)
-        return self.out_embed(tgt_encs, inverse=True)
+        return self.out_embed(tgt_encs, inverse=True), src_embs

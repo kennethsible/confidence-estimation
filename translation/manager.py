@@ -278,7 +278,6 @@ class Manager:
         sw_model_file: str,
         dict_file: str | None = None,
         freq_file: str | None = None,
-        spacy_model: str | None = None,
     ):
         self.config = config
         self.device = device
@@ -301,7 +300,6 @@ class Manager:
                 self.sw_model = BPE(sw_model_f)
         else:
             self.sw_model = spm.SentencePieceProcessor(sw_model_file)
-        self.spacy_model = spacy_model
 
         self.model = Model(
             self.vocab.size(),
@@ -440,6 +438,8 @@ class Manager:
             else:
                 words, scores = list(zip(*conf_list[i:j]))
                 _word = ' '.join(words)
+                if _word.strip() == '':  # during training
+                    _word = word
                 match accum:
                     case 'sum':
                         confidence = sum(scores)
@@ -475,10 +475,13 @@ class Manager:
 
         return src_spans, tgt_spans
 
-    def batch_data(self, data: list) -> list[Batch]:
+    def batch_data(self, data: list) -> tuple[list[Batch], list[int]]:
         batched_data = []
 
-        data.sort(key=lambda x: (len(x[0]), len(x[1])), reverse=True)
+        sorted_indices = list(range(len(data)))
+        combined_data = list(zip(data, sorted_indices))
+        combined_data.sort(key=lambda x: (len(x[0][0]), len(x[0][1])), reverse=True)
+        data, sorted_indices = list(zip(*combined_data))  # type: ignore[assignment]
 
         i = batch_size = 0
         while (i := i + batch_size) < len(data):
@@ -520,9 +523,14 @@ class Manager:
 
             batched_data.append(Batch(src_nums, tgt_nums, self.vocab.PAD, self.device, dict_data))
 
-        return batched_data
+        return batched_data, sorted_indices  # type: ignore[return-value]
 
-    def load_data(self, data_file: str, lem_file: str | None = None) -> list[Batch]:
+    def load_data(
+        self,
+        data_file: str,
+        lem_file: str | None = None,
+        conf_lists: list[list[float]] | None = None,
+    ) -> tuple[list[Batch], list[int]]:
         data, lem_data = [], []
         if lem_file:
             with open(lem_file) as lem_f:
@@ -534,16 +542,21 @@ class Manager:
 
         # count = total = 0
         with open(data_file) as data_f:
-            for line, lem_spans in zip(data_f.readlines(), lem_data):
+            for i, line in enumerate(data_f.readlines()):
                 src_line, tgt_line = line.split('\t')
                 src_words = ['<BOS>'] + src_line.split() + ['<EOS>']
                 tgt_words = ['<BOS>'] + tgt_line.split() + ['<EOS>']
                 src_spans, tgt_spans = [], []
-                if lem_spans and self.dict and self.freq:
+                if lem_data and self.dict:
+                    lem_spans, conf_list = lem_data[i], None
+                    if conf_lists is not None:
+                        assert len(conf_lists[i][1:]) >= len(lem_spans)
+                        conf_list = list(zip([''] * len(lem_spans), conf_lists[i][1:]))
+                        # assert len(src_words) - 2 == len(self.vocab.denumberize(conf_lists[i].tolist()))
                     if 'span_mode' in self.config and self.config['span_mode'] == 2:
-                        src_spans, tgt_spans = self.append_defs_2(src_words, lem_spans)
+                        src_spans, tgt_spans = self.append_defs_2(src_words, lem_spans, conf_list)
                     else:
-                        src_spans, tgt_spans = self.append_defs_1(src_words, lem_spans)
+                        src_spans, tgt_spans = self.append_defs_1(src_words, lem_spans, conf_list)
                     # if any(src_spans):
                     #     count += 1
                 data.append((src_words, tgt_words, src_spans, tgt_spans))

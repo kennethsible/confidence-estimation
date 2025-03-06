@@ -43,13 +43,15 @@ def extract_scores(data_dirs: list[str], test_sets: list[str], alpha: float | No
     results = {}  # type: ignore[var-annotated]
     statistics = {}  # type: ignore[var-annotated]
     for data_dir in data_dirs:
+        size = 'large' if 'large' in data_dir else 'small'  # TODO
         results.setdefault(data_dir, {})
         statistics.setdefault(data_dir, {})
         for test_set in test_sets:
             statistics[data_dir].setdefault(test_set, {})
             for metric in ('BLEU', 'COMET'):
                 scores = []
-                for log_file in glob.glob(os.path.join(data_dir, '*.log')):
+                log_files = glob.glob(os.path.join(data_dir, '*.log'))
+                for log_file in sorted(log_files, key=os.path.basename):
                     with open(log_file) as log_f:
                         log_data = log_f.read()
                     log_name = os.path.basename(log_file)
@@ -58,12 +60,12 @@ def extract_scores(data_dirs: list[str], test_sets: list[str], alpha: float | No
                     match metric:
                         case 'BLEU':
                             pattern = re.compile(
-                                rf'data_de-en_small/{test_set}/{test_set} \(BLEU\).*?BLEU.*?= ([0-9]+\.[0-9]+)',
+                                rf'data_de-en_{size}/{test_set}/{test_set} \(BLEU\).*?BLEU.*?= ([0-9]+\.[0-9]+)',
                                 re.DOTALL,
                             )
                         case 'COMET':
                             pattern = re.compile(
-                                rf'data_de-en_small/{test_set}/{test_set} \(COMET\).*?score:\s*([0-9]+\.[0-9]+)',
+                                rf'data_de-en_{size}/{test_set}/{test_set} \(COMET\).*?score:\s*([0-9]+\.[0-9]+)',
                                 re.DOTALL,
                             )
 
@@ -85,9 +87,9 @@ def extract_scores(data_dirs: list[str], test_sets: list[str], alpha: float | No
                     sample2 = [
                         sample[test_set][metric] for sample in results[data_dirs[1]].values()
                     ]
-                    p_value, significance = is_significant(sample1, sample2, alpha)
+                    p_value, significant = is_significant(sample1, sample2, alpha)
                     statistics[data_dir][test_set][metric]['p_value'] = p_value
-                    statistics[data_dir][test_set][metric]['significance'] = significance
+                    statistics[data_dir][test_set][metric]['significant'] = significant
         return json.dumps(statistics, indent=4)
 
     return json.dumps(results, indent=4)

@@ -104,7 +104,9 @@ def conf_mgiza(
     return conf_list
 
 
-def translate(string: str, manager: Manager, *, conf_method: str | None = None) -> tuple[str, list]:
+def translate(
+    string: str, manager: Manager, *, spacy_model: str | None = None, conf_method: str | None = None
+) -> tuple[str, list]:
     model, vocab, device = manager.model, manager.vocab, manager.device
     beam_size, max_length = manager.beam_size, math.floor(manager.max_length * 1.3)
     tokenizer = Tokenizer(manager.src_lang, manager.tgt_lang, manager.sw_model)
@@ -148,8 +150,8 @@ def translate(string: str, manager: Manager, *, conf_method: str | None = None) 
                 raise NotImplementedError(conf_method)
 
     with torch.no_grad():
-        if manager.dict and manager.freq and manager.spacy_model:
-            lemmatizer = Lemmatizer(manager.spacy_model, manager.sw_model)
+        if manager.dict and manager.freq and spacy_model:
+            lemmatizer = Lemmatizer(spacy_model, manager.sw_model)
             lem_data = next(lemmatizer.lemmatize([src_words[1:-1]]))
             _conf_list = None if conf_method is None else conf_list[1:-1]
             if 'span_mode' in manager.config and manager.config['span_mode'] == 2:
@@ -222,7 +224,6 @@ def main():
         args.sw_model,
         args.dict,
         args.freq,
-        args.spacy_model,
     )
     manager.model.load_state_dict(model_state['state_dict'])
 
@@ -245,7 +246,9 @@ def main():
             for i, string in enumerate(data_f.readlines()):
                 if args.align:
                     sent_align = sent_aligns[i]
-                output, conf_list = translate(string, manager, conf_method=args.conf[0])
+                output, conf_list = translate(
+                    string, manager, spacy_model=args.spacy_model, conf_method=args.conf[0]
+                )
                 json_list.append(conf_list)
                 print(output)
         with open(args.conf[1], 'w') as json_f:
@@ -253,7 +256,7 @@ def main():
     else:
         with open(args.input) as data_f:
             for string in data_f.readlines():
-                output, _ = translate(string, manager)
+                output, _ = translate(string, manager, spacy_model=args.spacy_model)
                 print(output)
 
 

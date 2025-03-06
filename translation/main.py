@@ -2,6 +2,7 @@ import logging
 import math
 import random
 import time
+from dataclasses import dataclass
 from datetime import timedelta
 
 import tomllib
@@ -16,15 +17,24 @@ Scaler = torch.cuda.amp.GradScaler
 Logger = logging.Logger
 
 
+@dataclass
+class DataArgs:
+    train_data: str
+    val_data: str
+    lem_train: str
+    lem_val: str
+
+
 def train_epoch(
-    data: list[Batch],
+    batches: list[Batch],
     manager: Manager,
     criterion: Criterion,
     optimizer: Optimizer | None = None,
     scaler: Scaler | None = None,
-) -> float:
+) -> tuple[float, list[list[list[float]]]]:
+    conf_batches = []
     total_loss, num_tokens = 0.0, 0
-    for batch in tqdm(data):
+    for batch in tqdm(batches):
         src_nums, src_mask = batch.src_nums, batch.src_mask
         tgt_nums, tgt_mask = batch.tgt_nums, batch.tgt_mask
         batch_length = batch.length()
@@ -35,8 +45,16 @@ def train_epoch(
             dict_mask, dict_data = batch.dict_mask, None
 
         with torch.cuda.amp.autocast(enabled=False):
-            logits = manager.model(src_nums, tgt_nums, src_mask, tgt_mask, dict_mask, dict_data)
+            logits, src_embs = manager.model(
+                src_nums, tgt_nums, src_mask, tgt_mask, dict_mask, dict_data
+            )
             loss = criterion(torch.flatten(logits[:, :-1], 0, 1), torch.flatten(tgt_nums[:, 1:]))
+            if manager.dict and not manager.freq:
+                probs = logits.softmax(dim=-1).max(dim=-1).values.sum(dim=-1)
+                grads = torch.autograd.grad(probs.unbind(), src_embs, retain_graph=True)
+                confs = torch.cat(grads).norm(p=1, dim=-1)
+                conf_batches.append(confs.tolist())
+                del probs, grads, confs
 
         if optimizer and scaler:
             optimizer.zero_grad()
@@ -61,10 +79,10 @@ def train_epoch(
         num_tokens += batch_length
         del logits, loss
 
-    return total_loss / num_tokens
+    return total_loss / num_tokens, conf_batches
 
 
-def train_model(train_data: list[Batch], val_data: list[Batch], manager: Manager, logger: Logger):
+def train_model(data_args: DataArgs, manager: Manager, logger: Logger):
     model, vocab = manager.model, manager.vocab
     criterion = torch.nn.CrossEntropyLoss(
         ignore_index=vocab.PAD, label_smoothing=manager.label_smoothing
@@ -75,19 +93,56 @@ def train_model(train_data: list[Batch], val_data: list[Batch], manager: Manager
     )
     # scaler = torch.cuda.amp.GradScaler()
 
+    if manager.dict and not manager.freq:
+        train_data, train_indices = manager.load_data(data_args.train_data)
+        val_data, val_indices = manager.load_data(data_args.val_data)
+    else:
+        train_data, _ = manager.load_data(data_args.train_data, data_args.lem_train)
+        val_data, _ = manager.load_data(data_args.val_data, data_args.lem_val)
+
+    train_conf: list[list[list[float]]] = []
+    val_conf: list[list[list[float]]] = []
+    conf_lists: list[list[float]] = []
+    shuffled_indices: list[int] = []
+
     epoch = patience = 0
     best_loss = torch.inf
     while epoch < manager.max_epochs:
-        random.shuffle(train_data)
+        if manager.dict and not manager.freq:
+            if epoch > 0:
+                train_data = [x for _, x in sorted(zip(shuffled_indices, train_data))]
+            if epoch > 1:
+                train_conf = [x for _, x in sorted(zip(shuffled_indices, train_conf))]
+                conf_lists = [sublist for outer in train_conf for sublist in outer]
+                conf_lists = [x for _, x in sorted(zip(train_indices, conf_lists))]
+                train_data, train_indices = manager.load_data(
+                    data_args.train_data, data_args.lem_train, conf_lists
+                )
+
+                conf_lists = [sublist for outer in val_conf for sublist in outer]
+                conf_lists = [x for _, x in sorted(zip(val_indices, conf_lists))]
+                val_data, val_indices = manager.load_data(
+                    data_args.val_data, data_args.lem_val, conf_lists
+                )
+
+            shuffled_indices = list(range(len(train_data)))
+            combined_data = list(zip(train_data, shuffled_indices))
+            random.shuffle(combined_data)
+            train_data, shuffled_indices = list(zip(*combined_data))  # type: ignore[assignment]
+        else:
+            random.shuffle(train_data)
 
         model.train()
         start = time.perf_counter()
-        train_loss = train_epoch(train_data, manager, criterion, optimizer)
+        train_loss, train_conf = train_epoch(train_data, manager, criterion, optimizer)
         elapsed = timedelta(seconds=(time.perf_counter() - start))
 
         model.eval()
-        with torch.no_grad():
-            val_loss = train_epoch(val_data, manager, criterion)
+        if manager.dict and not manager.freq:
+            val_loss, val_conf = train_epoch(val_data, manager, criterion)
+        else:
+            with torch.no_grad():
+                val_loss, _ = train_epoch(val_data, manager, criterion)
         scheduler.step(val_loss)
 
         checkpoint = f'[{str(epoch + 1).rjust(len(str(manager.max_epochs)), "0")}]'
@@ -165,8 +220,7 @@ def main():
         args.dict,
         args.freq,
     )
-    train_data = manager.load_data(args.train_data, args.lem_train)
-    val_data = manager.load_data(args.val_data, args.lem_val)
+    data_args = DataArgs(args.train_data, args.val_data, args.lem_train, args.lem_val)
 
     if device == 'cuda' and torch.cuda.get_device_capability()[0] >= 8:
         torch.set_float32_matmul_precision('high')
@@ -175,7 +229,7 @@ def main():
     logger.addHandler(logging.FileHandler(args.log))
     logger.setLevel(logging.INFO)
 
-    train_model(train_data, val_data, manager, logger)
+    train_model(data_args, manager, logger)
 
 
 if __name__ == '__main__':

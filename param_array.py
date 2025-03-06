@@ -39,6 +39,9 @@ def generate_main(job_name: str, args: Namespace, params: list[tuple] | None = N
         string += f'  --dict {args.dict} \\\n'
     if args.freq:
         string += f'  --freq {args.freq} \\\n'
+    if args.conf:
+        string += f'  --threshold {args.conf[1]} \\\n'
+        string += '  --span-mode 2 \\\n'
     string += f'  --sw-vocab {args.sw_vocab} \\\n'
     string += f'  --sw-model {args.sw_model} \\\n'
     string += f'  --model {args.model}/{job_name}.pt \\\n'
@@ -63,8 +66,8 @@ def generate_translate(job_name: str, test_data: str, args: Namespace) -> str:
         string += f'  --freq {args.freq} \\\n'
     if args.conf:
         string += f'  --conf {args.conf[0]} {args.model}/{job_name}.conf \\\n'
-        string += f'  --span-mode {args.conf[1]} \\\n'
-        string += f'  --threshold {args.conf[2]} \\\n'
+        string += f'  --threshold {args.conf[1]} \\\n'
+        string += '  --span-mode 2 \\\n'
     if args.spacy_model:
         string += f'  --spacy-model {args.spacy_model} \\\n'
     string += f'  --sw-vocab {args.sw_vocab} \\\n'
@@ -151,7 +154,7 @@ def main():
     parser.add_argument('--lem-val', metavar='FILE_PATH', help='lemmatized validation data')
     parser.add_argument('--dict', metavar='FILE_PATH', help='bilingual dictionary')
     parser.add_argument('--freq', metavar='FILE_PATH', help='frequency statistics')
-    parser.add_argument('--conf', nargs=3, metavar=('CONF_TYPE', 'SPAN_MODE', 'THRESHOLD'))
+    parser.add_argument('--conf', nargs=2, metavar=('CONF_TYPE', 'THRESHOLD'), help='confidence')
     parser.add_argument('--spacy-model', metavar='FILE_PATH', help='spaCy model')
     parser.add_argument('--sw-vocab', metavar='FILE_PATH', required=True, help='subword vocab')
     parser.add_argument('--sw-model', metavar='FILE_PATH', required=True, help='subword model')
