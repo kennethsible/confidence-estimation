@@ -12,46 +12,30 @@ def triu_mask(size: int, device: str | None = None) -> Tensor:
     return torch.triu(mask, diagonal=1) == 0
 
 
-def greedy_search(
-    manager: 'Manager',
-    src_encs: Tensor,
-    max_length: int = 512,
-    cumulative: bool = True,
-) -> tuple[Tensor, Tensor]:
+def greedy_search(manager: 'Manager', src_encs: Tensor, max_length: int = 512) -> Tensor:
     model, vocab, device = manager.model, manager.vocab, manager.device
     tgt_mask = triu_mask(max_length, device=device)
     path = torch.full((1, max_length), vocab.BOS, device=device)
-    prob = torch.zeros((1, max_length), device=device)
 
     for i in range(1, max_length):
         tgt_encs = model.decode(src_encs, path[:, :i], tgt_mask=tgt_mask[:, :i, :i])
         logits = model.out_embed(tgt_encs[:, -1], inverse=True)[:, : vocab.size()]
-        scores = logits.log_softmax(dim=-1).max(dim=-1)
-        prob[0, i], path[0, i] = scores
+        path[0, i] = logits.log_softmax(dim=-1).argmax(dim=-1)
         if path[0, i] == vocab.EOS:
-            if cumulative:
-                return path[0, : i + 1], prob[0, : i + 1].sum(dim=-1)
-            return path[0, : i + 1], prob[0, : i + 1]
+            return path[0, : i + 1]
 
-    if cumulative:
-        return path[0], prob.sum(dim=-1)
-    return path[0], prob
+    return path[0]
 
 
 def beam_search(
-    manager: 'Manager',
-    src_encs: Tensor,
-    beam_size: int = 4,
-    max_length: int = 512,
-    cumulative: bool = True,
-) -> tuple[Tensor, Tensor]:
+    manager: 'Manager', src_encs: Tensor, beam_size: int = 5, max_length: int = 512
+) -> Tensor:
     model, vocab, device = manager.model, manager.vocab, manager.device
     tgt_mask = triu_mask(max_length, device=device)
+    indices = torch.ones(beam_size, dtype=torch.int, device=device) * max_length
     active = torch.ones(beam_size, dtype=torch.bool, device=device)
     paths = torch.full((beam_size, max_length), vocab.BOS, device=device)
     probs = torch.zeros(beam_size, device=device)
-    if not cumulative:
-        probs_ = torch.zeros((beam_size, max_length), device=device)
 
     i, init_size = 0, beam_size
     while (i := i + 1) < max_length and beam_size > 0:
@@ -59,16 +43,13 @@ def beam_search(
             src_encs.expand(beam_size, -1, -1), paths[active, :i], tgt_mask=tgt_mask[:, :i, :i]
         )
         logits = model.out_embed(tgt_encs[:, -1], inverse=True)[:, : vocab.size()]
-        lprobs = logits.log_softmax(dim=-1)
-        scores = probs[active].unsqueeze(1) + lprobs
+        scores = probs[active].unsqueeze(1) + logits.log_softmax(dim=-1)
         if i == 1:
             scores = scores[0]
 
         topv, topi = torch.topk(scores.flatten(), beam_size)
         if beam_size < init_size:
-            active_clone = active.clone()
-            active_clone[~active] |= probs[~active] < topv.max() / i
-            active = active_clone
+            active[~active] |= probs[~active] < topv.max() / i
             active_count = int(active.count_nonzero())
             if active_count > beam_size:
                 beam_size = active_count
@@ -78,16 +59,13 @@ def beam_search(
         paths[active] = paths[active][reorder]
         paths[active, i] = topi % vocab.size()
         probs[active] = topv
-        if not cumulative:
-            probs_[active] = probs_[active][reorder]
-            probs_[active, i] = lprobs.flatten()[topi]
 
         terminated = paths[:, i] == vocab.EOS
-        probs[terminated] = probs[terminated] / i
+        indices[terminated] = i
+        probs[terminated] /= i
         active = active & ~terminated
         beam_size = int(active.count_nonzero())
 
-    argmax = probs.argmax()
-    if cumulative:
-        return paths[argmax, :i], probs[argmax]
-    return paths[argmax, :i], probs_[argmax, :i]
+    best_path = probs.argmax()
+    trunc_path = int(indices[best_path])
+    return paths[best_path, :trunc_path]

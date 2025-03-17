@@ -44,14 +44,15 @@ def train_epoch(
         else:
             dict_mask, dict_data = batch.dict_mask, None
 
-        with torch.cuda.amp.autocast(enabled=False):
+        with torch.amp.autocast(batch.device, enabled=False):
             logits, src_embs = manager.model(
                 src_nums, tgt_nums, src_mask, tgt_mask, dict_mask, dict_data
             )
             loss = criterion(torch.flatten(logits[:, :-1], 0, 1), torch.flatten(tgt_nums[:, 1:]))
             if manager.dict and not manager.freq:
-                probs = logits.softmax(dim=-1).max(dim=-1).values.sum(dim=-1)
-                grads = torch.autograd.grad(probs.unbind(), src_embs, retain_graph=True)
+                probs = torch.gather(logits.softmax(dim=-1), dim=-1, index=tgt_nums.unsqueeze(-1))
+                seq_probs = probs.squeeze(-1).sum(dim=-1).unbind()
+                grads = torch.autograd.grad(seq_probs, src_embs, retain_graph=True)
                 confs = torch.cat(grads).norm(p=1, dim=-1)
                 conf_batches.append(confs.tolist())
                 del probs, grads, confs
@@ -60,19 +61,13 @@ def train_epoch(
             optimizer.zero_grad()
             scaler.scale(loss).backward()
             scaler.unscale_(optimizer)
-            torch.nn.utils.clip_grad_norm_(
-                manager.model.parameters(),
-                manager.clip_grad,
-            )
+            torch.nn.utils.clip_grad_norm_(manager.model.parameters(), manager.clip_grad)
             scaler.step(optimizer)
             scaler.update()
         elif optimizer:
             optimizer.zero_grad()
             loss.backward()
-            torch.nn.utils.clip_grad_norm_(
-                manager.model.parameters(),
-                manager.clip_grad,
-            )
+            torch.nn.utils.clip_grad_norm_(manager.model.parameters(), manager.clip_grad)
             optimizer.step()
 
         total_loss += batch_length * loss.item()
@@ -149,6 +144,8 @@ def train_model(data_args: DataArgs, manager: Manager, logger: Logger):
         checkpoint += f' Training PPL = {math.exp(train_loss):.16f}'
         checkpoint += f' | Validation PPL = {math.exp(val_loss):.16f}'
         checkpoint += f' | Learning Rate = {optimizer.param_groups[0]["lr"]:.16f}'
+        if manager.dict:
+            checkpoint += f' | Dict Coverage = {(manager.dict_coverage * 100):.2f}'
         checkpoint += f' | Elapsed Time = {elapsed}'
         logger.info(checkpoint)
         print()

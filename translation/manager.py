@@ -320,7 +320,8 @@ class Manager:
         if dict_file:
             with open(dict_file) as dict_f:
                 self.dict = json.load(dict_f)
-                self.trie = Trie(self.dict)
+            self.trie = Trie(self.dict)
+            self.dict_coverage = 0.0
 
         self.freq: dict[str, int] = {}
         if freq_file:
@@ -540,7 +541,7 @@ class Manager:
                     list_of_spans = list(map(int, spans.split()))
                     lem_data.append(list(zip(list_of_words, list_of_spans)))
 
-        # count = total = 0
+        count = total = 0
         with open(data_file) as data_f:
             for i, line in enumerate(data_f.readlines()):
                 src_line, tgt_line = line.split('\t')
@@ -557,10 +558,12 @@ class Manager:
                         src_spans, tgt_spans = self.append_defs_2(src_words, lem_spans, conf_list)
                     else:
                         src_spans, tgt_spans = self.append_defs_1(src_words, lem_spans, conf_list)
-                    # if any(src_spans):
-                    #     count += 1
+                    if any(src_spans):
+                        count += 1
                 data.append((src_words, tgt_words, src_spans, tgt_spans))
-                # total += 1
+                total += 1
             # print(f'{(count / total * 100):.2f}')
+            if lem_data and self.dict:
+                self.dict_coverage = count / total
 
         return self.batch_data(data)

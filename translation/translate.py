@@ -4,7 +4,7 @@ import math
 import torch
 from torch import Tensor
 
-from translation.decoder import beam_search, greedy_search, triu_mask
+from translation.decoder import beam_search, triu_mask
 from translation.manager import Batch, Lemmatizer, Manager, Tokenizer
 
 sent_align: dict[int, list[int]] = {}
@@ -104,6 +104,15 @@ def conf_mgiza(
     return conf_list
 
 
+def compute_probs(manager: Manager, src_encs: Tensor, out_nums: Tensor) -> Tensor:
+    model, device = manager.model, manager.device
+    tgt_mask = triu_mask(len(out_nums) - 1, device=device)
+    tgt_encs = model.decode(src_encs, out_nums[:-1].unsqueeze(0), tgt_mask=tgt_mask)
+    logits = model.out_embed(tgt_encs, inverse=True).squeeze(0)
+    probs, indices = logits.softmax(dim=-1), out_nums[1:].view(-1, 1)
+    return torch.gather(probs, dim=-1, index=indices).squeeze(-1)
+
+
 def translate(
     string: str, manager: Manager, *, spacy_model: str | None = None, conf_method: str | None = None
 ) -> tuple[str, list]:
@@ -118,16 +127,17 @@ def translate(
             case 'gradient':
                 src_nums = torch.tensor(vocab.numberize(src_words), device=device)
                 src_encs, src_embs = model.encode(src_nums.unsqueeze(0))
-                out_nums, out_prob = greedy_search(manager, src_encs, max_length)
+                with torch.no_grad():
+                    out_nums = beam_search(manager, src_encs, beam_size, max_length)
+                out_prob = compute_probs(manager, src_encs, out_nums).sum(dim=-1)
                 conf_list = conf_gradient(manager, src_words, out_prob, src_embs)
                 del src_nums, src_embs, src_encs, out_prob
             case 'attention':
                 with torch.no_grad():
                     src_nums = torch.tensor(vocab.numberize(src_words), device=device)
                     src_encs, src_embs = model.encode(src_nums.unsqueeze(0))
-                    out_nums, out_probs = greedy_search(  # TODO beam_search
-                        manager, src_encs, max_length, cumulative=False
-                    )
+                    out_nums = beam_search(manager, src_encs, beam_size, max_length)
+                    out_probs = compute_probs(manager, src_encs, out_nums)
                     tgt_mask = triu_mask(len(out_nums) - 1, device=device)
                     model.decode(
                         src_encs, out_nums[:-1].unsqueeze(0), tgt_mask=tgt_mask, store_attn=True
@@ -138,9 +148,8 @@ def translate(
                 with torch.no_grad():
                     src_nums = torch.tensor(vocab.numberize(src_words), device=device)
                     src_encs, src_embs = model.encode(src_nums.unsqueeze(0))
-                    out_nums, out_probs = greedy_search(  # TODO beam_search
-                        manager, src_encs, max_length, cumulative=False
-                    )
+                    out_nums = beam_search(manager, src_encs, beam_size, max_length)
+                    out_probs = compute_probs(manager, src_encs, out_nums)
                     out_words = tokenizer.tokenize(
                         tokenizer.detokenize(vocab.denumberize(out_nums.tolist()))
                     )
@@ -174,11 +183,11 @@ def translate(
                 src_encs, _ = model.encode(
                     src_nums.unsqueeze(0), dict_mask=dict_mask, dict_data=None
                 )
-            out_nums, _ = beam_search(manager, src_encs, beam_size, max_length)
+            out_nums = beam_search(manager, src_encs, beam_size, max_length)
         elif conf_method is None or conf_method == 'gradient':
             src_nums = torch.tensor(vocab.numberize(src_words), device=device)
             src_encs, _ = model.encode(src_nums.unsqueeze(0))
-            out_nums, _ = beam_search(manager, src_encs, beam_size, max_length)
+            out_nums = beam_search(manager, src_encs, beam_size, max_length)
 
     return tokenizer.detokenize(vocab.denumberize(out_nums.tolist())), conf_list
 
