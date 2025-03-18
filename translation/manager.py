@@ -346,61 +346,7 @@ class Manager:
             self._model_name,
         )
 
-    def append_defs_1(
-        self,
-        src_words: list[str],
-        lem_spans: list[tuple[str, int]],
-        conf_list: list[tuple[str, float]] | None = None,
-    ):
-        src_spans, tgt_spans = [], []  # type: ignore[var-annotated]
-        delimiter = '@@' if isinstance(self.sw_model, BPE) else '▁'
-
-        i, src_start = 0, 1
-        for lemma, src_end in lem_spans:
-            word = ''.join(
-                (
-                    subword.removesuffix(delimiter)
-                    if delimiter == '@@'
-                    else subword.removeprefix(delimiter)
-                )
-                for subword in src_words[src_start:src_end]
-            )
-
-            headword = None
-            if conf_list is None:
-                if word not in self.freq or self.freq[word] <= self.threshold:
-                    headword = word if word in self.dict else lemma if lemma in self.dict else None
-            else:
-                _word, confidence = conf_list[i]
-                assert _word == word
-                if confidence >= self.threshold:
-                    headword = word if word in self.dict else lemma if lemma in self.dict else None
-
-            if headword is not None:
-                definitions = self.dict[headword][: self.max_append]
-                tgt_start, spans = len(src_words), []
-                for definition in definitions:
-                    tgt_end = tgt_start + len(definition.split())
-                    spans.append((tgt_start, tgt_end))
-                    tgt_start = tgt_end
-                if tgt_end > self.max_length:
-                    break
-                src_spans.append((src_start, src_end))
-                tgt_spans.append(spans)
-                for definition in definitions:
-                    src_words.extend(definition.split())
-
-            src_start = src_end
-            i += 1
-
-        # for (a, b), spans in zip(src_spans, tgt_spans):
-        #     print(' '.join(src_words[a:b]))
-        #     for c, d in spans:
-        #         print('  ', ' '.join(src_words[c:d]))
-
-        return src_spans, tgt_spans
-
-    def append_defs_2(
+    def append_defs(
         self,
         src_words: list[str],
         lem_spans: list[tuple[str, int]],
@@ -554,10 +500,7 @@ class Manager:
                         assert len(conf_lists[i][1:]) >= len(lem_spans)
                         conf_list = list(zip([''] * len(lem_spans), conf_lists[i][1:]))
                         # assert len(src_words) - 2 == len(self.vocab.denumberize(conf_lists[i].tolist()))
-                    if 'span_mode' in self.config and self.config['span_mode'] == 2:
-                        src_spans, tgt_spans = self.append_defs_2(src_words, lem_spans, conf_list)
-                    else:
-                        src_spans, tgt_spans = self.append_defs_1(src_words, lem_spans, conf_list)
+                    src_spans, tgt_spans = self.append_defs(src_words, lem_spans, conf_list)
                     if any(src_spans):
                         count += 1
                 data.append((src_words, tgt_words, src_spans, tgt_spans))

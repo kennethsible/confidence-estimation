@@ -163,14 +163,7 @@ def translate(
             lemmatizer = Lemmatizer(spacy_model, manager.sw_model)
             lem_data = next(lemmatizer.lemmatize([src_words[1:-1]]))
             _conf_list = None if conf_method is None else conf_list[1:-1]
-            if 'span_mode' in manager.config and manager.config['span_mode'] == 2:
-                src_spans, tgt_spans = manager.append_defs_2(
-                    src_words, list(zip(*lem_data)), _conf_list
-                )  # supports space-separated words and phrases
-            else:
-                src_spans, tgt_spans = manager.append_defs_1(
-                    src_words, list(zip(*lem_data)), _conf_list
-                )
+            src_spans, tgt_spans = manager.append_defs(src_words, list(zip(*lem_data)), _conf_list)
             src_nums = torch.tensor(vocab.numberize(src_words), device=device)
             dict_data = list(zip([src_spans], [tgt_spans]))
             if manager.dpe_embed:
