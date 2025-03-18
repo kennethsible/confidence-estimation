@@ -7,12 +7,8 @@ __pycache__/
 *.ipynb
 medline.*
 biom.*
-data_de-en_large/*
-!data_de-en_large/biom/
-!data_de-en_large/*.dict
-!data_de-en_large/*.py
-data_de-en_small/*
-!data_de-en_small/biom/
-!data_de-en_small/*.dict
-!data_de-en_small/*.py
+data_de-en/*
+!data_de-en/biom/
+!data_de-en/*.dict
+!data_de-en/*.py
 experiments/conf*.sh
