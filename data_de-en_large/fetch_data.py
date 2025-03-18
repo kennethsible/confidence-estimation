@@ -28,6 +28,8 @@ def main():
 
     os.system('sacrebleu --language-pair en-de --download wmt22')
     os.system(f'cp ~/.sacrebleu/wmt22/wmt22.en-de.src {args.data_dir}/test/test.en')
+    os.system(f'cp ~/.sacrebleu/wmt22/wmt22.en-de.ref-A {args.data_dir}/test/test1.de')
+    os.system(f'cp ~/.sacrebleu/wmt22/wmt22.en-de.ref-B {args.data_dir}/test/test2.de')
 
     os.system('poetry run python -m spacy download de_core_news_sm')
     os.system('poetry run python -m spacy download en_core_web_sm')

@@ -1,6 +1,7 @@
 import json
 import os
 import re
+import warnings
 from argparse import ArgumentParser, Namespace
 from itertools import product
 
@@ -83,6 +84,7 @@ def generate_sacrebleu(job_name: str, test_data: str, args: Namespace) -> str:
     wmt_set = ''
     if re.match(r'wmt[0-9]{2}', test_data):
         wmt_set, test_data = test_data.split(':')
+    test_data, test_refs = re.findall(r'([^{]+)(?:\{(\d+(?:,\d+)+)\})?', test_data)
     test_set = test_data.split('/')[-1]
     string = ''
     if wmt_set:
@@ -93,7 +95,10 @@ def generate_sacrebleu(job_name: str, test_data: str, args: Namespace) -> str:
         string += f'  >> {args.model}/{job_name}.log \n'
     else:
         string += f'echo -e "\\n{test_data} (BLEU)" >> {args.model}/{job_name}.log \n'
-        string += f'sacrebleu {test_data}.{tgt_lang} -w 4 \\\n'
+        if test_refs:
+            string += f'sacrebleu {' '.join(f'{test_data}{i}.{tgt_lang}' for i in test_refs.split(','))} -w 4 \\\n'
+        else:
+            string += f'sacrebleu {test_data}.{tgt_lang} -w 4 \\\n'
         string += f'  -i {args.model}/{job_name}.{test_set}.hyp \\\n'
         string += f"  -m {' '.join(metric.strip('"') for metric in args.metric)} \\\n"
         string += f'  >> {args.model}/{job_name}.log \n'
@@ -105,7 +110,11 @@ def generate_comet(job_name: str, test_data: str, args: Namespace) -> str:
     wmt_set = ''
     if re.match(r'wmt[0-9]{2}', test_data):
         wmt_set, test_data = test_data.split(':')
+    test_data, test_refs = re.findall(r'([^{]+)(?:\{(\d+(?:,\d+)+)\})?', test_data)
     test_set = test_data.split('/')[-1]
+    if not wmt_set and test_refs:
+        test_set += test_refs.split(',')[0]
+        warnings.warn(f'COMET does not support multiple references; using \'{test_set}\'')
     string = ''
     if wmt_set:
         string += f'echo -e "\\n{test_data} (COMET)" >> {args.model}/{job_name}.log \n'
@@ -126,10 +135,15 @@ def generate_bertscore(job_name: str, test_data: str, args: Namespace) -> str:
     _, tgt_lang = args.lang_pair.split('-')
     if re.match(r'wmt[0-9]{2}', test_data):
         _, test_data = test_data.split(':')
+    test_data, test_refs = re.findall(r'([^{]+)(?:\{(\d+(?:,\d+)+)\})?', test_data)
     test_set = test_data.split('/')[-1]
     string = f'echo -e "\\n{test_data} (BERTScore)" >> {args.model}/{job_name}.log \n'
     string += f'bert-score --rescale_with_baseline --lang {tgt_lang} \\\n'
-    string += f'  -r {test_data}.{tgt_lang} \\\n'
+    if test_refs:
+        for i in test_refs.split(','):
+            string += f'  -r {test_data}{i}.{tgt_lang} \\\n'
+    else:
+        string += f'  -r {test_data}.{tgt_lang} \\\n'
     string += f'  -c {args.model}/{job_name}.{test_set}.hyp \\\n'
     string += f'  >> {args.model}/{job_name}.log \n'
     return string
