@@ -122,6 +122,19 @@ def generate_comet(job_name: str, test_data: str, args: Namespace) -> str:
     return string
 
 
+def generate_bertscore(job_name: str, test_data: str, args: Namespace) -> str:
+    _, tgt_lang = args.lang_pair.split('-')
+    if re.match(r'wmt[0-9]{2}', test_data):
+        _, test_data = test_data.split(':')
+    test_set = test_data.split('/')[-1]
+    string = f'echo -e "\\n{test_data} (BERTScore)" >> {args.model}/{job_name}.log \n'
+    string += f'bert-score --rescale_with_baseline --lang {tgt_lang} \\\n'
+    string += f'  -r {test_data}.{tgt_lang} \\\n'
+    string += f'  -c {args.model}/{job_name}.{test_set}.hyp \\\n'
+    string += f'  >> {args.model}/{job_name}.log \n'
+    return string
+
+
 def generate_job_script(job_name: str, args: Namespace, params: list[tuple] | None = None) -> str:
     string = generate_header(job_name, args)
     string += '\n' + generate_main(job_name, args, params)
@@ -129,6 +142,7 @@ def generate_job_script(job_name: str, args: Namespace, params: list[tuple] | No
         string += '\n' + generate_translate(job_name, test_data, args)
         string += '\n' + generate_sacrebleu(job_name, test_data, args)
         string += '\n' + generate_comet(job_name, test_data, args)
+        string += '\n' + generate_bertscore(job_name, test_data, args)
     return string
 
 
