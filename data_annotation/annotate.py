@@ -17,78 +17,78 @@ Identify and list all single-word translation errors in a machine-translated sen
 
 ### **Instructions:**
 
-1. **Identify Errors:** Compare each word in the HYP sentence to SRC and REF sentences to find clear mistranslations.
-2. **Focus on Single Words:** Extract and report the most relevant single-word errors, avoiding multi-word spans unless necessary.
-3. **Prioritize Meaningful Errors:** Focus on translation errors that change the meaning significantly. Ignore minor discrepancies, such as synonyms.
-4. **Maintain Contextual Accuracy:** Identify errors where the translation does not fit contextually, even if technically viable.
-5. **Handle Ambiguity Carefully:** Flag errors only when HYP is distinctly incorrect compared to both SRC and REF.
+1. **Identify Mistranslations:** Compare each word in the candidate sentence with the source and reference sentences to find clear translation errors.
+2. **Focus on Single-Word Errors:** Report errors at the word level. If a multi-word phrase is mistranslated, extract the most significant word.
+3. **Prioritize Meaningful Errors:** Report only errors that significantly change meaning. Ignore acceptable variations, such as near-synonyms.
+4. **Ensure Contextual Accuracy:** Identify words that, while potentially valid in isolation, do not fit the intended meaning in context.
+5. **Handle Ambiguity Carefully:** Mark an error only if the candidate word is demonstrably incorrect when compared to the source and reference.
+
+**Strict Adherence Required:** Always follow the output format exactly, and include detailed explanations that refer back to the instructions.
 
 ### **Output Format:**
 
-List each mistranslation as a triple:  
-  **(SRC word → HYP word → Correct REF word)**  
-If no errors are present, state:  
-  **No translation errors detected.**
+List each mistranslation as a triple in the following format:
+**(source word → candidate word → reference word)**
+If there are no translation errors, output:
+**No translation errors detected.**
 
-**Ensure compliance with this format in every response.**
+### **Example 1:**
 
-### **Example 1:**  
+#### **Input:**
 
-#### **Input:**  
-
-SRC Language: German  
-Target Language: English  
-SRC: The cat is sitting on the mat.  
-HYP: Die Hund sitzt auf der Matte.  
-REF: Die Katze sitzt auf der Matte.  
+**Source Language:** English
+**Target Language:** German
+**Source Sentence:** The scientist presented a groundbreaking discovery.
+**Candidate Translation:** Der Wissenschaftler präsentierte eine einfache Entdeckung.
+**Reference Translation:** Der Wissenschaftler präsentierte eine bahnbrechende Entdeckung.
 
 #### **Expected Output:**  
 
-cat → Hund → Katze  
+groundbreaking → einfache → bahnbrechende  
 
-**Explanation:** "Hund" in HYP is a mistranslation of "cat"/"Katze" from SRC/REF, significantly changing the meaning and context.
+**Explanation:** "einfache" (simple) is a mistranslation of "groundbreaking", which significantly changes the meaning of the sentence. This violates the **Prioritize Meaningful Errors** rule because it downplays the significance of the discovery.
 
 ### **Example 2:**  
 
 #### **Input:**  
 
-SRC Language: German  
-Target Language: English  
-SRC: Der Vogel fliegt über den Ozean bei Sonnenuntergang.  
-HYP: The flower flies over the ocean at sunrise.  
-REF: The bird flies over the ocean at sunset.  
+**Source Language:** English  
+**Target Language:** German  
+**Source Sentence:** The bird flies over the ocean towards the setting sun.
+**Candidate Translation:** Der Blume fliegt über den Ozean in Richtung des verschwindenden Mondes.
+**Reference Translation:** Der Vogel fliegt über den Ozean in Richtung der untergehenden Sonne.
 
 #### **Expected Output:**  
 
-Vogel → flower → bird  
-Sonnenuntergang → sunrise → sunset  
+bird → Blume → Vogel
+sun → Mondes → Sonne  
 
-**Explanation:** "Flower" and "sunrise" in HYP are mistranslations of "Vogel"/"bird" and "Sonnenuntergang"/"sunset" from SRC/REF, significantly changing the meaning and context.
+**Explanation:** "Blume" (flower) is a mistranslation of "bird". This violates the **Ensure Contextual Accuracy** rule because flowers cannot fly. "Mondes" (moon) is a mistranslation of "sun", which changes the intended imagery. Since the key error is the celestial body itself, "verschwindenden Mondes" (disappearing moon) is reduced to "Mondes" (moon) and "untergehenden Sonne" (setting sun) is reduced to "Sonne" (sun), following the **Focus on Single-Word Errors** rule.
 
 ### **Example 3:**  
 
 #### **Input:**  
 
-SRC Language: English  
-Target Language: German  
-SRC: The car is fast.  
-HYP: Das Auto ist schnell.  
-REF: Das Fahrzeug ist schnell.  
+**Source Language:** English  
+**Target Language:** German  
+**Source Sentence:** The lawyer prepared the contract.
+**Candidate Translation:** Der Anwalt setzte den Vertrag auf.
+**Reference Translation:** Der Anwalt bereitete den Vertrag vor.
 
 #### **Expected Output:**  
 
 No translation errors detected.  
 
-**Explanation:** "Auto" in HYP and "Fahrzeug" in REF both adequately translate "car" from SRC, showing a minor synonym variation.
+**Explanation:** "setzte auf" and "bereitete vor" are both valid ways to express "prepared" in this context. Since the meaning remains intact, this follows the **Handle Ambiguity Carefully** rule, and no error is reported.
 '''
     template = f'''
 ### **Input:**
 
-**Source Language** (SRC): {src_lang}  
-**Target Language** (HYP/REF): {tgt_lang}  
-**Source Sentence**: {src_sent}  
-**Candidate Translation** (HYP): {hyp_sent}  
-**Reference Translation** (REF): {ref_sent}  
+**Source Language:** {src_lang}
+**Target Language:** {tgt_lang}
+**Source Sentence:** {src_sent}
+**Candidate Translation:** {hyp_sent}
+**Reference Translation:** {ref_sent}
 
 ### **Output:**
 '''
@@ -100,7 +100,8 @@ No translation errors detected.
 
 
 def collate_data(text: str) -> list[str]:
-    return re.findall(r'(\w+)\s*→\s*\w+\s*→\s*\w+', text)
+    matches = re.findall(r"([\w'-]+)\s*→\s*([\w'-]+)\s*→\s*([\w'-]+)", text)
+    return [src_word for src_word, hyp_word, ref_word in matches if hyp_word != ref_word]
 
 
 def main():
