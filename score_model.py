@@ -252,9 +252,9 @@ def main():
     parser.add_argument('--output-dir', required=True, help='output directory')
     args = parser.parse_args()
 
-    pr_curve(args.data_dir, args.output_dir, args.conf_type)
-    roc_curve(args.data_dir, args.output_dir, args.conf_type)
-    pr_F1(args.data_dir, args.output_dir, args.conf_type)
+    pr_curve(args.data_dir, args.output_dir)
+    roc_curve(args.data_dir, args.output_dir)
+    pr_F1(args.data_dir, args.output_dir)
 
 
 if __name__ == '__main__':

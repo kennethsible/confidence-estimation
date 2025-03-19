@@ -89,7 +89,8 @@ def conf_giza(
     posteriors = [0.0] * len(src_spans)
     i = 0
     for tgt_i in sorted(sent_align):
-        j = out_spans[tgt_i] - 1
+        # edge case (j = -1) where final subwords are incomplete
+        j = -1 if tgt_i >= len(out_spans) else out_spans[tgt_i] - 1
         for src_i in sent_align[tgt_i]:
             # if src:tgt is one-to-many or many-to-many, divide probability equally
             posteriors[src_i + 1] += out_probs[i:j].sum().item() / len(sent_align[tgt_i])

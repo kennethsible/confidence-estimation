@@ -9,7 +9,7 @@ def main():
     parser.add_argument('output', nargs='?', type=argparse.FileType('w'), default=sys.stdout)
     args = parser.parse_args()
 
-    with open('data_de-en_large/en-de.freq') as freq_f:
+    with open('data_de-en/en-de.freq') as freq_f:
         freq_dict = {}
         for line in freq_f.readlines():
             word, freq = line.split()

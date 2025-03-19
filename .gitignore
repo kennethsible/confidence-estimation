@@ -11,4 +11,6 @@ data_de-en/*
 !data_de-en/biom/
 !data_de-en/*.dict
 !data_de-en/*.py
-experiments/conf*.sh
+data_mgiza/*
+!data_mgiza/*.txt
+!data_mgiza/Dockerfile

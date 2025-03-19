@@ -221,7 +221,7 @@ def pr_F1(data_dir: str, output_dir: str, conf_type: str):
             grad_F1.append(F1)
             gpt_f.seek(0)
             grad_f.seek(0)
-        print(output_dir, max_F1)
+        # print(output_dir, max_F1)
 
         # print(f'Precision: {precision:0.2f}')
         # print(f'Recall:    {recall:0.2f}')
@@ -256,7 +256,7 @@ def pr_F1(data_dir: str, output_dir: str, conf_type: str):
             conf_F1.append(F1)
             gpt_f.seek(0)
             conf_f.seek(0)
-        print(output_dir, max_F1)
+        print(output_dir, max_F1, conf_type)
 
     fig, axs = plt.subplots(3, 2, figsize=(10, 10))
 
