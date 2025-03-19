@@ -47,7 +47,7 @@ def conf_attn(manager: Manager, src_words: list[str], out_probs: Tensor) -> list
 
     layers = manager.model.decoder.layers
     scores = sum(layer.crss_attn.scores.sum(dim=1) for layer in layers)
-    posteriors = out_probs[1:-1].abs() @ scores[0, 1:]
+    posteriors = out_probs[:-1].abs() @ scores[0, 1:]
 
     # alignments: dict[str, list[str]] = {}
     # posteriors = torch.zeros(len(src_words), device=manager.device)
@@ -85,14 +85,15 @@ def conf_giza(
     words, src_spans = next(Lemmatizer.subword_mapping([src_words], manager.sw_model))
     _, out_spans = next(Lemmatizer.subword_mapping([out_words], manager.sw_model))
 
-    out_probs = out_probs[1:-1].abs()
+    out_probs = out_probs[:-1].abs()
     posteriors = [0.0] * len(src_spans)
-    for tgt_i in sent_align:
-        i = 0 if tgt_i - 1 < 0 else tgt_i - 1
-        j = out_spans[tgt_i]
+    i = 0
+    for tgt_i in sorted(sent_align):
+        j = out_spans[tgt_i] - 1
         for src_i in sent_align[tgt_i]:
             # if src:tgt is one-to-many or many-to-many, divide probability equally
             posteriors[src_i + 1] += out_probs[i:j].sum().item() / len(sent_align[tgt_i])
+        i = j
     posteriors[0], posteriors[-1] = out_probs[0].abs().item(), out_probs[-1].abs().item()
 
     conf_list = []
@@ -148,9 +149,7 @@ def translate(
                     src_encs, src_embs = model.encode(src_nums.unsqueeze(0))
                     out_nums = beam_search(manager, src_encs, beam_size, max_length)
                     out_probs = compute_probs(manager, src_encs, out_nums)
-                    out_words = tokenizer.tokenize(
-                        tokenizer.detokenize(vocab.denumberize(out_nums.tolist()))
-                    )
+                    out_words = vocab.denumberize(out_nums.tolist())
                     conf_list = conf_giza(manager, src_words, out_probs, out_words)
                 del src_nums, src_embs, src_encs, out_probs
             case _:

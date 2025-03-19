@@ -67,5 +67,5 @@ def beam_search(
         beam_size = int(active.count_nonzero())
 
     best_path = probs.argmax()
-    trunc_path = int(indices[best_path])
+    trunc_path = int(indices[best_path]) + 1
     return paths[best_path, :trunc_path]
