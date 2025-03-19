@@ -250,15 +250,11 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--data-dir', required=True, help='data directory')
     parser.add_argument('--output-dir', required=True, help='output directory')
-    parser.add_argument('--mode', required=True, help='pr_curve, roc_curve, or pr_F1')
     args = parser.parse_args()
 
-    if args.mode == 'pr_curve':
-        pr_curve(args.data_dir, args.output_dir)
-    elif args.mode == 'roc_curve':
-        roc_curve(args.data_dir, args.output_dir)
-    elif args.mode == 'pr_F1':
-        pr_F1(args.data_dir, args.output_dir)
+    pr_curve(args.data_dir, args.output_dir, args.conf_type)
+    roc_curve(args.data_dir, args.output_dir, args.conf_type)
+    pr_F1(args.data_dir, args.output_dir, args.conf_type)
 
 
 if __name__ == '__main__':

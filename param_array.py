@@ -182,7 +182,9 @@ def main():
     parser.add_argument('--lem-val', metavar='FILE_PATH', help='lemmatized validation data')
     parser.add_argument('--dict', metavar='FILE_PATH', help='bilingual dictionary')
     parser.add_argument('--freq', metavar='FILE_PATH', help='frequency statistics')
-    parser.add_argument('--conf', nargs=2, metavar=('CONF_TYPE', 'THRESHOLD'), help='confidence')
+    parser.add_argument(
+        '--conf', nargs=2, metavar=('CONF_TYPE', 'THRESHOLD'), help='confidence estimation'
+    )
     parser.add_argument('--spacy-model', metavar='FILE_PATH', help='spaCy model')
     parser.add_argument('--sw-vocab', metavar='FILE_PATH', required=True, help='subword vocab')
     parser.add_argument('--sw-model', metavar='FILE_PATH', required=True, help='subword model')

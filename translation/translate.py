@@ -10,7 +10,7 @@ from translation.manager import Batch, Lemmatizer, Manager, Tokenizer
 sent_align: dict[int, list[int]] = {}
 
 
-def conf_gradient(
+def conf_grad(
     manager: Manager, src_words: list[str], out_prob: Tensor, src_embs: Tensor
 ) -> list[tuple[str, float]]:
     order, accum = 1, 'sum'
@@ -40,9 +40,7 @@ def conf_gradient(
     return conf_list
 
 
-def conf_attention(
-    manager: Manager, src_words: list[str], out_probs: Tensor
-) -> list[tuple[str, float]]:
+def conf_attn(manager: Manager, src_words: list[str], out_probs: Tensor) -> list[tuple[str, float]]:
     accum = 'sum'
     if 'accum' in manager.config:
         accum = manager.config['accum']
@@ -80,7 +78,7 @@ def conf_attention(
     return conf_list
 
 
-def conf_mgiza(
+def conf_giza(
     manager: Manager, src_words: list[str], out_probs: Tensor, out_words: list[str]
 ) -> list[tuple[str, float]]:
 
@@ -114,7 +112,7 @@ def compute_probs(manager: Manager, src_encs: Tensor, out_nums: Tensor) -> Tenso
 
 
 def translate(
-    string: str, manager: Manager, *, spacy_model: str | None = None, conf_method: str | None = None
+    string: str, manager: Manager, *, spacy_model: str | None = None, conf_type: str | None = None
 ) -> tuple[str, list]:
     model, vocab, device = manager.model, manager.vocab, manager.device
     beam_size, max_length = manager.beam_size, math.floor(manager.max_length * 1.3)
@@ -122,17 +120,17 @@ def translate(
     src_words, conf_list = ['<BOS>'] + tokenizer.tokenize(string) + ['<EOS>'], []
 
     model.eval()
-    if conf_method is not None:
-        match conf_method:
-            case 'gradient':
+    if conf_type is not None:
+        match conf_type:
+            case 'grad':
                 src_nums = torch.tensor(vocab.numberize(src_words), device=device)
                 src_encs, src_embs = model.encode(src_nums.unsqueeze(0))
                 with torch.no_grad():
                     out_nums = beam_search(manager, src_encs, beam_size, max_length)
                 out_prob = compute_probs(manager, src_encs, out_nums).sum(dim=-1)
-                conf_list = conf_gradient(manager, src_words, out_prob, src_embs)
+                conf_list = conf_grad(manager, src_words, out_prob, src_embs)
                 del src_nums, src_embs, src_encs, out_prob
-            case 'attention':
+            case 'attn':
                 with torch.no_grad():
                     src_nums = torch.tensor(vocab.numberize(src_words), device=device)
                     src_encs, src_embs = model.encode(src_nums.unsqueeze(0))
@@ -142,9 +140,9 @@ def translate(
                     model.decode(
                         src_encs, out_nums[:-1].unsqueeze(0), tgt_mask=tgt_mask, store_attn=True
                     )
-                    conf_list = conf_attention(manager, src_words, out_probs)
+                    conf_list = conf_attn(manager, src_words, out_probs)
                 del src_nums, src_embs, src_encs, out_probs
-            case 'mgiza':
+            case 'giza':
                 with torch.no_grad():
                     src_nums = torch.tensor(vocab.numberize(src_words), device=device)
                     src_encs, src_embs = model.encode(src_nums.unsqueeze(0))
@@ -153,17 +151,19 @@ def translate(
                     out_words = tokenizer.tokenize(
                         tokenizer.detokenize(vocab.denumberize(out_nums.tolist()))
                     )
-                    conf_list = conf_mgiza(manager, src_words, out_probs, out_words)
+                    conf_list = conf_giza(manager, src_words, out_probs, out_words)
                 del src_nums, src_embs, src_encs, out_probs
             case _:
-                raise NotImplementedError(conf_method)
+                raise NotImplementedError(conf_type)
 
     with torch.no_grad():
         if manager.dict and manager.freq and spacy_model:
             lemmatizer = Lemmatizer(spacy_model, manager.sw_model)
-            lem_data = next(lemmatizer.lemmatize([src_words[1:-1]]))
-            _conf_list = None if conf_method is None else conf_list[1:-1]
-            src_spans, tgt_spans = manager.append_defs(src_words, list(zip(*lem_data)), _conf_list)
+            lem_data = list(zip(*next(lemmatizer.lemmatize([src_words[1:-1]]))))
+            if conf_type is None:
+                src_spans, tgt_spans = manager.append_defs(src_words, lem_data)
+            else:
+                src_spans, tgt_spans = manager.append_defs(src_words, lem_data, conf_list[1:-1])
             src_nums = torch.tensor(vocab.numberize(src_words), device=device)
             dict_data = list(zip([src_spans], [tgt_spans]))
             if manager.dpe_embed:
@@ -177,7 +177,7 @@ def translate(
                     src_nums.unsqueeze(0), dict_mask=dict_mask, dict_data=None
                 )
             out_nums = beam_search(manager, src_encs, beam_size, max_length)
-        elif conf_method is None or conf_method == 'gradient':
+        elif conf_type is None:
             src_nums = torch.tensor(vocab.numberize(src_words), device=device)
             src_encs, _ = model.encode(src_nums.unsqueeze(0))
             out_nums = beam_search(manager, src_encs, beam_size, max_length)
@@ -192,7 +192,7 @@ def main():
     parser.add_argument('--dict', metavar='FILE_PATH', help='bilingual dictionary')
     parser.add_argument('--freq', metavar='FILE_PATH', help='frequency statistics')
     parser.add_argument(
-        '--conf', nargs=2, metavar=('CONF_TYPE', 'FILE_PATH'), help='confidence method'
+        '--conf', nargs=2, metavar=('CONF_TYPE', 'FILE_PATH'), help='confidence estimation'
     )
     parser.add_argument('--align', metavar='FILE_PATH', help='phrase table format')
     parser.add_argument('--spacy-model', metavar='FILE_PATH', help='spaCy model')
@@ -249,7 +249,7 @@ def main():
                 if args.align:
                     sent_align = sent_aligns[i]
                 output, conf_list = translate(
-                    string, manager, spacy_model=args.spacy_model, conf_method=args.conf[0]
+                    string, manager, spacy_model=args.spacy_model, conf_type=args.conf[0]
                 )
                 json_list.append(conf_list)
                 print(output)
