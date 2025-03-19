@@ -229,8 +229,8 @@ def main():
     )
     manager.model.load_state_dict(model_state['state_dict'])
 
-    if device == 'cuda' and torch.cuda.get_device_capability()[0] >= 8:
-        torch.set_float32_matmul_precision('high')
+    # if device == 'cuda' and torch.cuda.get_device_capability()[0] >= 8:
+    #     torch.set_float32_matmul_precision('high')
 
     if args.align:
         sent_aligns = []
