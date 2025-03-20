@@ -61,6 +61,10 @@ function handleWordClick(event) {
                     event.target.removeEventListener('click', handleWordClick);
                 });
             });
+
+            contextMenu.style.display = 'block';
+            contextMenu.style.left = `${event.pageX}px`;
+            contextMenu.style.top = `${event.pageY}px`;
         },
         function(error) { console.error(error); }
     );
@@ -70,10 +74,6 @@ function handleWordClick(event) {
         const onHighlight = event.target.classList.contains('highlight');
         if (!insideMenu && !onHighlight) { hideContextMenu(); }
     });
-
-    contextMenu.style.display = 'block';
-    contextMenu.style.left = `${event.pageX}px`;
-    contextMenu.style.top = `${event.pageY}px`;
 }
 
 async function callTranslateFunction() {
