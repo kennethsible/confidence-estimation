@@ -1,0 +1,31 @@
+[project]
+name = "translation_webapp"
+version = "0.1.0"
+requires-python = ">=3.10"
+dependencies = [
+    "torch>=2.4.0",
+    "sacremoses>=0.1.1",
+    "subword-nmt>=0.3.8",
+    "sentencepiece>=0.2.0",
+    "spacy~=3.8.4",
+    "tqdm>=4.67.1",
+    "aiohttp>=3.11.14",
+    "aiohttp_cors>=0.8.0",
+    "scikit-learn>=1.6.1",
+]
+
+[tool.poetry]
+requires-poetry = ">=2.0"
+
+[[tool.poetry.source]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+priority = "supplemental"
+
+[tool.poetry.dependencies]
+python = ">=3.10,<3.13"
+torch = { source = "pytorch-cpu" }
+
+[build-system]
+requires = ["poetry-core>=2.0"]
+build-backend = "poetry.core.masonry.api"

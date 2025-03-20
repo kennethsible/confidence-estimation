@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <link rel="apple-touch-icon" href="/images/translate_small.png">
+    <title>Self-Assessing Translator</title>
+    <link rel="preconnect" href="https://rsms.me/">
+    <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v6.5.0/css/all.css">
+</head>
+<body>
+    <!-- <select id="dropdown" class="dropdown">
+        <option value="Option 1">German &rarr; English</option>
+    </select> -->
+    <div class="collapsible">
+        <details>
+            <summary>Self-Assessing Translator</summary>
+            <p>Enter the sentence you want to translate into the input field (left) and click the arrow button. If the arrow changes to a warning icon, the translation API is unavailable; otherwise, the output sentence appears in the output field (right). Low confidence words are highlighted in the input field.  Click a highlighted word to see nearest neighbor suggestions that may improve the quality of the translation. To change/update the input sentence, double-click anywhere in the input field. For debugging, open the JavaScript console in your browser to see the confidence scores for each word in the input sentence.</p>
+        </details>
+    </div>
+    <div class="container">
+        <div class="context-menu" id="context-menu">
+            <ul id="menu-items"></ul>
+        </div>
+        <div id="inputText" class="textbox" ondblclick="toggleEditable()" contenteditable="true" placeholder="Enter an English sentence to be translated into German."></div>
+        <button class="button" onclick="highlightWords()">
+            <i id="buttonIcon" class="fas fa-arrow-right-long"></i>
+        </button>
+        <div id="outputText" class="textbox"></div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>

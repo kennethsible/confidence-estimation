@@ -1,0 +1,27 @@
+services:  
+  api_server:
+    build:
+      context: $PWD/data_webapp
+    container_name: api_server
+    ports:
+      - 8080:8080
+    volumes:
+      - $PWD/data_de-en:/data
+      - $PWD/translation:/translation
+    restart: unless-stopped
+
+  web_server:
+    image: caddy
+    container_name: web_server
+    ports:
+      - 3000:3000
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+      - $PWD/data_webapp/public:/srv
+      - $PWD/data_webapp/Caddyfile:/etc/caddy/Caddyfile
+    restart: unless-stopped
+
+volumes:
+  caddy_data:
+  caddy_config:
