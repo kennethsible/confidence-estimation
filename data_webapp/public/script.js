@@ -57,7 +57,7 @@ function handleWordClick(event) {
                 li.addEventListener('click', (e) => {
                     hideContextMenu();
                     event.target.textContent = e.target.textContent.trim();;
-                    event.target.className = "";
+                    event.target.className = '';
                     event.target.removeEventListener('click', handleWordClick);
                 });
             });
@@ -129,3 +129,33 @@ async function callKNNFunction(word) {
     const json = await response.json();
     return json['neighbors'];
 }
+
+const inputText = document.getElementById('inputText');
+
+inputText.addEventListener('paste', function (e) {
+    e.preventDefault();
+    const plainText = e.clipboardData.getData('text/plain');
+    const selection = window.getSelection();
+    const range = selection.getRangeAt(0);
+
+    const textNode = document.createTextNode(plainText);
+    range.deleteContents();
+    range.insertNode(textNode);
+
+    range.setStartAfter(textNode);
+    range.setEndAfter(textNode);
+    selection.removeAllRanges();
+    selection.addRange(range);
+});
+
+
+function updateCollapsibleWidth() {
+    const collapsible = document.querySelector('.collapsible');
+    const container = document.querySelector('.container');
+    if (collapsible && container) {
+        collapsible.style.width = `${container.offsetWidth * 0.8}px`;
+    }
+}
+
+window.addEventListener('resize', updateCollapsibleWidth);
+window.addEventListener('load', updateCollapsibleWidth);

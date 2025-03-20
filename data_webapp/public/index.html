@@ -7,20 +7,31 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
     <link rel="apple-touch-icon" href="/images/translate_small.png">
-    <title>Self-Assessing Translator</title>
+    <title>Interactive Translation</title>
     <link rel="preconnect" href="https://rsms.me/">
     <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://use.fontawesome.com/releases/v6.5.0/css/all.css">
 </head>
 <body>
+    <a href="https://github.com/kennethsible/dictionary-attention/tree/confidence" target="_blank" class="github-logo">
+        <i class="fab fa-github"></i>
+    </a>
     <!-- <select id="dropdown" class="dropdown">
-        <option value="Option 1">German &rarr; English</option>
+        <option value="Option 1">English &rarr; German</option>
     </select> -->
     <div class="collapsible">
         <details>
-            <summary>Self-Assessing Translator</summary>
-            <p>Enter the sentence you want to translate into the input field (left) and click the arrow button. If the arrow changes to a warning icon, the translation API is unavailable; otherwise, the output sentence appears in the output field (right). Low confidence words are highlighted in the input field.  Click a highlighted word to see nearest neighbor suggestions that may improve the quality of the translation. To change/update the input sentence, double-click anywhere in the input field. For debugging, open the JavaScript console in your browser to see the confidence scores for each word in the input sentence.</p>
+            <summary>Interactive Translation — ACL 2025 Demo</summary>
+            <!-- <p>Enter a sentence in the input field (left) and click the arrow button.<br>If the arrow changes to a warning icon, the translation API is unavailable; otherwise, the output sentence appears in the output field (right).<br>Low confidence words are highlighted in the input field.  Click a highlighted word to see suggestions that may improve the quality of the translation. To change/update the input sentence, double-click anywhere in the input field. For debugging, open the JavaScript console in your browser to see the confidence scores for each word in the input field.</p> -->
+            <ul>
+                <li>Enter a sentence in the input field (left) and click the arrow button to translate.</li>
+                <li>If the arrow button changes to a warning symbol, the Python API is unreachable.</li>
+                <li>Words tagged with "low confidence" are highlighted in <span class="highlight">light blue</span> in the input field.</li>
+                <li>Click on a highlighted word to see alternatives that may improve the translation.</li>
+                <li>To change/update the input sentence, double-click anywhere in the input field.</li>
+                <li>Open the JavaScript console to see the confidence score of each input word.</li>
+            </ul>
         </details>
     </div>
     <div class="container">
