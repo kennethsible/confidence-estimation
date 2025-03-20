@@ -1,3 +1,5 @@
+let confidenceThreshold = 8.38; // 8.382382382382382
+
 function toggleEditable() {
     const inputElement = document.getElementById('inputText');
     inputElement.innerHTML = inputElement.textContent;
@@ -18,8 +20,6 @@ function toggleClickable() {
 }
 
 function highlightWords() {
-    const threshold = 8; // TODO 8.382382382382382
-
     callTranslateFunction().then(
         function(value) {
             const inputElement = document.getElementById('inputText');
@@ -27,7 +27,7 @@ function highlightWords() {
             inputElement.removeAttribute('contenteditable');
             const plainText = inputElement.innerHTML;
 
-            const wordsToHighlight = value.filter(pair => pair[1] > threshold).map(pair => pair[0]);
+            const wordsToHighlight = value.filter(pair => pair[1] > confidenceThreshold).map(pair => pair[0]);
             const escapeRegExp = (string) => string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
             const regex = new RegExp(`\\b(${wordsToHighlight.map(escapeRegExp).join('|')})\\b`, 'gi');        
             const highlightedText = plainText.replace(regex, '<span class="highlight">$&</span>');
@@ -50,8 +50,11 @@ function handleWordClick(event) {
     };
 
     const menuItemsContainer = document.getElementById('menu-items');
+    event.target.style.cursor = 'wait';
     callKNNFunction(event.target.textContent.trim()).then(
         function(items) {
+            event.target.style.cursor = 'default';
+
             menuItemsContainer.innerHTML = items.map(item => `<li>${item}</li>`).join('');
             menuItemsContainer.querySelectorAll('li').forEach(li => {
                 li.addEventListener('click', (e) => {
@@ -73,7 +76,10 @@ function handleWordClick(event) {
             }
             contextMenu.style.top = `${event.pageY}px`;
         },
-        function(error) { console.error(error); }
+        function(error) { 
+            event.target.style.cursor = 'default';
+            console.error(error);
+        }
     );
 
     document.addEventListener('click', (event) => {
@@ -155,6 +161,13 @@ inputText.addEventListener('paste', function (e) {
     selection.addRange(range);
 });
 
+// document.addEventListener('DOMContentLoaded', function () {
+//     if (window.matchMedia('(orientation: landscape)').matches) {
+//         document.querySelectorAll('details').forEach(detail => {
+//             detail.setAttribute('open', '');
+//         });
+//     }
+// });
 
 function updateCollapsibleWidth() {
     const collapsible = document.querySelector('.collapsible');
@@ -166,3 +179,32 @@ function updateCollapsibleWidth() {
 
 window.addEventListener('resize', updateCollapsibleWidth);
 window.addEventListener('load', updateCollapsibleWidth);
+
+document.addEventListener('DOMContentLoaded', function () {
+    const details = document.getElementById('info-details');
+    const scrollIndicator = document.getElementById('scroll-indicator');
+
+    function updateScrollIndicator() {
+        if (details.scrollHeight > details.clientHeight) {
+            if (details.scrollTop + details.clientHeight >= details.scrollHeight - 5) {
+                scrollIndicator.classList.remove('visible');
+            } else {
+                scrollIndicator.classList.add('visible');
+            }
+        } else {
+            scrollIndicator.classList.remove('visible');
+        }
+    }
+
+    details.addEventListener('scroll', updateScrollIndicator);
+    details.addEventListener('toggle', updateScrollIndicator);
+
+    // scrollIndicator.addEventListener('click', function () {
+    //     details.scrollBy({ top: 100, behavior: 'smooth' });
+    // });
+    scrollIndicator.addEventListener('click', function () {
+        details.scrollTo({ top: details.scrollHeight, behavior: 'smooth' });
+    });    
+
+    updateScrollIndicator();
+});

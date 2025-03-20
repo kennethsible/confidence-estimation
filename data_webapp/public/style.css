@@ -49,7 +49,7 @@ body {
     justify-content: center;
     align-items: center; */
     /* width: 80%; */
-    padding-top: 10px;
+    /* padding-top: 10px; */
     /* padding: 10px 10px 25px 10px; */
     padding-bottom: 25px;
     max-width: 100%;
@@ -61,6 +61,9 @@ details {
     padding: 0.5em 0.5em 0; */
     width: 100%;
     text-align: center;
+    max-height: 250px;
+    overflow-y: auto;
+    position: relative;
 }
 details ul {
     text-align: left;
@@ -84,6 +87,9 @@ summary {
     margin: -0.5em -0.5em 0;
     padding: 0.5em;
 }
+summary:hover {
+    cursor: pointer;
+}
 details[open] {
     padding: 0.5em;
 }
@@ -96,7 +102,31 @@ details .details-content {
     overflow-y: auto;
     padding-right: 10px;
 }
-  
+
+.scroll-indicator {
+    position: absolute;
+    bottom: 5px;
+    right: 50%;
+    transform: translateX(50%);
+    width: 30px;
+    height: 30px;
+    background-color: #333;
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 16px;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.3s ease-in-out;
+}
+.scroll-indicator.visible {
+    opacity: 1;
+}
+.details-container {
+    position: relative;
+}
 
 /* .stack {
     display: flex;
@@ -113,6 +143,7 @@ details .details-content {
         align-items: center;
         height: 80%;
         width: 80%;
+        padding-bottom: 25px;
         .fa-arrow-right-long {
             transform: rotate(90deg);
         }
@@ -126,6 +157,7 @@ details .details-content {
         max-height: 1000px;
         width: 80%;
         max-width: 1000px;
+        padding-bottom: 25px;
     }
 }
 

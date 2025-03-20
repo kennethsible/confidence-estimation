@@ -21,19 +21,23 @@
         <option value="Option 1">English &rarr; German</option>
     </select> -->
     <div class="collapsible">
-        <details>
-            <summary>Interactive Translation — PWA Demo</summary>
-            <!-- <p>Enter a sentence in the input field (left) and click the arrow button.<br>If the arrow changes to a warning icon, the translation API is unavailable; otherwise, the output sentence appears in the output field (right).<br>Low confidence words are highlighted in the input field.  Click a highlighted word to see suggestions that may improve the quality of the translation. To change/update the input sentence, double-click anywhere in the input field. For debugging, open the JavaScript console in your browser to see the confidence scores for each word in the input field.</p> -->
-            <ul>
-                <li>Enter a sentence in the input field (left) and click the arrow button to translate.</li>
-                <li>If the arrow button changes to a warning symbol, the Python API is unreachable.</li>
-                <li>Words tagged with "low confidence" are highlighted in <span class="highlight">light blue</span> in the input field.</li>
-                <li>Click on a highlighted word to see alternatives that may improve the translation.</li>
-                <li>To change/update the input sentence, double-click anywhere in the input field.</li>
-                <li>Launch the JavaScript console to see the confidence score of each input word.</li>
-                <li>Select "Add to Home Screen" in a mobile browser to install the progressive web app.</li>
-            </ul>
-        </details>
+        <div class="details-container">
+            <details id="info-details">
+                <summary>Interactive Translator — (Need Help? Click Here)</summary>
+                <ul>
+                    <li>Enter a sentence in the input field (top/left) and click the button to translate.</li>
+                    <li>If the arrow symbol changes to a warning symbol, the Python API is unreachable.</li>
+                    <li>Words tagged with "low confidence" are highlighted in <span class="highlight">light blue</span> in the input field.</li>
+                    <li>Click on a highlighted word to see alternatives that may improve the translation.</li>
+                    <li>To change/update the input sentence, double-click anywhere in the input field.</li>
+                    <li>Use the JavaScript console to see confidence scores for each word in the input field.</li>
+                    <li>Select "Add to Home Screen" on Android/iOS to add an icon for the standalone app.</li>
+                </ul>
+            </details>
+            <div id="scroll-indicator" class="scroll-indicator">
+                <i class="fa-solid fa-chevron-down"></i>
+            </div>
+        </div>        
     </div>
     <div class="container">
         <div class="context-menu" id="context-menu">
