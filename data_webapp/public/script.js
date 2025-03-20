@@ -63,7 +63,14 @@ function handleWordClick(event) {
             });
 
             contextMenu.style.display = 'block';
-            contextMenu.style.left = `${event.pageX}px`;
+            const menuWidth = contextMenu.offsetWidth;
+            const screenWidth = window.innerWidth;
+            const clickX = event.pageX;
+            if (clickX + menuWidth > screenWidth) {
+                contextMenu.style.left = `${clickX - menuWidth}px`;
+            } else {
+                contextMenu.style.left = `${clickX}px`;
+            }
             contextMenu.style.top = `${event.pageY}px`;
         },
         function(error) { console.error(error); }
