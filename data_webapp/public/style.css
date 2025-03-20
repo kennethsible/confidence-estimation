@@ -244,8 +244,8 @@ details .details-content {
         background-color: #014d9f;
     }
     .context-menu {
-        background-color: #303030;
-        border: 1px solid #3d3d3d;
+        background-color: #3d3d3d;
+        border: 1px solid #4b4b4b;
     }
     .context-menu li:hover {
         background-color: #6d6d6d;
