@@ -26,7 +26,7 @@ manager = Manager(
 )
 manager.model.load_state_dict(model_state['state_dict'])
 
-knn_model = KNNModel(manager, n_neighbors=10)
+knn_model = KNNModel(manager, 'data/en-de.freq', n_neighbors=5)
 if os.path.exists(KNN_MODEL):
     knn_model.load(KNN_MODEL)
 else:
