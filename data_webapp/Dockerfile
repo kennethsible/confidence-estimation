@@ -5,6 +5,7 @@ COPY pyproject.toml .
 RUN pip install poetry==2.1.1 && \
     poetry config virtualenvs.in-project true && \
     poetry install --no-root --no-interaction && \
+    poetry run python -m spacy download en_core_web_sm && \
     poetry cache clear pytorch-cpu --all --no-interaction && \
     poetry cache clear PyPI --all --no-interaction
 
