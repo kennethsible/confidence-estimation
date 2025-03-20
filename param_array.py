@@ -21,8 +21,8 @@ def generate_header(job_name: str, args: Namespace) -> str:
     string = '#!/bin/bash\n\n'
     string += f'touch {args.model}/{job_name}.log\n'
     string += f'fsync -d 30 {args.model}/{job_name}.log &\n'
-    string += '\n$(poetry env activate)\n'
-    string += 'export PYTHONPATH="${PYTHONPATH}:${pwd}"\n'
+    string += '\nset -eo pipefail\n'
+    string += '$(poetry env activate)\n'
     string += 'export SACREBLEU_FORMAT=text\n'
     return string
 
@@ -81,10 +81,11 @@ def generate_translate(job_name: str, test_data: str, args: Namespace) -> str:
 
 def generate_sacrebleu(job_name: str, test_data: str, args: Namespace) -> str:
     _, tgt_lang = args.lang_pair.split('-')
-    wmt_set = ''
+    wmt_set = test_refs = ''
     if re.match(r'wmt[0-9]{2}', test_data):
         wmt_set, test_data = test_data.split(':')
-    test_data, test_refs = re.findall(r'([^{]+)(?:\{(\d+(?:,\d+)+)\})?', test_data)
+    if '{' in test_data:
+        test_data, test_refs = re.findall(r'([^{]+)(?:\{(\d+(?:,\d+)+)\})?', test_data)
     test_set = test_data.split('/')[-1]
     string = ''
     if wmt_set:
@@ -107,10 +108,11 @@ def generate_sacrebleu(job_name: str, test_data: str, args: Namespace) -> str:
 
 def generate_comet(job_name: str, test_data: str, args: Namespace) -> str:
     src_lang, tgt_lang = args.lang_pair.split('-')
-    wmt_set = ''
+    wmt_set = test_refs = ''
     if re.match(r'wmt[0-9]{2}', test_data):
         wmt_set, test_data = test_data.split(':')
-    test_data, test_refs = re.findall(r'([^{]+)(?:\{(\d+(?:,\d+)+)\})?', test_data)
+    if '{' in test_data:
+        test_data, test_refs = re.findall(r'([^{]+)(?:\{(\d+(?:,\d+)+)\})?', test_data)
     test_set = test_data.split('/')[-1]
     if not wmt_set and test_refs:
         test_set += test_refs.split(',')[0]
@@ -133,9 +135,11 @@ def generate_comet(job_name: str, test_data: str, args: Namespace) -> str:
 
 def generate_bertscore(job_name: str, test_data: str, args: Namespace) -> str:
     _, tgt_lang = args.lang_pair.split('-')
+    test_refs = ''
     if re.match(r'wmt[0-9]{2}', test_data):
         _, test_data = test_data.split(':')
-    test_data, test_refs = re.findall(r'([^{]+)(?:\{(\d+(?:,\d+)+)\})?', test_data)
+    if '{' in test_data:
+        test_data, test_refs = re.findall(r'([^{]+)(?:\{(\d+(?:,\d+)+)\})?', test_data)
     test_set = test_data.split('/')[-1]
     string = f'echo -e "\\n{test_data} (BERTScore)" >> {args.model}/{job_name}.log \n'
     string += f'bert-score --rescale_with_baseline --lang {tgt_lang} \\\n'
