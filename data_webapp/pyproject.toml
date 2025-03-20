@@ -7,12 +7,13 @@ dependencies = [
     "sacremoses>=0.1.1",
     "subword-nmt>=0.3.8",
     "sentencepiece>=0.2.0",
-    "spacy~=3.8.4",
+    "spacy~=3.7.2",
     "tqdm>=4.67.1",
     "aiohttp>=3.11.14",
     "aiohttp_cors>=0.8.0",
     "scikit-learn>=1.6.1",
 ]
+# https://github.com/explosion/spaCy/discussions/13728
 
 [tool.poetry]
 requires-poetry = ">=2.0"
