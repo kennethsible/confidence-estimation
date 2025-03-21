@@ -61,7 +61,7 @@ details {
     padding: 0.5em 0.5em 0; */
     width: 100%;
     text-align: center;
-    max-height: 250px;
+    max-height: 270px;
     overflow-y: auto;
     position: relative;
 }
