@@ -33,9 +33,11 @@ body {
     font-size: 18px;
     transition: transform 0.3s ease, background-color 0.3s ease;
 }
-.github-logo:hover {
-    background-color: #007BFF;
-    transform: scale(1.1);
+@media (hover: hover) {
+    .github-logo:hover {
+        background-color: #007BFF;
+        transform: scale(1.1);
+    }
 }
 
 /* h2 {
@@ -106,10 +108,12 @@ summary {
     padding: 0.5em;
     transition: color 0.3s ease-in-out;
 }
-summary:hover {
-    cursor: pointer;
-    color: #007BFF;
-    /* background-color: #007BFF; */
+@media (hover: hover) {
+    summary:hover {
+        cursor: pointer;
+        color: #007BFF;
+        /* background-color: #007BFF; */
+    }
 }
 details[open] {
     padding: 0.5em;
