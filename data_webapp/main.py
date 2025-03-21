@@ -1,4 +1,5 @@
 import argparse
+import logging
 import os
 
 import aiohttp_cors
@@ -12,6 +13,13 @@ from translation.translate import translate
 PYTORCH_MODEL = 'data/en-de.pt'
 KNN_MODEL = 'data/neighbors.pickle'
 
+logging.basicConfig(
+    format='[%(asctime)s %(levelname)s] %(message)s',
+    level=logging.INFO,
+    handlers=[logging.FileHandler('data/api_server.log'), logging.StreamHandler()],
+)
+
+logging.info('Loading PyTorch Model...')
 model_state = torch.load(PYTORCH_MODEL, weights_only=False, map_location='cpu')
 model_state['config']['order'] = 1
 model_state['config']['accum'] = 'sum'
@@ -25,13 +33,18 @@ manager = Manager(
     'data/en-de.model',
 )
 manager.model.load_state_dict(model_state['state_dict'])
+logging.info('KNN Model Loaded: ' + PYTORCH_MODEL)
 
 knn_model = KNNModel(manager, 'data/en-de.freq', n_neighbors=5)
 if os.path.exists(KNN_MODEL):
+    logging.info('Loading KNN Model...')
     knn_model.load(KNN_MODEL)
+    logging.info('PyTorch Model Loaded: ' + KNN_MODEL)
 else:
+    logging.info('Training KNN Model...')
     knn_model.fit()
     knn_model.save(KNN_MODEL)
+    logging.info('KNN Model Saved: ' + KNN_MODEL)
 
 routes = web.RouteTableDef()
 
@@ -40,6 +53,8 @@ routes = web.RouteTableDef()
 async def neighbors_handler(request: web.Request) -> web.Response:
     args = await request.json()
     neighbors = knn_model.kneighbors(args.get('string'))
+    logging.info(f'POST /neighbors "{args.get('string')}"')
+    logging.info(f'  Neighbors: {neighbors}')
     return web.json_response({'neighbors': neighbors})
 
 
@@ -48,6 +63,10 @@ async def translate_handler(request: web.Request) -> web.Response:
     args = await request.json()
     output, scores = translate(args.get('string'), manager, conf_type='grad')
     counts = {word: int(knn_model.freq.get(word, 0)) for word, _ in scores[1:-1]}
+    logging.info(f'POST /translate "{args.get('string')}"')
+    logging.info(f'  Output: {output}')
+    logging.info(f'  Scores: {scores}')
+    logging.info(f'  Counts: {counts}')
     return web.json_response({'scores': scores, 'counts': counts, 'output': output})
 
 
@@ -77,4 +96,5 @@ if __name__ == '__main__':
     parser.add_argument('--dev-env', action='store_true')
     args = parser.parse_args()
 
+    logging.info('Initializing API Server...')
     web.run_app(init_app(args.dev_env), host=args.host, port=args.port)
