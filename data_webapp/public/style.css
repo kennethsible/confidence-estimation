@@ -84,7 +84,7 @@ details li {
 } */
 summary {
     font-weight: bold;
-    margin: -0.5em -0.5em 0;
+    /* margin: -0.5em -0.5em 0; */
     padding: 0.5em;
 }
 summary:hover {
