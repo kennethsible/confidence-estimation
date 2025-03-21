@@ -37,7 +37,7 @@ routes = web.RouteTableDef()
 
 
 @routes.post('/neighbors')
-async def knn_handler(request: web.Request) -> web.Response:
+async def neighbors_handler(request: web.Request) -> web.Response:
     args = await request.json()
     neighbors = knn_model.kneighbors(args.get('string'))
     return web.json_response({'neighbors': neighbors})
@@ -47,7 +47,8 @@ async def knn_handler(request: web.Request) -> web.Response:
 async def translate_handler(request: web.Request) -> web.Response:
     args = await request.json()
     output, scores = translate(args.get('string'), manager, conf_type='grad')
-    return web.json_response({'scores': scores, 'output': output})
+    counts = {word: int(knn_model.freq.get(word, 0)) for word, _ in scores[1:-1]}
+    return web.json_response({'scores': scores, 'counts': counts, 'output': output})
 
 
 async def init_app(enable_cors: bool = False) -> web.Application:

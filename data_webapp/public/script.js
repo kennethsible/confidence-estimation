@@ -1,4 +1,5 @@
 let confidenceThreshold = 8.38; // 8.382382382382382
+let frequencyThreshold = 1; // out-of-vocabulary
 
 function toggleEditable() {
     const inputElement = document.getElementById('inputText');
@@ -21,17 +22,23 @@ function toggleClickable() {
 
 function highlightWords() {
     callTranslateFunction().then(
-        function(value) {
+        function(response) {
             const inputElement = document.getElementById('inputText');
             inputElement.innerHTML = inputElement.textContent;
             inputElement.removeAttribute('contenteditable');
             const plainText = inputElement.innerHTML;
 
-            const wordsToHighlight = value.filter(pair => pair[1] > confidenceThreshold).map(pair => pair[0]);
+            const wordsToHighlight = response['scores'].filter(pair => pair[1] > confidenceThreshold).map(pair => pair[0]);
             const escapeRegExp = (string) => string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
             if (wordsToHighlight.length > 0) {
                 const regex = new RegExp(`\\b(${wordsToHighlight.map(escapeRegExp).join('|')})\\b`, 'gi');        
-                inputElement.innerHTML = plainText.replace(regex, '<span class="highlight">$&</span>');
+                inputElement.innerHTML = plainText.replace(regex, match => {
+                    let opacityStyle = '';
+                    if (response['counts'][match] < frequencyThreshold) {
+                        opacityStyle = 'opacity: 0.5;';
+                    }
+                    return `<span class="highlight" style="${opacityStyle}">${match}</span>`;
+                });
             } else {
                 inputElement.innerHTML = plainText;
             }
@@ -54,11 +61,11 @@ function handleWordClick(event) {
 
     const menuItemsContainer = document.getElementById('menu-items');
     event.target.style.cursor = 'wait';
-    callKNNFunction(event.target.textContent.trim()).then(
-        function(items) {
+    callNeighborsFunction(event.target.textContent.trim()).then(
+        function(response) {
             event.target.style.cursor = 'default';
 
-            menuItemsContainer.innerHTML = items.map(item => `<li>${item}</li>`).join('');
+            menuItemsContainer.innerHTML = response['neighbors'].map(item => `<li>${item}</li>`).join('');
             menuItemsContainer.querySelectorAll('li').forEach(li => {
                 li.addEventListener('click', (e) => {
                     hideContextMenu();
@@ -121,10 +128,10 @@ async function callTranslateFunction() {
     // outputElement.textContent = JSON.stringify(data, null, 2);
     outputElement.textContent = json['output'];
     buttonElement.className = className;
-    return json['scores'];
+    return json;
 }
 
-async function callKNNFunction(word) {
+async function callNeighborsFunction(word) {
     const apiUrl = 'http://localhost:8080/neighbors';
 
     const requestData = {
@@ -142,8 +149,7 @@ async function callKNNFunction(word) {
     if (!response.ok) {
         throw new Error('Request Failed.');
     }
-    const json = await response.json();
-    return json['neighbors'];
+    return await response.json();
 }
 
 const inputText = document.getElementById('inputText');
