@@ -29,9 +29,12 @@ function highlightWords() {
 
             const wordsToHighlight = value.filter(pair => pair[1] > confidenceThreshold).map(pair => pair[0]);
             const escapeRegExp = (string) => string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-            const regex = new RegExp(`\\b(${wordsToHighlight.map(escapeRegExp).join('|')})\\b`, 'gi');        
-            const highlightedText = plainText.replace(regex, '<span class="highlight">$&</span>');
-            inputElement.innerHTML = highlightedText;
+            if (wordsToHighlight.length > 0) {
+                const regex = new RegExp(`\\b(${wordsToHighlight.map(escapeRegExp).join('|')})\\b`, 'gi');        
+                inputElement.innerHTML = plainText.replace(regex, '<span class="highlight">$&</span>');
+            } else {
+                inputElement.innerHTML = plainText;
+            }
 
             toggleClickable();
         },
