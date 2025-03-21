@@ -3,9 +3,12 @@ let frequencyThreshold = 1; // out-of-vocabulary
 
 function toggleEditable() {
     const inputElement = document.getElementById('inputText');
-    inputElement.innerHTML = inputElement.textContent;
-    inputElement.setAttribute('contenteditable', true);
+    if (inputElement.getAttribute('contenteditable') === 'false') {
+        inputElement.innerHTML = inputElement.textContent;
+        inputElement.setAttribute('contenteditable', 'true');
+    }
 }
+
 
 function toggleClickable() {
     const inputElement = document.getElementById('inputText');
@@ -25,7 +28,7 @@ function highlightWords() {
         function(response) {
             const inputElement = document.getElementById('inputText');
             inputElement.innerHTML = inputElement.textContent;
-            inputElement.removeAttribute('contenteditable');
+            inputElement.setAttribute('contenteditable', 'false');
             const plainText = inputElement.innerHTML;
 
             const wordsToHighlight = response['scores'].filter(pair => pair[1] > confidenceThreshold).map(pair => pair[0]);
@@ -33,11 +36,11 @@ function highlightWords() {
             if (wordsToHighlight.length > 0) {
                 const regex = new RegExp(`\\b(${wordsToHighlight.map(escapeRegExp).join('|')})\\b`, 'gi');        
                 inputElement.innerHTML = plainText.replace(regex, match => {
-                    let opacityStyle = '';
+                    let OOVStyle = '';
                     if (response['counts'][match] < frequencyThreshold) {
-                        opacityStyle = 'opacity: 0.5;';
+                        OOVStyle = 'background-color: #ff9a00;';
                     }
-                    return `<span class="highlight" style="${opacityStyle}">${match}</span>`;
+                    return `<span class="highlight" style="${OOVStyle}">${match}</span>`;
                 });
             } else {
                 inputElement.innerHTML = plainText;
@@ -71,6 +74,7 @@ function handleWordClick(event) {
                     hideContextMenu();
                     event.target.textContent = e.target.textContent.trim();;
                     event.target.className = '';
+                    event.target.style = '';
                     event.target.removeEventListener('click', handleWordClick);
                 });
             });
@@ -194,6 +198,14 @@ document.addEventListener('DOMContentLoaded', function () {
     const scrollIndicator = document.getElementById('scroll-indicator');
 
     function updateScrollIndicator() {
+        if (!details.open) {
+            scrollIndicator.style.transition = 'none';
+            scrollIndicator.classList.remove('visible');
+            return;
+        }
+        setTimeout(() => {
+            scrollIndicator.style.transition = 'opacity 0.3s ease-in-out';
+        }, 10);
         if (details.scrollHeight > details.clientHeight) {
             if (details.scrollTop + details.clientHeight >= details.scrollHeight - 5) {
                 scrollIndicator.classList.remove('visible');
@@ -216,4 +228,14 @@ document.addEventListener('DOMContentLoaded', function () {
     });    
 
     updateScrollIndicator();
+});
+
+document.addEventListener('keydown', function (event) {
+    if (event.key === 'Enter') {
+        const activeElement = document.activeElement;
+        if (activeElement.isContentEditable) {
+            event.preventDefault();
+        }
+        highlightWords();
+    }
 });

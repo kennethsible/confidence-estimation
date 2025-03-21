@@ -23,15 +23,16 @@
     <div class="collapsible">
         <div class="details-container">
             <details id="info-details">
-                <summary>Interactive Translator — (Need Help? Click Here)</summary>
+                <summary><span>Interactive Translator</span></summary>
                 <ul>
-                    <li>Enter a sentence in the input field (top/left) and click the button to translate.</li>
+                    <li>Enter a sentence in the input field (top/left) and click the arrow button to translate.</li>
                     <li>If the arrow symbol changes to an exclamation, the translation API is <b>unreachable</b>.</li>
-                    <li>Words tagged with <b>low confidence</b> are highlighted in <span class="highlight">light blue</span> in the input field.</li>
+                    <!-- <li>Words  are highlighted in <span class="highlight">light blue</span> in the input field.</li> -->
+                    <li>Words that may have been <b>mistranslated</b> are highlighted in <span class="highlight">blue</span> in the input field.</li>
                     <li>Click on a highlighted word to see <b>suggestions</b> that may improve the translation.</li>
-                    <li>If a highlighted word has <span class="highlight" style="opacity: 0.5;">reduced opacity</span>, it is <b>out-of-vocabulary</b> for suggestions.</li>
+                    <li>If an input word has an <span class="highlight" style="background-color: #ff9a00;">orange</span> highlight, it is <b>out-of-vocabulary</b> for suggestions.</li>
                     <li>To change/update the input sentence, <b>double-click</b> anywhere in the input field.</li>
-                    <li>Open the JavaScript console to see confidence scores for each word in the input.</li>
+                    <li>Open the JavaScript console to see uncertainty scores for each word in the input.</li>
                     <li>Use "Add to Home Screen" on Android/iOS to add an icon for the standalone app.</li>
                 </ul>
             </details>
