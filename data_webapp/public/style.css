@@ -63,7 +63,6 @@ details {
     padding: 0.5em 0.5em 0; */
     width: 100%;
     text-align: center;
-    max-height: min(260px, 50vh);
     overflow-y: auto;
     position: relative;
 }
@@ -191,6 +190,12 @@ details .details-content {
             transform: rotate(90deg);
         }
     }
+    details {
+        max-height: min(320px, 30vh);
+    }
+    details > summary {
+        font-size: 18px;
+    }
 }
 @media only screen and (orientation: landscape) {
     .container {
@@ -201,6 +206,12 @@ details .details-content {
         width: 80%;
         max-width: 1000px;
         padding-bottom: 25px;
+    }
+    details {
+        max-height: min(320px, 50vh);
+    }
+    details > summary {
+        font-size: 20px;
     }
 }
 
