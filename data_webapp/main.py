@@ -10,7 +10,7 @@ from translation.knn import KNNModel
 from translation.manager import Manager
 from translation.translate import translate
 
-PYTORCH_MODEL = 'data/en-de.pt'
+NMT_MODEL = 'data/en-de.pt'
 KNN_MODEL = 'data/neighbors.pickle'
 
 logging.basicConfig(
@@ -19,8 +19,8 @@ logging.basicConfig(
     handlers=[logging.FileHandler('data/api_server.log'), logging.StreamHandler()],
 )
 
-logging.info('Loading PyTorch Model...')
-model_state = torch.load(PYTORCH_MODEL, weights_only=False, map_location='cpu')
+logging.info('Loading NMT Model: ' + NMT_MODEL)
+model_state = torch.load(NMT_MODEL, weights_only=False, map_location='cpu')
 model_state['config']['order'] = 1
 model_state['config']['accum'] = 'sum'
 manager = Manager(
@@ -28,23 +28,20 @@ manager = Manager(
     'cpu',
     model_state['src_lang'],
     model_state['tgt_lang'],
-    PYTORCH_MODEL,
+    NMT_MODEL,
     'data/en-de.vocab',
     'data/en-de.model',
 )
 manager.model.load_state_dict(model_state['state_dict'])
-logging.info('KNN Model Loaded: ' + PYTORCH_MODEL)
 
 knn_model = KNNModel(manager, 'data/en-de.freq', n_neighbors=5)
 if os.path.exists(KNN_MODEL):
-    logging.info('Loading KNN Model...')
+    logging.info('Loading KNN Model: ' + KNN_MODEL)
     knn_model.load(KNN_MODEL)
-    logging.info('PyTorch Model Loaded: ' + KNN_MODEL)
 else:
-    logging.info('Training KNN Model...')
+    logging.info('Fitting KNN Model: ' + KNN_MODEL)
     knn_model.fit()
     knn_model.save(KNN_MODEL)
-    logging.info('KNN Model Saved: ' + KNN_MODEL)
 
 routes = web.RouteTableDef()
 
@@ -96,5 +93,5 @@ if __name__ == '__main__':
     parser.add_argument('--dev-env', action='store_true')
     args = parser.parse_args()
 
-    logging.info('Initializing API Server...')
+    logging.info('Starting API Server')
     web.run_app(init_app(args.dev_env), host=args.host, port=args.port)
