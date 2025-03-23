@@ -1,6 +1,7 @@
 import pickle
 
 import numpy as np
+import torch
 from scipy.spatial.distance import cosine
 from sklearn.neighbors import NearestNeighbors
 from tqdm import tqdm
@@ -10,50 +11,58 @@ from translation.manager import Manager, Tokenizer
 
 class KNNModel:
     def __init__(self, manager: Manager, freq_file: str, *, n_neighbors: int):
-        self.manager = manager
-        self.tokenizer = Tokenizer(manager.src_lang, sw_model=manager.sw_model)
+        self.nn_model: NearestNeighbors
         with open(freq_file) as freq_f:
-            self.freq = {}
+            self.freq: dict[str, float] = {}
             for line in freq_f.readlines():
                 word, freq = line.split()
                 self.freq[word] = float(freq)
-            self.vocab = list(self.freq.keys())
+            self.nn_vocab: list[str] = list(self.freq.keys())
         self.n_neighbors = n_neighbors
+        self.tokenizer = Tokenizer(manager.src_lang, sw_model=manager.sw_model)
+        self.nmt_model = manager.model
+        self.nmt_vocab = manager.vocab
+        self.nmt_model.eval()
 
     def save(self, model_file: str):
         with open(model_file, 'wb') as model_f:
-            pickle.dump(self.nbrs, model_f)
+            pickle.dump(self.nn_model, model_f)
 
     def load(self, model_file: str):
         with open(model_file, 'rb') as model_f:
-            self.nbrs = pickle.load(model_f)
+            self.nn_model = pickle.load(model_f)
 
     @staticmethod
-    def cosine_similarity(u: np.ndarray, v: np.ndarray, a: int, b: int) -> float:
-        # return cosine(u[:-1], v[:-1]) / (1 + np.log(1 + v[-1]))
+    def cosine_metric(u: np.ndarray, v: np.ndarray, a: float, b: float) -> float:
         return cosine(u[:-1], v[:-1]) + a / (v[-1] + b)
 
-    def fit(self):
-        model, vocab = self.manager.model, self.manager.vocab
-        self.nbrs = NearestNeighbors(
+    # def attention_weighting(self, u: np.ndarray) -> np.ndarray:
+    #     layers = self.nmt_model.encoder.layers
+    #     scores = sum(layer.self_attn.scores.sum(dim=1) for layer in layers)
+    #     return np.sum(scores[0].detach().numpy() @ u, axis=0)
+
+    def fit(self, a: float = 10.0, b: float = 1e-6):
+        word_embs = []
+        for word in tqdm(self.nn_vocab):
+            subword_nums = self.nmt_vocab.numberize(self.tokenizer.tokenize(word))
+            # subword_encs, _ = self.nmt_model.encode(torch.tensor(subword_nums).unsqueeze(0))
+            subword_embs = self.nmt_model.src_embed(torch.tensor(subword_nums).unsqueeze(0))
+            word_emb = subword_embs.squeeze(0).mean(dim=0).detach().numpy()
+            word_embs.append(np.append(word_emb, self.freq[word]))
+
+        self.nn_model = NearestNeighbors(
             n_neighbors=self.n_neighbors + 1,
             algorithm='ball_tree',
-            metric=self.cosine_similarity,
-            metric_params={'a': 10.0, 'b': 1e-6},
+            metric=self.cosine_metric,
+            metric_params={'a': a, 'b': b},
         )
-        word_embeds = []
-        for word in tqdm(self.vocab, bar_format='Fitting Model {desc}{percentage:3.0f}%|{bar:10}'):
-            subwords = self.tokenizer.tokenize(word)
-            subword_embeds = model.out_embed(vocab.numberize(subwords)).detach().numpy()
-            word_embeds.append(np.append(np.mean(subword_embeds, axis=0), self.freq[word]))
-        self.nbrs.fit(np.array(word_embeds))
+        self.nn_model.fit(np.array(word_embs))
 
     def kneighbors(self, word: str) -> list[str]:
-        model, vocab = self.manager.model, self.manager.vocab
-        tokens = self.tokenizer.tokenize(word)
-        subword_embeds = model.out_embed(vocab.numberize(tokens)).detach().numpy()
-        word_embed = np.append(np.mean(subword_embeds, axis=0), self.freq.get(word, 0.0))
-        indices = self.nbrs.kneighbors(word_embed[None, ...], return_distance=False)[0]
-        return [self.vocab[index] for index in indices if self.vocab[index] != word][
-            : self.n_neighbors
-        ]
+        subword_nums = self.nmt_vocab.numberize(self.tokenizer.tokenize(word))
+        # subword_encs, _ = self.nmt_model.encode(torch.tensor(subword_nums).unsqueeze(0))
+        subword_embs = self.nmt_model.src_embed(torch.tensor(subword_nums).unsqueeze(0))
+        word_emb = subword_embs.squeeze(0).mean(dim=0).detach().numpy()
+        word_emb = np.append(word_emb, self.freq.get(word, 0.0))[None, ...]
+        indices = self.nn_model.kneighbors(word_emb, return_distance=False)[0]
+        return [self.nn_vocab[i] for i in indices if self.nn_vocab[i] != word][: self.n_neighbors]
