@@ -36,16 +36,10 @@ class KNNModel:
     def cosine_metric(u: np.ndarray, v: np.ndarray, a: float, b: float) -> float:
         return cosine(u[:-1], v[:-1]) + a / (v[-1] + b)
 
-    # def attention_weighting(self, u: np.ndarray) -> np.ndarray:
-    #     layers = self.nmt_model.encoder.layers
-    #     scores = sum(layer.self_attn.scores.sum(dim=1) for layer in layers)
-    #     return np.sum(scores[0].detach().numpy() @ u, axis=0)
-
     def fit(self, a: float = 10.0, b: float = 1e-6):
         word_embs = []
         for word in tqdm(self.nn_vocab):
             subword_nums = self.nmt_vocab.numberize(self.tokenizer.tokenize(word))
-            # subword_encs, _ = self.nmt_model.encode(torch.tensor(subword_nums).unsqueeze(0))
             subword_embs = self.nmt_model.src_embed(torch.tensor(subword_nums).unsqueeze(0))
             word_emb = subword_embs.squeeze(0).mean(dim=0).detach().numpy()
             word_embs.append(np.append(word_emb, self.freq[word]))
@@ -60,7 +54,6 @@ class KNNModel:
 
     def kneighbors(self, word: str) -> list[str]:
         subword_nums = self.nmt_vocab.numberize(self.tokenizer.tokenize(word))
-        # subword_encs, _ = self.nmt_model.encode(torch.tensor(subword_nums).unsqueeze(0))
         subword_embs = self.nmt_model.src_embed(torch.tensor(subword_nums).unsqueeze(0))
         word_emb = subword_embs.squeeze(0).mean(dim=0).detach().numpy()
         word_emb = np.append(word_emb, self.freq.get(word, 0.0))[None, ...]
