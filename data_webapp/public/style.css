@@ -63,7 +63,7 @@ details {
     padding: 0.5em 0.5em 0; */
     width: 100%;
     text-align: center;
-    max-height: min(270px, 50vh);
+    max-height: min(295px, 50vh);
     overflow-y: auto;
     position: relative;
 }
@@ -126,6 +126,21 @@ details .details-content {
     max-height: 100px;
     overflow-y: auto;
     padding-right: 10px;
+}
+.checkbox-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    width: 100%;
+    text-align: center;
+}
+.checkbox-container input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+}
+.checkbox-container label {
+    font-size: 12px;
 }
 
 .scroll-indicator {

@@ -9,7 +9,6 @@ function toggleEditable() {
     }
 }
 
-
 function toggleClickable() {
     const inputElement = document.getElementById('inputText');
     inputElement.querySelectorAll('span.clickable').forEach(span => {
@@ -24,6 +23,12 @@ function toggleClickable() {
 }
 
 function highlightWords() {
+    const inputElement = document.getElementById('inputText');
+    if (!inputElement.textContent.trim()) {
+        alert('You must enter a sentence in the input field (top/left).');
+        return;
+    }
+
     callTranslateFunction().then(
         function(response) {
             const inputElement = document.getElementById('inputText');
@@ -108,12 +113,14 @@ async function callTranslateFunction() {
     const inputElement = document.getElementById('inputText');
     const outputElement = document.getElementById('outputText');
     const buttonElement = document.getElementById('buttonIcon');
+    const checkbox = document.getElementById('send-data');
 
     const className = buttonElement.className;
     buttonElement.className = 'fas fa-sync fa-spin';
 
     const requestData = {
         string: inputElement.textContent,
+        send_data: checkbox.checked,
     };
     const requestOptions = {
         method: 'POST',
@@ -137,9 +144,11 @@ async function callTranslateFunction() {
 
 async function callNeighborsFunction(word) {
     const apiUrl = 'http://localhost:8080/neighbors';
+    const checkbox = document.getElementById('send-data');
 
     const requestData = {
         string: word,
+        send_data: checkbox.checked,
     };
     const requestOptions = {
         method: 'POST',
@@ -228,6 +237,15 @@ document.addEventListener('DOMContentLoaded', function () {
     });    
 
     updateScrollIndicator();
+
+    const checkbox = document.getElementById('send-data');
+    const savedState = localStorage.getItem('sendTranslationData');
+    if (savedState !== null) {
+        checkbox.checked = JSON.parse(savedState);
+    }
+    checkbox.addEventListener('change', function () {
+        localStorage.setItem('sendTranslationData', checkbox.checked);
+    });
 });
 
 document.addEventListener('keydown', function (event) {

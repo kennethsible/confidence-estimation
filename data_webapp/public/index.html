@@ -27,7 +27,6 @@
                 <ul>
                     <li>Enter a sentence in the input field (top/left) and click the arrow button to translate.</li>
                     <li>If the arrow symbol changes to an exclamation, the translation API is <b>unreachable</b>.</li>
-                    <!-- <li>Words  are highlighted in <span class="highlight">light blue</span> in the input field.</li> -->
                     <li>Words that may have been <b>mistranslated</b> are highlighted in <span class="highlight">blue</span> in the input field.</li>
                     <li>Click on a highlighted word to see <b>suggestions</b> that may improve the translation.</li>
                     <li>If an input word has an <span class="highlight" style="background-color: #ff9a00;">orange</span> highlight, it is <b>out-of-vocabulary</b> for suggestions.</li>
@@ -35,6 +34,10 @@
                     <li>Open the JavaScript console to see uncertainty scores for each word in the input.</li>
                     <li>Use "Add to Home Screen" on Android/iOS to add an icon for the standalone app.</li>
                 </ul>
+                <div class="checkbox-container">
+                    <input type="checkbox" id="send-data" checked>
+                    <label for="send-data">Send Anonymous Translation Data</label>
+                </div>
             </details>
             <div id="scroll-indicator" class="scroll-indicator">
                 <i class="fa-solid fa-chevron-down"></i>

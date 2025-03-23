@@ -49,21 +49,31 @@ routes = web.RouteTableDef()
 @routes.post('/neighbors')
 async def neighbors_handler(request: web.Request) -> web.Response:
     args = await request.json()
-    neighbors = knn_model.kneighbors(args.get('string'))
-    logging.info(f'POST /neighbors "{args.get('string')}"')
-    logging.info(f'  Neighbors: {neighbors}')
+    input_string = args.get('string')
+    collect_data = args.get('send_data')
+    if input_string is None:
+        return web.json_response({'error': 'missing "string" parameter'}, status=400)
+    neighbors = knn_model.kneighbors(input_string)
+    if collect_data is not None and collect_data:
+        logging.info(f'\x1b[33;20mPOST\x1b[0m /neighbors "{input_string}"')
+        logging.info(f'Neighbors: {neighbors}')
     return web.json_response({'neighbors': neighbors})
 
 
 @routes.post('/translate')
 async def translate_handler(request: web.Request) -> web.Response:
     args = await request.json()
-    output, scores = translate(args.get('string'), manager, conf_type='grad')
+    input_string = args.get('string')
+    collect_data = args.get('send_data')
+    if input_string is None:
+        return web.json_response({'error': 'missing "string" parameter'}, status=400)
+    output, scores = translate(input_string, manager, conf_type='grad')
     counts = {word: int(knn_model.freq.get(word, 0)) for word, _ in scores[1:-1]}
-    logging.info(f'POST /translate "{args.get('string')}"')
-    logging.info(f'  Output: {output}')
-    logging.info(f'  Scores: {scores}')
-    logging.info(f'  Counts: {counts}')
+    if collect_data is not None and collect_data:
+        logging.info(f'\x1b[33;20mPOST\x1b[0m /translate "{input_string}"')
+        logging.info(f'Output: {output}')
+        logging.info(f'Scores: {[(word, f'{score:.2f}') for word, score in scores]}')
+        logging.info(f'Counts: {counts}')
     return web.json_response({'scores': scores, 'counts': counts, 'output': output})
 
 
