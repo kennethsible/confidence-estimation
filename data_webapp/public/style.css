@@ -39,6 +39,22 @@ body {
         transform: scale(1.1);
     }
 }
+.lock-icon {
+    position: absolute;
+    width: 40px;
+    height: 40px;
+    background-color: #1d1d1d;
+    opacity: 70%;
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 14px;
+    z-index: 10;
+    cursor: pointer;
+    pointer-events: none;
+}
 
 /* h2 {
     display: inline;

@@ -3,9 +3,13 @@ let frequencyThreshold = 1; // out-of-vocabulary
 
 function toggleEditable() {
     const inputElement = document.getElementById('inputText');
+    const iconElement = document.querySelector('.lock-icon');
+    const iconSymbol = document.querySelector('.lock-icon i');
     if (inputElement.getAttribute('contenteditable') === 'false') {
         inputElement.innerHTML = inputElement.textContent;
         inputElement.setAttribute('contenteditable', 'true');
+        iconElement.style.pointerEvents = 'none';
+        iconSymbol.className = 'fa-solid fa-lock-open'; 
     }
 }
 
@@ -34,6 +38,10 @@ function highlightWords() {
             const inputElement = document.getElementById('inputText');
             inputElement.innerHTML = inputElement.textContent;
             inputElement.setAttribute('contenteditable', 'false');
+            const iconElement = document.querySelector('.lock-icon');
+            iconElement.style.pointerEvents = 'auto';
+            const iconSymbol = document.querySelector('.lock-icon i');
+            iconSymbol.className = 'fa-solid fa-lock';
             const plainText = inputElement.innerHTML;
 
             const wordsToHighlight = response['scores'].filter(pair => pair[1] > confidenceThreshold).map(pair => pair[0]);
@@ -41,11 +49,11 @@ function highlightWords() {
             if (wordsToHighlight.length > 0) {
                 const regex = new RegExp(`\\b(${wordsToHighlight.map(escapeRegExp).join('|')})\\b`, 'gi');        
                 inputElement.innerHTML = plainText.replace(regex, match => {
-                    let OOVStyle = '';
+                    let orangeHighlight = '';
                     if (response['counts'][match] < frequencyThreshold) {
-                        OOVStyle = 'background-color: #ff9a00;';
+                        orangeHighlight = 'background-color: #ff9a00;';
                     }
-                    return `<span class="highlight" style="${OOVStyle}">${match}</span>`;
+                    return `<span class="highlight" style="${orangeHighlight}">${match}</span>`;
                 });
             } else {
                 inputElement.innerHTML = plainText;
@@ -199,8 +207,28 @@ function updateCollapsibleWidth() {
     }
 }
 
-window.addEventListener('resize', updateCollapsibleWidth);
-window.addEventListener('load', updateCollapsibleWidth);
+function updateLockIconPosition() {
+    let inputText = document.getElementById('inputText');
+    let lockIcon = document.querySelector('.lock-icon');
+
+    if (inputText && lockIcon) {
+        let rect = inputText.getBoundingClientRect();
+        
+        let positionTop = rect.bottom - lockIcon.offsetHeight - 10;
+        let positionLeft = rect.right - lockIcon.offsetWidth - 10;
+
+        lockIcon.style.top = `${positionTop}px`;
+        lockIcon.style.left = `${positionLeft}px`;
+    }
+}
+
+function updateLayout() {
+    updateCollapsibleWidth();
+    updateLockIconPosition();
+}
+
+window.addEventListener('resize', updateLayout);
+window.addEventListener('load', updateLayout);
 
 document.addEventListener('DOMContentLoaded', function () {
     const details = document.getElementById('info-details');
@@ -228,6 +256,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     details.addEventListener('scroll', updateScrollIndicator);
     details.addEventListener('toggle', updateScrollIndicator);
+    details.addEventListener('toggle', updateLockIconPosition);
 
     // scrollIndicator.addEventListener('click', function () {
     //     details.scrollBy({ top: 100, behavior: 'smooth' });
