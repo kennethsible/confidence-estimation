@@ -72,11 +72,12 @@ async def translate_handler(request: web.Request) -> web.Response:
     if input_string is None:
         return web.json_response({'error': 'missing "string" parameter'}, status=400)
     output, scores = translate(input_string, manager, conf_type='grad')
+    counts = {word: knn_model.word_to_freq.get(word, 0) for word, _ in scores[1:-1]}
     if collect_data is None or collect_data:
         logging.info(f'\x1b[33;20mPOST /translate\x1b[0m "{input_string}"')
         logging.info(f'Output: {output}')
         logging.info(f'Scores: {[(word, f'{score:.2f}') for word, score in scores]}')
-    return web.json_response({'scores': scores, 'output': output})
+    return web.json_response({'output': output, 'scores': scores, 'counts': counts})
 
 
 async def init_app(enable_cors: bool = False) -> web.Application:

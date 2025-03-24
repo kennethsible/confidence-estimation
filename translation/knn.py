@@ -10,10 +10,12 @@ class KNNModel:
     def __init__(self, manager: Manager, vocab_file: str):
         self.faiss_index: faiss.IndexFlat
         self.faiss_vocab: list[str] = []
+        self.word_to_freq: dict[str, int] = {}
         with open(vocab_file) as vocab_f:
             for line in vocab_f.readlines():
-                word, _ = line.split()
+                word, freq = line.split()
                 self.faiss_vocab.append(word)
+                self.word_to_freq[word] = int(freq)
 
         self.tokenizer = Tokenizer(manager.src_lang, sw_model=manager.sw_model)
         self.nmt_model = manager.model
