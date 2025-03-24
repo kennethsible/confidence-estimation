@@ -53,7 +53,7 @@
         <div class="lock-icon" onclick="toggleEditable()">
             <i class="fa-solid fa-lock-open"></i>
         </div>
-        <div id="inputText" class="textbox" contenteditable="true"
+        <div id="inputText" class="textbox" ondblclick="shakeLockIcon()" contenteditable="true"
             placeholder="Enter an English sentence to be translated into German."></div>
         <button class="button" onclick="highlightWords()">
             <i id="buttonIcon" class="fas fa-arrow-right-long"></i>

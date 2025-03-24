@@ -202,6 +202,17 @@ document.addEventListener('keydown', function (event) {
     }
 });
 
+function shakeLockIcon() {
+    const inputElement = document.getElementById('inputText');
+    const lockIcon = document.querySelector('.lock-icon');
+    if (inputElement.getAttribute('contenteditable') === 'false') {
+        lockIcon.classList.add('shake');
+        setTimeout(() => {
+            lockIcon.classList.remove('shake');
+        }, 500);
+    }
+}
+
 function updateCollapsibleWidth() {
     const collapsible = document.querySelector('.collapsible');
     const container = document.querySelector('.container');
