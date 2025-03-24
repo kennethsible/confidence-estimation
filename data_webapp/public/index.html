@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -13,13 +14,11 @@
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://use.fontawesome.com/releases/v6.5.0/css/all.css">
 </head>
+
 <body>
     <a href="https://github.com/kennethsible/dictionary-attention/tree/confidence" target="_blank" class="github-logo">
         <i class="fab fa-github"></i>
     </a>
-    <!-- <select id="dropdown" class="dropdown">
-        <option value="Option 1">English &rarr; German</option>
-    </select> -->
     <div class="collapsible">
         <div class="details-container">
             <details id="info-details">
@@ -27,9 +26,11 @@
                 <ul>
                     <li>Enter a sentence in the input field (top/left) and click the arrow button to translate.</li>
                     <li>If the arrow symbol changes to an exclamation, the translation API is <b>unreachable</b>.</li>
-                    <li>Words that may have been <b>mistranslated</b> are highlighted in <span class="highlight">blue</span> in the input field.</li>
+                    <li>Words that may have been <b>mistranslated</b> are highlighted in <span
+                            class="highlight">blue</span> in the input field.</li>
                     <li>Select a highlighted word to see <b>suggestions</b> that may improve the translation.</li>
-                    <li>If an input word has an <span class="highlight" style="background-color: #ff9a00;">orange</span> highlight, it is <b>out-of-vocabulary</b> for suggestions.</li>
+                    <li>If an input word has an <span class="highlight" style="background-color: #ff9a00;">orange</span>
+                        highlight, it is <b>out-of-vocabulary</b> for suggestions.</li>
                     <li>To update or change the input sentence, select the <b>lock icon</b> in the bottom right.</li>
                     <li>Open the JavaScript console to see uncertainty scores for each word in the input.</li>
                     <li>Use "Add to Home Screen" on Android/iOS to add an icon for the standalone app.</li>
@@ -43,7 +44,7 @@
             <div id="scroll-indicator" class="scroll-indicator">
                 <i class="fa-solid fa-chevron-down"></i>
             </div>
-        </div>        
+        </div>
     </div>
     <div class="container">
         <div class="context-menu" id="context-menu">
@@ -52,7 +53,8 @@
         <div class="lock-icon" onclick="toggleEditable()">
             <i class="fa-solid fa-lock-open"></i>
         </div>
-        <div id="inputText" class="textbox" contenteditable="true" placeholder="Enter an English sentence to be translated into German."></div>
+        <div id="inputText" class="textbox" contenteditable="true"
+            placeholder="Enter an English sentence to be translated into German."></div>
         <button class="button" onclick="highlightWords()">
             <i id="buttonIcon" class="fas fa-arrow-right-long"></i>
         </button>
@@ -60,4 +62,5 @@
     </div>
     <script src="script.js"></script>
 </body>
+
 </html>

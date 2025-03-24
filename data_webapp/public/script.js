@@ -9,7 +9,7 @@ function toggleEditable() {
         inputElement.innerHTML = inputElement.textContent;
         inputElement.setAttribute('contenteditable', 'true');
         iconElement.style.pointerEvents = 'none';
-        iconSymbol.className = 'fa-solid fa-lock-open'; 
+        iconSymbol.className = 'fa-solid fa-lock-open';
     }
 }
 
@@ -34,7 +34,7 @@ function highlightWords() {
     }
 
     callTranslateFunction().then(
-        function(response) {
+        function (response) {
             const inputElement = document.getElementById('inputText');
             inputElement.innerHTML = inputElement.textContent;
             inputElement.setAttribute('contenteditable', 'false');
@@ -47,7 +47,7 @@ function highlightWords() {
             const wordsToHighlight = response['scores'].filter(pair => pair[1] > confidenceThreshold).map(pair => pair[0]);
             const escapeRegExp = (string) => string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
             if (wordsToHighlight.length > 0) {
-                const regex = new RegExp(`\\b(${wordsToHighlight.map(escapeRegExp).join('|')})\\b`, 'gi');        
+                const regex = new RegExp(`\\b(${wordsToHighlight.map(escapeRegExp).join('|')})\\b`, 'gi');
                 inputElement.innerHTML = plainText.replace(regex, match => {
                     const frequencyThreshold = 1; // out-of-vocabulary
                     let orangeHighlight = '';
@@ -62,7 +62,7 @@ function highlightWords() {
 
             toggleClickable();
         },
-        function(error) {
+        function (error) {
             const buttonElement = document.getElementById('buttonIcon');
             buttonElement.className = 'fas fa-circle-exclamation';
             console.error(error);
@@ -79,7 +79,7 @@ function handleWordClick(event) {
     const menuItemsContainer = document.getElementById('menu-items');
     event.target.style.cursor = 'wait';
     callNeighborsFunction(event.target.textContent.trim()).then(
-        function(response) {
+        function (response) {
             event.target.style.cursor = 'default';
 
             menuItemsContainer.innerHTML = response['neighbors'].map(item => `<li>${item}</li>`).join('');
@@ -104,7 +104,7 @@ function handleWordClick(event) {
             }
             contextMenu.style.top = `${event.pageY}px`;
         },
-        function(error) { 
+        function (error) {
             event.target.style.cursor = 'default';
             console.error(error);
         }
@@ -134,7 +134,7 @@ async function callTranslateFunction() {
     const requestOptions = {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
+            'Content-Type': 'application/json',
         },
         body: JSON.stringify(requestData),
     };
@@ -145,7 +145,6 @@ async function callTranslateFunction() {
     }
     const json = await response.json();
     console.log(json['scores']);
-    // outputElement.textContent = JSON.stringify(data, null, 2);
     outputElement.textContent = json['output'];
     buttonElement.className = className;
     return json;
@@ -163,7 +162,7 @@ async function callNeighborsFunction(word) {
     const requestOptions = {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
+            'Content-Type': 'application/json',
         },
         body: JSON.stringify(requestData),
     };
@@ -193,13 +192,15 @@ inputText.addEventListener('paste', function (e) {
     selection.addRange(range);
 });
 
-// document.addEventListener('DOMContentLoaded', function () {
-//     if (window.matchMedia('(orientation: landscape)').matches) {
-//         document.querySelectorAll('details').forEach(detail => {
-//             detail.setAttribute('open', '');
-//         });
-//     }
-// });
+document.addEventListener('keydown', function (event) {
+    if (event.key === 'Enter') {
+        const activeElement = document.activeElement;
+        if (activeElement.isContentEditable) {
+            event.preventDefault();
+        }
+        highlightWords();
+    }
+});
 
 function updateCollapsibleWidth() {
     const collapsible = document.querySelector('.collapsible');
@@ -215,7 +216,7 @@ function updateLockIconPosition() {
 
     if (inputText && lockIcon) {
         let rect = inputText.getBoundingClientRect();
-        
+
         let positionTop = rect.bottom - lockIcon.offsetHeight - 10;
         let positionLeft = rect.right - lockIcon.offsetWidth - 10;
 
@@ -260,12 +261,9 @@ document.addEventListener('DOMContentLoaded', function () {
     details.addEventListener('toggle', updateScrollIndicator);
     details.addEventListener('toggle', updateLockIconPosition);
 
-    // scrollIndicator.addEventListener('click', function () {
-    //     details.scrollBy({ top: 100, behavior: 'smooth' });
-    // });
     scrollIndicator.addEventListener('click', function () {
         details.scrollTo({ top: details.scrollHeight, behavior: 'smooth' });
-    });    
+    });
 
     updateScrollIndicator();
 
@@ -277,14 +275,4 @@ document.addEventListener('DOMContentLoaded', function () {
     checkbox.addEventListener('change', function () {
         localStorage.setItem('sendTranslationData', checkbox.checked);
     });
-});
-
-document.addEventListener('keydown', function (event) {
-    if (event.key === 'Enter') {
-        const activeElement = document.activeElement;
-        if (activeElement.isContentEditable) {
-            event.preventDefault();
-        }
-        highlightWords();
-    }
 });
