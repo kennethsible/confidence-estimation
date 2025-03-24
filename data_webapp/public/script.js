@@ -1,5 +1,6 @@
 let confidenceThreshold = 8.38; // 8.382382382382382
-let restrictVocab = 32640; // frequency >= 10
+let restrictVocab = null;
+let ntotal = null;
 
 function toggleEditable() {
     const inputElement = document.getElementById('inputText');
@@ -49,12 +50,7 @@ function highlightWords() {
             if (wordsToHighlight.length > 0) {
                 const regex = new RegExp(`\\b(${wordsToHighlight.map(escapeRegExp).join('|')})\\b`, 'gi');
                 inputElement.innerHTML = plainText.replace(regex, match => {
-                    const frequencyThreshold = 1; // out-of-vocabulary
-                    let orangeHighlight = '';
-                    if (response['counts'][match] < frequencyThreshold) {
-                        orangeHighlight = 'background-color: #ff9a00;';
-                    }
-                    return `<span class="highlight" style="${orangeHighlight}">${match}</span>`;
+                    return `<span class="highlight">${match}</span>`;
                 });
             } else {
                 inputElement.innerHTML = plainText;
@@ -74,23 +70,48 @@ function handleWordClick(event) {
     const contextMenu = document.getElementById('context-menu');
     const hideContextMenu = () => {
         contextMenu.style.display = 'none';
+        restrictVocab = null;
     };
 
     const menuItemsContainer = document.getElementById('menu-items');
     event.target.style.cursor = 'wait';
     callNeighborsFunction(event.target.textContent.trim()).then(
         function (response) {
-            event.target.style.cursor = 'default';
+            event.target.style = '';
 
             menuItemsContainer.innerHTML = response['neighbors'].map(item => `<li>${item}</li>`).join('');
-            menuItemsContainer.querySelectorAll('li').forEach(li => {
+
+            const refineSearchItem = document.createElement('li');
+            refineSearchItem.textContent = 'Narrow Search';
+            refineSearchItem.style.fontWeight = 'bold';
+            refineSearchItem.style.border = '1px solid #ccc';
+            refineSearchItem.style.borderRadius = '6px';
+
+            menuItemsContainer.appendChild(refineSearchItem);
+
+            menuItemsContainer.querySelectorAll('li:not(:last-child)').forEach(li => {
                 li.addEventListener('click', (e) => {
                     hideContextMenu();
-                    event.target.textContent = e.target.textContent.trim();;
+                    event.target.textContent = e.target.textContent.trim();
                     event.target.className = '';
                     event.target.style = '';
                     event.target.removeEventListener('click', handleWordClick);
                 });
+            });
+
+            refineSearchItem.addEventListener('click', () => {
+                if (restrictVocab === null) {
+                    restrictVocab = ntotal;
+                }
+                restrictVocab = Math.floor(restrictVocab / 2);
+                if (restrictVocab > 0) {
+                    handleWordClick(event);
+                }
+                else {
+                    refineSearchItem.style.pointerEvents = 'none';
+                    refineSearchItem.style.cursor = 'not-allowed';
+                    refineSearchItem.style.color = '#999';
+                }
             });
 
             contextMenu.style.display = 'block';
@@ -174,6 +195,16 @@ async function callNeighborsFunction(word) {
     return await response.json();
 }
 
+async function callNtotalFunction() {
+    const apiUrl = 'http://localhost:8080/ntotal';
+
+    const response = await fetch(apiUrl);
+    if (!response.ok) {
+        throw new Error('Request Failed.');
+    }
+    return await response.json();
+}
+
 const inputText = document.getElementById('inputText');
 
 inputText.addEventListener('paste', function (e) {
@@ -233,6 +264,7 @@ function updateLockIconPosition() {
 
         lockIcon.style.top = `${positionTop}px`;
         lockIcon.style.left = `${positionLeft}px`;
+        lockIcon.style.visibility = 'visible';
     }
 }
 
@@ -286,4 +318,13 @@ document.addEventListener('DOMContentLoaded', function () {
     checkbox.addEventListener('change', function () {
         localStorage.setItem('sendTranslationData', checkbox.checked);
     });
+
+    callNtotalFunction().then(
+        function (response) {
+            ntotal = response['ntotal'];
+        },
+        function (error) {
+            console.error(error);
+        }
+    );
 });

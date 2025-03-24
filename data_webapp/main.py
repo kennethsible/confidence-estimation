@@ -46,6 +46,11 @@ else:
 routes = web.RouteTableDef()
 
 
+@routes.get('/ntotal')
+async def ntotal_handler(request: web.Request) -> web.Response:
+    return web.json_response({'ntotal': knn_model.faiss_index.ntotal})
+
+
 @routes.post('/neighbors')
 async def neighbors_handler(request: web.Request) -> web.Response:
     args = await request.json()
