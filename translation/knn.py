@@ -1,9 +1,6 @@
-import pickle
-
+import faiss
 import numpy as np
 import torch
-from scipy.spatial.distance import cosine
-from sklearn.neighbors import NearestNeighbors
 from tqdm import tqdm
 
 from translation.manager import Manager, Tokenizer
@@ -11,51 +8,52 @@ from translation.manager import Manager, Tokenizer
 
 class KNNModel:
     def __init__(self, manager: Manager, freq_file: str, *, n_neighbors: int):
-        self.nn_model: NearestNeighbors
+        self.faiss_index: faiss.IndexFlat
         with open(freq_file) as freq_f:
             self.freq: dict[str, float] = {}
             for line in freq_f.readlines():
                 word, freq = line.split()
                 self.freq[word] = float(freq)
-            self.nn_vocab: list[str] = list(self.freq.keys())
+        self.faiss_vocab: list[str] = list(self.freq.keys())
         self.n_neighbors = n_neighbors
+
         self.tokenizer = Tokenizer(manager.src_lang, sw_model=manager.sw_model)
         self.nmt_model = manager.model
-        self.nmt_vocab = manager.vocab
         self.nmt_model.eval()
+        self.nmt_vocab = manager.vocab
 
     def save(self, model_file: str):
-        with open(model_file, 'wb') as model_f:
-            pickle.dump(self.nn_model, model_f)
+        faiss.write_index(self.faiss_index, model_file)
 
     def load(self, model_file: str):
-        with open(model_file, 'rb') as model_f:
-            self.nn_model = pickle.load(model_f)
+        self.faiss_index = faiss.read_index(model_file)
 
-    @staticmethod
-    def cosine_metric(u: np.ndarray, v: np.ndarray, a: float, b: float) -> float:
-        return cosine(u[:-1], v[:-1]) + a / (v[-1] + b)
+    def _numberize(self, word: str) -> torch.Tensor:
+        return torch.tensor(self.nmt_vocab.numberize(self.tokenizer.tokenize(word)))
 
-    def fit(self, a: float = 10.0, b: float = 1e-6):
+    def build_index(self):
         word_embs = []
-        for word in tqdm(self.nn_vocab):
-            subword_nums = self.nmt_vocab.numberize(self.tokenizer.tokenize(word))
-            subword_embs, _ = self.nmt_model.encode(torch.tensor(subword_nums).unsqueeze(0))
-            word_emb = subword_embs.squeeze(0).mean(dim=0).detach().numpy()
-            word_embs.append(np.append(word_emb, self.freq[word]))
+        for word in tqdm(self.faiss_vocab):
+            subword_nums = self._numberize(word).unsqueeze(0)
+            with torch.no_grad():
+                subword_embs, _ = self.nmt_model.encode(subword_nums)
+            word_embs.append(subword_embs.mean(dim=1).detach().numpy())
 
-        self.nn_model = NearestNeighbors(
-            n_neighbors=self.n_neighbors + 1,
-            algorithm='ball_tree',
-            metric=self.cosine_metric,
-            metric_params={'a': a, 'b': b},
-        )
-        self.nn_model.fit(np.array(word_embs))
+        emb_dim = word_embs[-1].shape[-1]
+        self.faiss_index = faiss.IndexFlatIP(emb_dim)
+        self.faiss_index.add(np.vstack(word_embs))
 
-    def kneighbors(self, word: str) -> list[str]:
-        subword_nums = self.nmt_vocab.numberize(self.tokenizer.tokenize(word))
-        subword_embs, _ = self.nmt_model.encode(torch.tensor(subword_nums).unsqueeze(0))
-        word_emb = subword_embs.squeeze(0).mean(dim=0).detach().numpy()
-        word_emb = np.append(word_emb, self.freq.get(word, 0.0))[None, ...]
-        indices = self.nn_model.kneighbors(word_emb, return_distance=False)[0]
-        return [self.nn_vocab[i] for i in indices if self.nn_vocab[i] != word][: self.n_neighbors]
+    def search(self, word: str) -> list[str]:
+        subword_nums = self._numberize(word).unsqueeze(0)
+        with torch.no_grad():
+            subword_embs, _ = self.nmt_model.encode(subword_nums)
+        word_emb = subword_embs.mean(dim=1).detach().numpy()
+
+        _, indices = self.faiss_index.search(word_emb, self.n_neighbors + 50)
+        neighbors = [self.faiss_vocab[index] for index in indices[0]]
+        neighbors_filtered = [nbr for nbr in neighbors if nbr != word and self.freq[nbr] > 15]
+
+        if len(neighbors_filtered) < self.n_neighbors:
+            remaining = [nbr for nbr in neighbors if nbr not in neighbors_filtered]
+            neighbors_filtered.extend(remaining[: self.n_neighbors - len(neighbors_filtered)])
+        return neighbors_filtered[: self.n_neighbors]

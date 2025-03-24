@@ -11,7 +11,7 @@ from translation.manager import Manager
 from translation.translate import translate
 
 NMT_MODEL = 'data/en-de.pt'
-KNN_MODEL = 'data/neighbors.pickle'
+KNN_MODEL = 'data/faiss_index.ivf'
 
 logging.basicConfig(
     format='[%(asctime)s %(levelname)s] %(message)s',
@@ -40,7 +40,7 @@ if os.path.exists(KNN_MODEL):
     knn_model.load(KNN_MODEL)
 else:
     logging.info('Fitting KNN Model: ' + KNN_MODEL)
-    knn_model.fit()
+    knn_model.build_index()
     knn_model.save(KNN_MODEL)
 
 routes = web.RouteTableDef()
@@ -53,9 +53,9 @@ async def neighbors_handler(request: web.Request) -> web.Response:
     collect_data = args.get('send_data')
     if input_string is None:
         return web.json_response({'error': 'missing "string" parameter'}, status=400)
-    neighbors = knn_model.kneighbors(input_string)
+    neighbors = knn_model.search(input_string)
     if collect_data is not None and collect_data:
-        logging.info(f'\x1b[33;20mPOST\x1b[0m /neighbors "{input_string}"')
+        logging.info(f'\x1b[33;20mPOST /neighbors\x1b[0m "{input_string}"')
         logging.info(f'Neighbors: {neighbors}')
     return web.json_response({'neighbors': neighbors})
 
@@ -70,7 +70,7 @@ async def translate_handler(request: web.Request) -> web.Response:
     output, scores = translate(input_string, manager, conf_type='grad')
     counts = {word: int(knn_model.freq.get(word, 0)) for word, _ in scores[1:-1]}
     if collect_data is not None and collect_data:
-        logging.info(f'\x1b[33;20mPOST\x1b[0m /translate "{input_string}"')
+        logging.info(f'\x1b[33;20mPOST /translate\x1b[0m "{input_string}"')
         logging.info(f'Output: {output}')
         logging.info(f'Scores: {[(word, f'{score:.2f}') for word, score in scores]}')
         logging.info(f'Counts: {counts}')

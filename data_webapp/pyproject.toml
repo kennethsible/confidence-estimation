@@ -11,7 +11,7 @@ dependencies = [
     "tqdm>=4.67.1",
     "aiohttp>=3.11.14",
     "aiohttp_cors>=0.8.0",
-    "scikit-learn>=1.6.1",
+    "faiss-cpu>=1.10.0",
 ]
 # https://github.com/explosion/spaCy/discussions/13728
 
