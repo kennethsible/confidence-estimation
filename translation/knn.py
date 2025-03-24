@@ -40,7 +40,7 @@ class KNNModel:
         word_embs = []
         for word in tqdm(self.nn_vocab):
             subword_nums = self.nmt_vocab.numberize(self.tokenizer.tokenize(word))
-            subword_embs = self.nmt_model.src_embed(torch.tensor(subword_nums).unsqueeze(0))
+            subword_embs, _ = self.nmt_model.encode(torch.tensor(subword_nums).unsqueeze(0))
             word_emb = subword_embs.squeeze(0).mean(dim=0).detach().numpy()
             word_embs.append(np.append(word_emb, self.freq[word]))
 
@@ -54,7 +54,7 @@ class KNNModel:
 
     def kneighbors(self, word: str) -> list[str]:
         subword_nums = self.nmt_vocab.numberize(self.tokenizer.tokenize(word))
-        subword_embs = self.nmt_model.src_embed(torch.tensor(subword_nums).unsqueeze(0))
+        subword_embs, _ = self.nmt_model.encode(torch.tensor(subword_nums).unsqueeze(0))
         word_emb = subword_embs.squeeze(0).mean(dim=0).detach().numpy()
         word_emb = np.append(word_emb, self.freq.get(word, 0.0))[None, ...]
         indices = self.nn_model.kneighbors(word_emb, return_distance=False)[0]
