@@ -34,7 +34,7 @@ manager = Manager(
 )
 manager.model.load_state_dict(model_state['state_dict'])
 
-knn_model = KNNModel(manager, 'data/en-de.freq', n_neighbors=5)
+knn_model = KNNModel(manager, 'data/en-de.freq')
 if os.path.exists(KNN_MODEL):
     logging.info('Loading KNN Model: ' + KNN_MODEL)
     knn_model.load(KNN_MODEL)
@@ -53,8 +53,12 @@ async def neighbors_handler(request: web.Request) -> web.Response:
     collect_data = args.get('send_data')
     if input_string is None:
         return web.json_response({'error': 'missing "string" parameter'}, status=400)
-    neighbors = knn_model.search(input_string)
-    if collect_data is not None and collect_data:
+    neighbors = knn_model.search(
+        input_string,
+        n_neighbors=args.get('n_neighbors', 5),
+        restrict_vocab=args.get('restrict_vocab'),
+    )
+    if collect_data is None or collect_data:
         logging.info(f'\x1b[33;20mPOST /neighbors\x1b[0m "{input_string}"')
         logging.info(f'Neighbors: {neighbors}')
     return web.json_response({'neighbors': neighbors})
@@ -68,13 +72,11 @@ async def translate_handler(request: web.Request) -> web.Response:
     if input_string is None:
         return web.json_response({'error': 'missing "string" parameter'}, status=400)
     output, scores = translate(input_string, manager, conf_type='grad')
-    counts = {word: int(knn_model.freq.get(word, 0)) for word, _ in scores[1:-1]}
-    if collect_data is not None and collect_data:
+    if collect_data is None or collect_data:
         logging.info(f'\x1b[33;20mPOST /translate\x1b[0m "{input_string}"')
         logging.info(f'Output: {output}')
         logging.info(f'Scores: {[(word, f'{score:.2f}') for word, score in scores]}')
-        logging.info(f'Counts: {counts}')
-    return web.json_response({'scores': scores, 'counts': counts, 'output': output})
+    return web.json_response({'scores': scores, 'output': output})
 
 
 async def init_app(enable_cors: bool = False) -> web.Application:

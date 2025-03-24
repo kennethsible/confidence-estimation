@@ -1,5 +1,5 @@
 let confidenceThreshold = 8.38; // 8.382382382382382
-let frequencyThreshold = 1; // out-of-vocabulary
+let restrictVocab = 32640; // frequency >= 10
 
 function toggleEditable() {
     const inputElement = document.getElementById('inputText');
@@ -49,6 +49,7 @@ function highlightWords() {
             if (wordsToHighlight.length > 0) {
                 const regex = new RegExp(`\\b(${wordsToHighlight.map(escapeRegExp).join('|')})\\b`, 'gi');        
                 inputElement.innerHTML = plainText.replace(regex, match => {
+                    const frequencyThreshold = 1; // out-of-vocabulary
                     let orangeHighlight = '';
                     if (response['counts'][match] < frequencyThreshold) {
                         orangeHighlight = 'background-color: #ff9a00;';
@@ -156,6 +157,7 @@ async function callNeighborsFunction(word) {
 
     const requestData = {
         string: word,
+        restrict_vocab: restrictVocab,
         send_data: checkbox.checked,
     };
     const requestOptions = {
