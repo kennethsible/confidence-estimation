@@ -157,7 +157,7 @@ def translate(
                 raise NotImplementedError(conf_type)
 
     with torch.no_grad():
-        if manager.dict and manager.freq and spacy_model:
+        if manager.dict and spacy_model:
             lemmatizer = Lemmatizer(spacy_model, manager.sw_model)
             lem_data = list(zip(*next(lemmatizer.lemmatize([src_words[1:-1]]))))
             if conf_type is None:
@@ -204,8 +204,6 @@ def main():
 
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     model_state = torch.load(args.model, weights_only=False, map_location=device)
-    if args.dict or args.freq or args.spacy_model:
-        assert args.dict and args.freq and args.spacy_model
 
     config = model_state['config']
     for i, arg in enumerate(unknown):
