@@ -1,4 +1,4 @@
-FROM python:3.12-slim AS builder
+FROM python:3.11-slim AS builder
 
 WORKDIR /app
 COPY pyproject.toml .
@@ -8,7 +8,7 @@ RUN pip install poetry==2.1.1 && \
     poetry cache clear pytorch-cpu --all --no-interaction && \
     poetry cache clear PyPI --all --no-interaction
 
-FROM python:3.12-slim AS runtime
+FROM python:3.11-slim AS runtime
 
 ENV VIRTUAL_ENV=/app/.venv
 ENV PATH="/app/.venv/bin:$PATH"
