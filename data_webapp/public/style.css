@@ -338,8 +338,10 @@ details .details-content {
     cursor: pointer;
 }
 
-.context-menu li:hover {
-    background-color: #f0f0f0;
+@media (hover: hover) {
+    .context-menu li:hover {
+        background-color: #f0f0f0;
+    }
 }
 
 @media(prefers-color-scheme: dark) {
@@ -363,7 +365,9 @@ details .details-content {
         border: 1px solid #4b4b4b;
     }
 
-    .context-menu li:hover {
-        background-color: #6d6d6d;
+    @media (hover: hover) {
+        .context-menu li:hover {
+            background-color: #6d6d6d;
+        }
     }
 }
