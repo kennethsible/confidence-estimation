@@ -32,7 +32,7 @@ def train_epoch(
     optimizer: Optimizer | None = None,
     scaler: Scaler | None = None,
 ) -> tuple[float, list[list[list[float]]]]:
-    conf_batches = []
+    batch_conf = []
     total_loss, num_tokens = 0.0, 0
     for batch in tqdm(batches):
         src_nums, src_mask = batch.src_nums, batch.src_mask
@@ -50,14 +50,11 @@ def train_epoch(
             )
             loss = criterion(torch.flatten(logits[:, :-1], 0, 1), torch.flatten(tgt_nums[:, 1:]))
             if manager.dict and not manager.freq:
-                probs = torch.gather(
-                    logits[:, :-1].softmax(dim=-1), dim=-1, index=tgt_nums[:, 1:].unsqueeze(-1)
-                )
-                seq_probs = probs.squeeze(-1).sum(dim=-1).unbind()
-                grads = torch.autograd.grad(seq_probs, src_embs, retain_graph=True)
-                confs = torch.cat(grads).norm(p=1, dim=-1)
-                conf_batches.append(confs.tolist())
-                del probs, grads, confs
+                probs, indices = logits[:, :-1].softmax(dim=-1), tgt_nums[:, 1:].unsqueeze(-1)
+                tgt_prob = torch.gather(probs, dim=-1, index=indices).squeeze(-1).sum(dim=-1)
+                grads = torch.autograd.grad(tgt_prob.unbind(), src_embs, retain_graph=True)
+                batch_conf.append(torch.cat(grads).norm(p=1, dim=-1).tolist())
+                del grads, probs, indices, tgt_prob
 
         if optimizer and scaler:
             optimizer.zero_grad()
@@ -76,7 +73,7 @@ def train_epoch(
         num_tokens += batch_length
         del logits, loss
 
-    return total_loss / num_tokens, conf_batches
+    return total_loss / num_tokens, batch_conf
 
 
 def train_model(data_args: DataArgs, manager: Manager, logger: Logger):
