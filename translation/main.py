@@ -50,7 +50,9 @@ def train_epoch(
             )
             loss = criterion(torch.flatten(logits[:, :-1], 0, 1), torch.flatten(tgt_nums[:, 1:]))
             if manager.dict and not manager.freq:
-                probs = torch.gather(logits.softmax(dim=-1), dim=-1, index=tgt_nums.unsqueeze(-1))
+                probs = torch.gather(
+                    logits[:, :-1].softmax(dim=-1), dim=-1, index=tgt_nums[:, 1:].unsqueeze(-1)
+                )
                 seq_probs = probs.squeeze(-1).sum(dim=-1).unbind()
                 grads = torch.autograd.grad(seq_probs, src_embs, retain_graph=True)
                 confs = torch.cat(grads).norm(p=1, dim=-1)
@@ -224,6 +226,7 @@ def main():
 
     logger = logging.getLogger('translation.logger')
     logger.addHandler(logging.FileHandler(args.log))
+    logger.addHandler(logging.StreamHandler())
     logger.setLevel(logging.INFO)
 
     train_model(data_args, manager, logger)
