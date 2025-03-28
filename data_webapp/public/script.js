@@ -84,7 +84,8 @@ function handleWordClick(event) {
             const inputElement = document.createElement('input');
 
             inputElement.type = 'text';
-            inputElement.placeholder = 'Enter Substitute...';
+            inputElement.placeholder = 'Enter Substitute';
+            inputElement.setAttribute('autocapitalize', 'off');
             inputElement.classList.add('input-element');
             contextInput.classList.add('context-input');
             contextInput.appendChild(inputElement);
@@ -99,7 +100,7 @@ function handleWordClick(event) {
                 li.addEventListener('click', (e) => {
                     hideContextMenu();
                     event.target.textContent = e.target.textContent.trim();
-                    event.target.style.opacity = '0.8';
+                    event.target.style.backgroundColor = '#525252';
                 });
             });
 
@@ -107,7 +108,7 @@ function handleWordClick(event) {
                 if (e.key === 'Enter' && inputElement.value.trim() !== '') {
                     hideContextMenu();
                     event.target.textContent = inputElement.value.trim();
-                    event.target.style.opacity = '0.8';
+                    event.target.style.backgroundColor = '#525252';
                 }
             });
 
