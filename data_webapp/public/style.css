@@ -308,7 +308,7 @@ details .details-content {
     background-color: #00c5ff;
     border-radius: 5px;
     color: black;
-    padding: 2px;
+    padding: 0px 2px;
 }
 
 .clickable {
@@ -345,7 +345,7 @@ details .details-content {
 }
 
 .context-input {
-    width: 140px;
+    width: 145px;
     border: 1px solid #ccc;
     border-radius: 6px;
     overflow: hidden;

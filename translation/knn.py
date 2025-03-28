@@ -66,5 +66,6 @@ class KNNModel:
             self.faiss_vocab[index]
             for index in indices[0]
             if self.faiss_vocab[index].lower() != word.lower()
+            and self.faiss_vocab[index].istitle() == word.istitle()
         ]
         return neighbors[:n_neighbors]

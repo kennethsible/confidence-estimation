@@ -1,4 +1,5 @@
 let confidenceThreshold = 8.38;
+let topKNeighbors = 5;
 let restrictVocab = null;
 
 function toggleEditable() {
@@ -83,7 +84,7 @@ function handleWordClick(event) {
             const inputElement = document.createElement('input');
 
             inputElement.type = 'text';
-            inputElement.placeholder = 'Enter Synonym...';
+            inputElement.placeholder = 'Enter Substitute...';
             inputElement.classList.add('input-element');
             contextInput.classList.add('context-input');
             contextInput.appendChild(inputElement);
@@ -173,6 +174,7 @@ async function callNeighborsFunction(word) {
 
     const requestData = {
         string: word,
+        n_neighbors: topKNeighbors,
         restrict_vocab: restrictVocab,
         send_data: checkbox.checked,
     };
@@ -185,16 +187,6 @@ async function callNeighborsFunction(word) {
     };
 
     const response = await fetch(apiUrl, requestOptions);
-    if (!response.ok) {
-        throw new Error('Request Failed.');
-    }
-    return await response.json();
-}
-
-async function callNtotalFunction() {
-    const apiUrl = 'http://localhost:8080/ntotal';
-
-    const response = await fetch(apiUrl);
     if (!response.ok) {
         throw new Error('Request Failed.');
     }
@@ -314,13 +306,4 @@ document.addEventListener('DOMContentLoaded', function () {
     checkbox.addEventListener('change', function () {
         localStorage.setItem('sendTranslationData', checkbox.checked);
     });
-
-    callNtotalFunction().then(
-        function (response) {
-            restrictVocab = Math.trunc(response['ntotal'] / 3.9);
-        },
-        function (error) {
-            console.error(error);
-        }
-    );
 });
