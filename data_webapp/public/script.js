@@ -100,7 +100,11 @@ function handleWordClick(event) {
                 li.addEventListener('click', (e) => {
                     hideContextMenu();
                     event.target.textContent = e.target.textContent.trim();
-                    event.target.style.backgroundColor = '#525252';
+                    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                        event.target.style.backgroundColor = '#525252';
+                    } else {
+                        event.target.style.backgroundColor = '#a5a5a5';
+                    }
                 });
             });
 
@@ -108,7 +112,11 @@ function handleWordClick(event) {
                 if (e.key === 'Enter' && inputElement.value.trim() !== '') {
                     hideContextMenu();
                     event.target.textContent = inputElement.value.trim();
-                    event.target.style.backgroundColor = '#525252';
+                    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                        event.target.style.backgroundColor = '#525252';
+                    } else {
+                        event.target.style.backgroundColor = '#a5a5a5';
+                    }
                 }
             });
 

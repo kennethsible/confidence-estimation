@@ -306,7 +306,7 @@ details .details-content {
 }
 
 .highlight {
-    background-color: #6d6d6d;
+    background-color: #d4d4d4;
     border-radius: 5px;
     padding: 2px 4px;
 }
@@ -361,7 +361,7 @@ details .details-content {
     width: 100%;
     background: transparent;
     font-size: inherit;
-    color: white;
+    color: black;
     padding-left: 0 !important;
 }
 
@@ -381,6 +381,10 @@ details .details-content {
         background-color: #014d9f;
     }
 
+    .highlight {
+        background-color: #6d6d6d;
+    }
+
     .context-menu {
         background-color: #3d3d3d;
         border: 1px solid #4b4b4b;
@@ -388,5 +392,9 @@ details .details-content {
 
     .context-menu li:hover {
         background-color: #6d6d6d;
+    }
+
+    .context-input input {
+        color: white;
     }
 }
