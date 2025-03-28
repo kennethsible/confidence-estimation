@@ -344,6 +344,28 @@ details .details-content {
     }
 }
 
+.context-input {
+    width: 140px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    overflow: hidden;
+    cursor: default !important;
+}
+
+.context-input:hover {
+    background-color: transparent !important;
+}
+
+.context-input input {
+    font-weight: bold;
+    border: none;
+    outline: none;
+    width: 100%;
+    background: transparent;
+    font-size: inherit;
+    color: white;
+}
+
 @media(prefers-color-scheme: dark) {
     body {
         background-color: #1d1d1d;

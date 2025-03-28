@@ -1,6 +1,5 @@
-let confidenceThreshold = 8.38; // 8.382382382382382
+let confidenceThreshold = 8.38;
 let restrictVocab = null;
-let ntotal = null;
 
 function toggleEditable() {
     const inputElement = document.getElementById('inputText');
@@ -30,7 +29,7 @@ function toggleClickable() {
 function highlightWords() {
     const inputElement = document.getElementById('inputText');
     if (!inputElement.textContent.trim()) {
-        alert('You must enter a sentence in the input field (top/left).');
+        alert('You must first enter an input sentence.');
         return;
     }
 
@@ -70,47 +69,44 @@ function handleWordClick(event) {
     const contextMenu = document.getElementById('context-menu');
     const hideContextMenu = () => {
         contextMenu.style.display = 'none';
-        restrictVocab = null;
     };
 
     const menuItemsContainer = document.getElementById('menu-items');
     event.target.style.cursor = 'wait';
     callNeighborsFunction(event.target.textContent.trim()).then(
         function (response) {
-            event.target.style = '';
+            event.target.style.cursor = '';
 
             menuItemsContainer.innerHTML = response['neighbors'].map(item => `<li>${item}</li>`).join('');
 
-            const refineSearchItem = document.createElement('li');
-            refineSearchItem.textContent = 'Narrow Search';
-            refineSearchItem.style.fontWeight = 'bold';
-            refineSearchItem.style.border = '1px solid #ccc';
-            refineSearchItem.style.borderRadius = '6px';
+            const contextInput = document.createElement('li');
+            const inputElement = document.createElement('input');
 
-            menuItemsContainer.appendChild(refineSearchItem);
+            inputElement.type = 'text';
+            inputElement.placeholder = 'Enter Synonym...';
+            inputElement.classList.add('input-element');
+            contextInput.classList.add('context-input');
+            contextInput.appendChild(inputElement);
+
+            menuItemsContainer.appendChild(contextInput);
+
+            if (window.matchMedia('(orientation: landscape)').matches) {
+                setTimeout(() => inputElement.focus(), 0);
+            }
 
             menuItemsContainer.querySelectorAll('li:not(:last-child)').forEach(li => {
                 li.addEventListener('click', (e) => {
                     hideContextMenu();
                     event.target.textContent = e.target.textContent.trim();
-                    event.target.className = '';
-                    event.target.style = '';
-                    event.target.removeEventListener('click', handleWordClick);
+                    event.target.style.opacity = '0.8';
                 });
             });
 
-            refineSearchItem.addEventListener('click', () => {
-                if (restrictVocab === null) {
-                    restrictVocab = ntotal;
-                }
-                restrictVocab = Math.floor(restrictVocab / 2);
-                if (restrictVocab > 0) {
-                    handleWordClick(event);
-                }
-                else {
-                    refineSearchItem.style.pointerEvents = 'none';
-                    refineSearchItem.style.cursor = 'not-allowed';
-                    refineSearchItem.style.color = '#999';
+            inputElement.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter' && inputElement.value.trim() !== '') {
+                    hideContextMenu();
+                    event.target.textContent = inputElement.value.trim();
+                    event.target.style.opacity = '0.8';
                 }
             });
 
@@ -224,12 +220,12 @@ inputText.addEventListener('paste', function (e) {
 });
 
 document.addEventListener('keydown', function (event) {
-    if (event.key === 'Enter') {
+    if (event.key === 'Enter' && !event.shiftKey) {
         const activeElement = document.activeElement;
         if (activeElement.isContentEditable) {
             event.preventDefault();
+            highlightWords();
         }
-        highlightWords();
     }
 });
 
@@ -321,7 +317,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     callNtotalFunction().then(
         function (response) {
-            ntotal = response['ntotal'];
+            restrictVocab = Math.trunc(response['ntotal'] / 3.9);
         },
         function (error) {
             console.error(error);
