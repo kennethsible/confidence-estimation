@@ -12,14 +12,16 @@ from translation.translate import translate
 
 NMT_MODEL = 'data/en-de.pt'
 KNN_MODEL = 'data/faiss_index.ivf'
+LOG_FILE = 'data/api_server.log'
 
 logging.basicConfig(
     format='[%(asctime)s %(levelname)s] %(message)s',
     level=logging.INFO,
-    handlers=[logging.FileHandler('data/api_server.log'), logging.StreamHandler()],
+    handlers=[logging.FileHandler(LOG_FILE), logging.StreamHandler()],
 )
+logger = logging.getLogger(__name__)
 
-logging.info('Loading NMT Model: ' + NMT_MODEL)
+logger.info('Loading NMT Model: ' + NMT_MODEL)
 model_state = torch.load(NMT_MODEL, weights_only=False, map_location='cpu')
 model_state['config']['order'] = 1
 model_state['config']['accum'] = 'sum'
@@ -36,10 +38,10 @@ manager.model.load_state_dict(model_state['state_dict'])
 
 knn_model = KNNModel(manager, 'data/en-de.freq')
 if os.path.exists(KNN_MODEL):
-    logging.info('Loading KNN Model: ' + KNN_MODEL)
+    logger.info('Loading KNN Model: ' + KNN_MODEL)
     knn_model.load(KNN_MODEL)
 else:
-    logging.info('Fitting KNN Model: ' + KNN_MODEL)
+    logger.info('Fitting KNN Model: ' + KNN_MODEL)
     knn_model.build_index()
     knn_model.save(KNN_MODEL)
 
@@ -59,8 +61,8 @@ async def neighbors_handler(request: web.Request) -> web.Response:
         restrict_vocab=args.get('restrict_vocab'),
     )
     if collect_data is None or collect_data:
-        logging.info(f'\x1b[33;20mPOST /neighbors\x1b[0m "{input_string}"')
-        logging.info('Neighbors: ' + str(neighbors))
+        logger.info(f'\x1b[33;20mPOST /neighbors\x1b[0m "{input_string}"')
+        logger.info('Neighbors: ' + str(neighbors))
     return web.json_response({'neighbors': neighbors})
 
 
@@ -74,9 +76,9 @@ async def translate_handler(request: web.Request) -> web.Response:
     output, scores = translate(input_string, manager, conf_type='grad')
     counts = {word: knn_model.word_to_freq.get(word, 0) for word, _ in scores[1:-1]}
     if collect_data is None or collect_data:
-        logging.info(f'\x1b[33;20mPOST /translate\x1b[0m "{input_string}"')
-        logging.info('Output: ' + output)
-        logging.info('Scores: ' + str([(word, f'{score:.2f}') for word, score in scores]))
+        logger.info(f'\x1b[33;20mPOST /translate\x1b[0m "{input_string}"')
+        logger.info('Output: ' + output)
+        logger.info('Scores: ' + str([(word, f'{score:.2f}') for word, score in scores]))
     return web.json_response({'output': output, 'scores': scores, 'counts': counts})
 
 
@@ -106,5 +108,5 @@ if __name__ == '__main__':
     parser.add_argument('--dev-env', action='store_true')
     args = parser.parse_args()
 
-    logging.info('Starting API Server')
+    logger.info('Starting API Server')
     web.run_app(init_app(args.dev_env), host=args.host, port=args.port)
