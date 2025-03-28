@@ -272,6 +272,7 @@ details .details-content {
     width: 80%;
     overflow-y: auto;
     background-color: white;
+    line-height: 28px;
 }
 
 .textbox:focus {
@@ -305,10 +306,9 @@ details .details-content {
 }
 
 .highlight {
-    background-color: #00c5ff;
+    background-color: #6d6d6d;
     border-radius: 5px;
-    color: black;
-    padding: 0px 2px;
+    padding: 2px 4px;
 }
 
 .clickable {
@@ -320,7 +320,7 @@ details .details-content {
     position: absolute;
     background-color: white;
     border-radius: 8px;
-    border: 1px solid #ccc;
+    border: 2px solid #ccc;
     box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.2);
     z-index: 1000;
 }
@@ -338,10 +338,8 @@ details .details-content {
     cursor: pointer;
 }
 
-@media (hover: hover) {
-    .context-menu li:hover {
-        background-color: #f0f0f0;
-    }
+.context-menu li:hover {
+    background-color: #f0f0f0;
 }
 
 .context-input {
@@ -364,6 +362,7 @@ details .details-content {
     background: transparent;
     font-size: inherit;
     color: white;
+    padding-left: 0 !important;
 }
 
 @media(prefers-color-scheme: dark) {
@@ -387,9 +386,7 @@ details .details-content {
         border: 1px solid #4b4b4b;
     }
 
-    @media (hover: hover) {
-        .context-menu li:hover {
-            background-color: #6d6d6d;
-        }
+    .context-menu li:hover {
+        background-color: #6d6d6d;
     }
 }
