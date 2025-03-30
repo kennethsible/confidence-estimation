@@ -19,10 +19,8 @@ body {
     }
 }
 
-.github-logo {
+.social-media {
     position: fixed;
-    top: 10px;
-    right: 10px;
     width: 40px;
     height: 40px;
     background-color: #333;
@@ -37,10 +35,20 @@ body {
 }
 
 @media (hover: hover) {
-    .github-logo:hover {
+    .social-media:hover {
         background-color: #007BFF;
         transform: scale(1.1);
     }
+}
+
+.github-logo {
+    top: 10px;
+    right: 10px;
+}
+
+.youtube-logo {
+    top: 10px;
+    left: 10px;
 }
 
 .lock-icon {
