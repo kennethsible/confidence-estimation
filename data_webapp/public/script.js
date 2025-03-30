@@ -29,7 +29,11 @@ function toggleClickable() {
 
 function highlightWords() {
     const inputElement = document.getElementById('inputText');
-    if (!inputElement.textContent.trim()) {
+    const buttonElement = document.getElementById('buttonIcon');
+    if (buttonElement.classList.contains('fa-circle-exclamation')) {
+        alert('The API server is currently unreachable.');
+        return;
+    } else if (!inputElement.textContent.trim()) {
         alert('You must first enter an input sentence.');
         return;
     }
@@ -59,8 +63,8 @@ function highlightWords() {
             toggleClickable();
         },
         function (error) {
-            const buttonElement = document.getElementById('buttonIcon');
             buttonElement.className = 'fas fa-circle-exclamation';
+            alert('The API server is currently unreachable.');
             console.error(error);
         }
     );
@@ -142,6 +146,22 @@ function handleWordClick(event) {
         const onHighlight = event.target.classList.contains('highlight');
         if (!insideMenu && !onHighlight) { hideContextMenu(); }
     });
+}
+
+async function checkAPIHealth() {
+    const apiUrl = 'http://localhost:8080/health';
+    const buttonElement = document.getElementById('buttonIcon');
+
+    try {
+        const response = await fetch(apiUrl);
+        if (!response.ok) {
+            buttonElement.className = 'fas fa-circle-exclamation';
+            throw new Error('Request Failed.',);
+        }
+    } catch (error) {
+        buttonElement.className = 'fas fa-circle-exclamation';
+        console.error(error);
+    }
 }
 
 async function callTranslateFunction() {
@@ -315,4 +335,6 @@ document.addEventListener('DOMContentLoaded', function () {
     checkbox.addEventListener('change', function () {
         localStorage.setItem('sendTranslationData', checkbox.checked);
     });
+
+    checkAPIHealth();
 });
