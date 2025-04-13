@@ -269,6 +269,22 @@ function updateCollapsibleWidth() {
     }
 }
 
+function updateDictateIconPosition() {
+    let inputText = document.getElementById('inputText');
+    let dictateIcon = document.querySelector('.dictate-icon');
+
+    if (inputText && dictateIcon) {
+        let rect = inputText.getBoundingClientRect();
+
+        let positionTop = rect.bottom - dictateIcon.offsetHeight - 10;
+        let positionLeft = rect.left + 10;
+
+        dictateIcon.style.top = `${positionTop}px`;
+        dictateIcon.style.left = `${positionLeft}px`;
+        dictateIcon.style.visibility = 'visible';
+    }
+}
+
 function updateLockIconPosition() {
     let inputText = document.getElementById('inputText');
     let lockIcon = document.querySelector('.lock-icon');
@@ -288,10 +304,75 @@ function updateLockIconPosition() {
 function updateLayout() {
     updateCollapsibleWidth();
     updateLockIconPosition();
+    updateDictateIconPosition();
 }
 
 window.addEventListener('resize', updateLayout);
 window.addEventListener('load', updateLayout);
+
+function recognizeSpeech() {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+        alert('Your browser does not support Speech Recognition.');
+    } else {
+        const recognition = new SpeechRecognition();
+        recognition.lang = 'en-US'; // IETF language tag
+        recognition.interimResults = true;
+        recognition.maxAlternatives = 1;
+
+        const dictateIcon = document.querySelector('.dictate-icon');
+        const dictateSymbol = document.querySelector('.dictate-icon i');
+        const inputText = document.getElementById('inputText');
+
+        dictateIcon.addEventListener('click', () => {
+            recognition.start();
+            dictateSymbol.className = 'fa-solid fa-comment-dots';
+        });
+
+        let finalTranscript = '';
+
+        recognition.addEventListener('result', (event) => {
+            let interimTranscript = '';
+
+            for (let i = event.resultIndex; i < event.results.length; i++) {
+                const transcript = event.results[i][0].transcript.trim();
+
+                if (event.results[i].isFinal) {
+                    let finalLine = transcript;
+                    if (!/[.?!]$/.test(finalLine)) {
+                        finalLine += '.';
+                    }
+                    finalLine = finalLine.charAt(0).toUpperCase() + finalLine.slice(1);
+
+                    finalTranscript += finalLine + ' ';
+                } else {
+                    interimTranscript += transcript + ' ';
+                }
+            }
+
+            inputText.innerHTML = finalTranscript + interimTranscript;
+        });
+
+        recognition.addEventListener('speechend', () => {
+            if (/Mac|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+                try { recognition.start(); recognition.stop(); }
+                catch (error) { }
+            }
+            recognition.stop();
+        });
+
+        recognition.addEventListener('end', () => {
+            dictateSymbol.className = 'fa-solid fa-microphone';
+            finalTranscript = '';
+        });
+
+        recognition.addEventListener('error', (event) => {
+            console.error(event.error);
+            dictateSymbol.className = 'fa-solid fa-microphone';
+        });
+    }
+}
 
 document.addEventListener('DOMContentLoaded', function () {
     const details = document.getElementById('info-details');
@@ -320,6 +401,7 @@ document.addEventListener('DOMContentLoaded', function () {
     details.addEventListener('scroll', updateScrollIndicator);
     details.addEventListener('toggle', updateScrollIndicator);
     details.addEventListener('toggle', updateLockIconPosition);
+    details.addEventListener('toggle', updateDictateIconPosition);
 
     scrollIndicator.addEventListener('click', function () {
         details.scrollTo({ top: details.scrollHeight, behavior: 'smooth' });
@@ -336,5 +418,6 @@ document.addEventListener('DOMContentLoaded', function () {
         localStorage.setItem('sendTranslationData', checkbox.checked);
     });
 
+    recognizeSpeech();
     checkAPIHealth();
 });
