@@ -265,7 +265,7 @@ details .details-content {
     }
 
     details {
-        max-height: min(320px, 50vh);
+        max-height: min(340px, 50vh);
     }
 
     details>summary {

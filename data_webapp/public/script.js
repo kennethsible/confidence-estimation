@@ -314,7 +314,10 @@ function recognizeSpeech() {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
     if (!SpeechRecognition) {
-        alert('Your browser does not support Speech Recognition.');
+        const dictateIcon = document.querySelector('.dictate-icon');
+        dictateIcon.addEventListener('click', () => {
+            alert('Only Chromium or WebKit browsers support dictation.');
+        });
     } else {
         const recognition = new SpeechRecognition();
         recognition.lang = 'en-US'; // IETF language tag
