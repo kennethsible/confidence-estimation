@@ -30,7 +30,7 @@ function toggleClickable() {
 function highlightWords() {
     const inputElement = document.getElementById('inputText');
     const buttonElement = document.getElementById('buttonIcon');
-    if (buttonElement.classList.contains('fa-circle-exclamation')) {
+    if (buttonElement.classList.contains('fa-triangle-exclamation')) {
         alert('The API server is currently unreachable.');
         return;
     } else if (!inputElement.textContent.trim()) {
@@ -63,7 +63,7 @@ function highlightWords() {
             toggleClickable();
         },
         function (error) {
-            buttonElement.className = 'fas fa-circle-exclamation';
+            buttonElement.className = 'fas fa-triangle-exclamation';
             alert('The API server is currently unreachable.');
             console.error(error);
         }
@@ -155,11 +155,11 @@ async function checkAPIHealth() {
     try {
         const response = await fetch(apiUrl);
         if (!response.ok) {
-            buttonElement.className = 'fas fa-circle-exclamation';
+            buttonElement.className = 'fas fa-triangle-exclamation';
             throw new Error('Request Failed.',);
         }
     } catch (error) {
-        buttonElement.className = 'fas fa-circle-exclamation';
+        buttonElement.className = 'fas fa-triangle-exclamation';
         console.error(error);
     }
 }

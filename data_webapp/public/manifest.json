@@ -1,0 +1,61 @@
+{
+    "short_name": "Translator",
+    "name": "Interactive Translator",
+    "description": "An interactive MT system that highlights potentially mistranslated words.",
+    "lang": "en",
+    "icons": [
+      {
+        "src": "/images/pwa_192.png",
+        "sizes": "192x192",
+        "type": "image/png"
+      },
+      {
+        "src": "/images/pwa_512.png",
+        "sizes": "512x512",
+        "type": "image/png"
+      }
+    ],
+    "screenshots": [
+      {
+        "src": "/images/screenshots/landscape_1.png",
+        "sizes": "2906x1818",
+        "type": "image/png",
+        "form_factor": "wide"
+      },
+      {
+        "src": "/images/screenshots/landscape_2.png",
+        "sizes": "2906x1818",
+        "type": "image/png",
+        "form_factor": "wide"
+      },
+      {
+        "src": "/images/screenshots/landscape_3.png",
+        "sizes": "2906x1818",
+        "type": "image/png",
+        "form_factor": "wide"
+      },
+      {
+        "src": "/images/screenshots/portrait_1.png",
+        "sizes": "1179x2556",
+        "type": "image/png"
+      },
+      {
+        "src": "/images/screenshots/portrait_2.png",
+        "sizes": "1179x2556",
+        "type": "image/png"
+      },
+      {
+        "src": "/images/screenshots/portrait_3.png",
+        "sizes": "1179x2556",
+        "type": "image/png"
+      }
+    ],
+    "start_url": "/",
+    "scope": "/",
+    "id": "/",
+    "orientation": "natural",
+    "display": "standalone",
+    "theme_color": "#1d1d1d",
+    "background_color": "#1d1d1d"
+  }
+  

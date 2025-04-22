@@ -7,7 +7,10 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
-    <link rel="apple-touch-icon" href="/images/icon_pwa.png">
+    <meta name="theme-color" content="#f0f0f0" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#1d1d1d" media="(prefers-color-scheme: dark)">
+    <link rel="apple-touch-icon" href="/images/pwa_180.png">
+    <link rel="manifest" href="manifest.json">
     <title>Translator</title>
     <link rel="preconnect" href="https://rsms.me/">
     <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
@@ -28,7 +31,7 @@
                 <summary><span>Interactive Translator</span></summary>
                 <ul>
                     <li>Enter a sentence in the input field (top/left) and click the arrow button to translate.</li>
-                    <li>If the arrow button changes to an <i class="fas fa-circle-exclamation"></i> (exclamation), the
+                    <li>If the arrow button changes to an <i class="fas fa-triangle-exclamation"></i> (exclamation), the
                         API server is unreachable.</li>
                     <li>Words that may have been mistranslated are <span class="highlight">highlighted</span> in
                         the input sentence.</li>
